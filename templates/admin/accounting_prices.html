@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت قیمت‌های تدبیر{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">مدیریت قیمت‌های تدبیر</h1>
+                <div>
+                    <a href="{{ url_for('admin_accounting_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-right"></i> بازگشت به داشبورد
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.total_prices }}</h4>
+                            <p class="card-text">کل قیمت‌ها</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-tags fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.retail_check_prices }}</h4>
+                            <p class="card-text">تکی چکی</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-receipt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.bulk_check_prices }}</h4>
+                            <p class="card-text">عمده چکی</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-handshake fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.bulk_cash_prices }}</h4>
+                            <p class="card-text">عمده نقدی</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-money-bill-wave fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">فیلترها</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin_accounting_prices') }}">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="search" class="form-label">جستجو</label>
+                                <input type="text" class="form-control" id="search" name="search" 
+                                       value="{{ current_filters.search }}" placeholder="کد کالا...">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="price_type" class="form-label">نوع قیمت</label>
+                                <select class="form-select" id="price_type" name="price_type">
+                                    <option value="">همه</option>
+                                    <option value="retail_check" {% if current_filters.price_type == 'retail_check' %}selected{% endif %}>تکی چکی</option>
+                                    <option value="bulk_check" {% if current_filters.price_type == 'bulk_check' %}selected{% endif %}>عمده چکی</option>
+                                    <option value="bulk_cash" {% if current_filters.price_type == 'bulk_cash' %}selected{% endif %}>عمده نقدی</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i> جستجو
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <a href="{{ url_for('admin_accounting_prices') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> پاک کردن فیلترها
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prices Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">لیست قیمت‌ها</h5>
+                    <span class="badge bg-info">{{ prices.total }} قیمت</span>
+                </div>
+                <div class="card-body">
+                    {% if prices.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>کد کالا</th>
+                                    <th>نوع قیمت</th>
+                                    <th>قیمت پایه</th>
+                                    <th>قیمت نهایی</th>
+                                    <th>درصد تخفیف</th>
+                                    <th>مبلغ تخفیف</th>
+                                    <th>حداقل سفارش</th>
+                                    <th>آخرین بروزرسانی</th>
+                                    <th>کش شده در</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for price in prices.items %}
+                                <tr>
+                                    <td>
+                                        <code>{{ price.item_code }}</code>
+                                    </td>
+                                    <td>
+                                        {% if price.price_type == 'retail_check' %}
+                                            <span class="badge bg-info">تکی چکی</span>
+                                        {% elif price.price_type == 'bulk_check' %}
+                                            <span class="badge bg-warning">عمده چکی</span>
+                                        {% elif price.price_type == 'bulk_cash' %}
+                                            <span class="badge bg-success">عمده نقدی</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ price.price_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="text-primary">{{ "{:,.0f}".format((price.base_price or 0) * 1000) }} ریال</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-success font-weight-bold">{{ "{:,.0f}".format((price.final_price or 0) * 1000) }} ریال</span>
+                                    </td>
+                                    <td>
+                                        {% if price.discount_percentage and price.discount_percentage > 0 %}
+                                            <span class="text-warning">{{ "{:.1f}".format(price.discount_percentage) }}%</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if price.discount_amount and price.discount_amount > 0 %}
+                                            <span class="text-danger">{{ "{:,.0f}".format(price.discount_amount * 1000) }} ریال</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if price.min_order and price.min_order > 0 %}
+                                            {{ "{:,.0f}".format(price.min_order) }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if price.last_update %}
+                                            {{ price.last_update | persian_datetime }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ price.cached_at | persian_datetime }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if prices.pages > 1 %}
+                    <nav aria-label="صفحه‌بندی قیمت‌ها">
+                        <ul class="pagination justify-content-center">
+                            {% if prices.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_accounting_prices', page=prices.prev_num, **current_filters) }}">
+                                    قبلی
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in prices.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != prices.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_accounting_prices', page=page_num, **current_filters) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if prices.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_accounting_prices', page=prices.next_num, **current_filters) }}">
+                                    بعدی
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">هیچ قیمتی یافت نشد</h5>
+                        <p class="text-muted">لطفاً فیلترهای جستجو را تغییر دهید یا همگام‌سازی انجام دهید.</p>
+                        <a href="{{ url_for('admin_accounting_dashboard') }}" class="btn btn-primary">
+                            <i class="fas fa-sync"></i> همگام‌سازی قیمت‌ها
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

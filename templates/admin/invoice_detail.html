@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+
+{% block title %}جزئیات فاکتور {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('admin_invoices') }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>فاکتورهای مشتریان
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                        <a class="nav-link" href="{{ url_for('excel_reconstruction') }}">
+                            <i class="fas fa-file-excel me-2"></i>بازسازی اکسل
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_roles') }}">
+                            <i class="fas fa-user-shield me-2"></i>مدیریت نقش‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_user_roles') }}">
+                            <i class="fas fa-users-cog me-2"></i>نقش‌های کاربران
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_audit_logs') }}">
+                            <i class="fas fa-clipboard-list me-2"></i>لاگ‌های حسابرسی
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <div class="row">
+                <div class="col-12">
+            <!-- Header -->
+            <div class="page-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="page-title">
+                            <i class="fas fa-file-invoice"></i>
+                            جزئیات فاکتور
+                        </h2>
+                        <div class="page-subtitle">{{ invoice.invoice_number }}</div>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('admin_invoices') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-right"></i> بازگشت به لیست
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Status Badge -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>وضعیت فاکتور:</strong>
+                            {% if invoice.approval_status == 'pending' %}
+                                <span class="badge bg-warning">در انتظار تایید</span>
+                            {% elif invoice.approval_status == 'approved' %}
+                                <span class="badge bg-success">تایید شده</span>
+                            {% elif invoice.approval_status == 'rejected' %}
+                                <span class="badge bg-danger">رد شده</span>
+                            {% elif invoice.approval_status == 'under_review' %}
+                                <span class="badge bg-info">در حال بررسی</span>
+                            {% endif %}
+                        </div>
+                        {% if invoice.approval_date %}
+                        <div class="text-muted">
+                            <small>
+                                {% if invoice.approval_status == 'approved' %}تایید شده در{% elif invoice.approval_status == 'rejected' %}رد شده در{% else %}بررسی شده در{% endif %}
+                                {{ invoice.approval_date | persian_datetime }}
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Invoice Information -->
+                <div class="col-lg-8">
+                    <!-- Invoice Details -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-info-circle"></i> اطلاعات فاکتور</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>شماره فاکتور:</strong></td>
+                                            <td>{{ invoice.invoice_number }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>تاریخ ایجاد:</strong></td>
+                                            <td>{{ invoice.created_at | persian_datetime }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>نوع پرداخت:</strong></td>
+                                            <td>
+                                                <span class="badge {% if invoice.payment_type == 'cash' %}bg-success{% else %}bg-warning{% endif %}">
+                                                    {% if invoice.payment_type == 'cash' %}پرداخت نقدی (کارت به کارت){% else %}چکی (ارسال تصویر چک ثبت شده){% endif %}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% if invoice.due_date %}
+                                        <tr>
+                                            <td><strong>تاریخ سررسید:</strong></td>
+                                            <td>{{ invoice.due_date | persian_date }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>مبلغ کل:</strong></td>
+                                            <td class="text-primary font-weight-bold">{{ "{:,.0f}".format(invoice.total_amount * 1000) }} ریال</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>وضعیت فاکتور:</strong></td>
+                                            <td>
+                                                {% if invoice.approval_status == 'pending' %}
+                                                    <span class="badge bg-warning">در انتظار تایید</span>
+                                                {% elif invoice.approval_status == 'approved' %}
+                                                    <span class="badge bg-success">تایید شده</span>
+                                                {% elif invoice.approval_status == 'rejected' %}
+                                                    <span class="badge bg-danger">رد شده</span>
+                                                {% elif invoice.approval_status == 'under_review' %}
+                                                    <span class="badge bg-info">در حال بررسی</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if invoice.approved_by %}
+                                        <tr>
+                                            <td><strong>تایید‌کننده:</strong></td>
+                                            <td>{{ invoice.approver.full_name if invoice.approver else 'نامشخص' }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+
+                            {% if invoice.admin_notes %}
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>یادداشت ادمین:</h6>
+                                    <div class="alert alert-light">{{ invoice.admin_notes }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if invoice.rejection_reason %}
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>دلیل رد:</h6>
+                                    <div class="alert alert-danger">{{ invoice.rejection_reason }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Customer Information -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-user"></i> اطلاعات مشتری</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>نام کامل:</strong></td>
+                                            <td>{{ invoice.user.full_name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>نام کاربری:</strong></td>
+                                            <td>{{ invoice.user.username }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>ایمیل:</strong></td>
+                                            <td>{{ invoice.user.email }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md:h-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>شماره تماس:</strong></td>
+                                            <td>{{ invoice.user.phone }}</td>
+                                        </tr>
+                                        {% if invoice.user.company_name %}
+                                        <tr>
+                                            <td><strong>نام شرکت:</strong></td>
+                                            <td>{{ invoice.user.company_name }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr>
+                                            <td><strong>نوع کاربر:</strong></td>
+                                            <td>
+                                                {% if invoice.user.is_bulk_buyer %}
+                                                    <span class="badge bg-primary">خریدار عمده</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">خریدار معمولی</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Items -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-list"></i> موارد فاکتور</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ردیف</th>
+                                            <th>کد کالا</th>
+                                            <th>نام کالا</th>
+                                            <th>تعداد</th>
+                                            <th>قیمت واحد (ریال)</th>
+                                            <th>مبلغ کل (ریال)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in invoice.items %}
+                                        <tr>
+                                            <td>{{ loop.index }}</td>
+                                            <td>{{ item.product.code or item.product.sku }}</td>
+                                            <td>{{ item.product.name }}</td>
+                                            <td>{{ item.quantity }}</td>
+                                            <td>{{ format_price(item.unit_price) }}</td>
+                                            <td class="text-primary font-weight-bold">{{ format_price(item.total_price) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="table-primary">
+                                            <th colspan="5">مجموع کل:</th>
+                                            <th class="text-primary">{{ format_price(invoice.total_amount) }}</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documents and Actions -->
+                <div class="col-lg-4">
+                    <!-- Documents -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-file-alt"></i> اسناد فاکتور</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if invoice.documents %}
+                                {% for document in invoice.documents %}
+                                <div class="document-item mb-3 p-3 border rounded">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <strong>{{ document.document_type }}</strong>
+                                            <div class="text-muted small">{{ document.uploaded_at | persian_datetime }}</div>
+                                        </div>
+                                        <div>
+                                            {% if document.is_approved %}
+                                                <span class="badge bg-success">تایید شده</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">در انتظار تایید</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="btn-group btn-group-sm mb-2">
+                                        <a href="{{ url_for('admin_view_document', document_id=document.id) }}" 
+                                           target="_blank" class="btn btn-outline-primary">
+                                            <i class="fas fa-eye"></i> مشاهده
+                                        </a>
+                                    </div>
+
+                                    {% if not document.is_approved and invoice.approval_status == 'pending' %}
+                                    <form method="POST" action="{{ url_for('admin_approve_document', document_id=document.id) }}" class="d-inline-block">
+                                        <button type="submit" class="btn btn-success btn-sm mb-1" 
+                                                onclick="return confirm('آیا از تایید این سند اطمینان دارید؟')">
+                                            <i class="fas fa-check"></i> تایید سند
+                                        </button>
+                                    </form>
+                                    
+                                    <button type="button" class="btn btn-danger btn-sm mb-1" 
+                                            onclick="showRejectModal({{ document.id }}, '{{ document.document_type }}')">
+                                        <i class="fas fa-times"></i> رد سند
+                                    </button>
+                                    {% endif %}
+
+                                    {% if document.admin_notes %}
+                                    <div class="mt-2">
+                                        <small class="text-muted">یادداشت: {{ document.admin_notes }}</small>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if document.rejection_reason %}
+                                    <div class="mt-2">
+                                        <small class="text-danger">دلیل رد: {{ document.rejection_reason }}</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-3 text-muted">
+                                    <i class="fas fa-file-alt fa-2x mb-2"></i>
+                                    <p>هنوز سندی بارگذاری نشده است</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Admin Actions -->
+                    {% if invoice.approval_status == 'pending' %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-cogs"></i> عملیات ادمین</h5>
+                        </div>
+                        <div class="card-body">
+                            <button type="button" class="btn btn-success btn-block mb-2" 
+                                    onclick="showApproveModal()">
+                                <i class="fas fa-check-circle"></i> تایید فاکتور
+                            </button>
+                            
+                            <button type="button" class="btn btn-info btn-block mb-2" 
+                                    onclick="showReviewModal()">
+                                <i class="fas fa-search"></i> تنظیم به حالت بررسی
+                            </button>
+                            
+                            <button type="button" class="btn btn-danger btn-block mb-2" 
+                                    onclick="showRejectInvoiceModal()">
+                                <i class="fas fa-times-circle"></i> رد فاکتور
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Additional Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-tasks"></i> عملیات اضافی</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Excel export temporarily disabled -->
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Invoice Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تایید فاکتور</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_approve_invoice', invoice_id=invoice.id) }}">
+                <div class="modal-body">
+                    <p>آیا از تایید این فاکتور اطمینان دارید؟</p>
+                    <div class="mb-3">
+                        <label for="admin_notes" class="form-label">یادداشت (اختیاری)</label>
+                        <textarea id="admin_notes" name="admin_notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                    <button type="submit" class="btn btn-success">تایید فاکتور</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Set Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تنظیم به حالت بررسی</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_set_review_invoice', invoice_id=invoice.id) }}">
+                <div class="modal-body">
+                    <p>فاکتور به حالت "در حال بررسی" تنظیم خواهد شد.</p>
+                    <div class="mb-3">
+                        <label for="admin_notes_review" class="form-label">یادداشت (اختیاری)</label>
+                        <textarea id="admin_notes_review" name="admin_notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                    <button type="submit" class="btn btn-info">تنظیم بررسی</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Invoice Modal -->
+<div class="modal fade" id="rejectInvoiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">رد فاکتور</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_reject_invoice', invoice_id=invoice.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">دلیل رد میفاکتور *</label>
+                        <textarea id="rejection_reason" name="rejection_reason" class="form-control" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                    <button type="submit" class="btn btn-danger">رد فاکتور</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Document Modal -->
+<div class="modal fade" id="rejectDocumentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">رد سند</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="rejectDocumentForm">
+                <div class="modal-body">
+                    <p id="documentInfo"></p>
+                    <div class="mb-3">
+                        <label for="rejection_reason_doc" class="form-label">دلیل رد سند *</label>
+                        <textarea id="rejection_reason_doc" name="rejection_reason" class="form-control" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                    <button type="submit" class="btn btn-danger">رد سند</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showApproveModal() {
+    $('#approveModal').modal('show');
+}
+
+function showReviewModal() {
+    $('#reviewModal').modal('show');
+}
+
+function showRejectInvoiceModal() {
+    $('#rejectInvoiceModal').modal('show');
+}
+
+function showRejectModal(documentId, documentType) {
+    $('#documentInfo').text('آیا از رد سند "' + documentType + '" اطمینان دارید؟');
+    $('#rejectDocumentForm').attr('action', '/admin/document/' + documentId + '/reject');
+    $('#rejectDocumentModal').modal('show');
+}
+</script>
+
+<style>
+.document-item {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+.font-weight-bold {
+    font-weight: bold;
+}
+</style>
+{% endblock %}

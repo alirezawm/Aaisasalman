@@ -1,0 +1,731 @@
+{% extends "base.html" %}
+
+{% block title %}پروفایل - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <!-- Profile Info -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-circle me-2"></i>اطلاعات شخصی
+                    </h5>
+                    <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="fas fa-edit me-1"></i>ویرایش
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="bg-danger rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 100px; height: 100px;">
+                            <i class="fas fa-user fa-3x text-white"></i>
+                        </div>
+                        <h5 class="mt-3 mb-1">{{ current_user.full_name }}</h5>
+                        <p class="text-muted mb-0">{{ current_user.username }}</p>
+                        {% if current_user.is_bulk_buyer %}
+                            <span class="badge bg-success mt-2">
+                                <i class="fas fa-handshake me-1"></i>خریدار عمده
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">نام و نام خانوادگی</label>
+                            <p class="form-control-plaintext">{{ current_user.full_name }}</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">نام کاربری</label>
+                            <p class="form-control-plaintext">{{ current_user.username }}</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">ایمیل</label>
+                            <p class="form-control-plaintext">{{ current_user.email }}</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">شماره تلفن</label>
+                            <p class="form-control-plaintext">{{ current_user.phone }}</p>
+                        </div>
+                        {% if current_user.company_name %}
+                        <div class="col-12">
+                            <label class="form-label fw-bold">نام شرکت</label>
+                            <p class="form-control-plaintext">{{ current_user.company_name }}</p>
+                        </div>
+                        {% endif %}
+                        {% if current_user.national_id %}
+                        <div class="col-12">
+                            <label class="form-label fw-bold">کد ملی</label>
+                            <p class="form-control-plaintext">{{ current_user.national_id }}</p>
+                        </div>
+                        {% endif %}
+                        {% if current_user.birth_date %}
+                        <div class="col-12">
+                            <label class="form-label fw-bold">تاریخ تولد</label>
+                            <p class="form-control-plaintext">{{ current_user.birth_date | persian_date }}</p>
+                        </div>
+                        {% endif %}
+                        {% if current_user.address %}
+                        <div class="col-12">
+                            <label class="form-label fw-bold">آدرس</label>
+                            <p class="form-control-plaintext">{{ current_user.address }}</p>
+                        </div>
+                        {% endif %}
+                        {% if current_user.landline_phone %}
+                        <div class="col-12">
+                            <label class="form-label fw-bold">شماره تلفن ثابت</label>
+                            <p class="form-control-plaintext">{{ current_user.landline_phone }}</p>
+                        </div>
+                        {% endif %}
+                        {% if current_user.secondary_phone %}
+                        <div class="col-12">
+                            <label class="form-label fw-bold">شماره تلفن دوم</label>
+                            <p class="form-control-plaintext">{{ current_user.secondary_phone }}</p>
+                        </div>
+                        {% endif %}
+                        <div class="col-12">
+                            <label class="form-label fw-bold">درصد تکمیل پروفایل</label>
+                            <div class="progress mb-2" style="height: 25px;">
+                                <div class="progress-bar {% if current_user.profile_completion_percentage == 100 %}bg-success{% elif current_user.profile_completion_percentage >= 70 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ current_user.profile_completion_percentage }}%" 
+                                     aria-valuenow="{{ current_user.profile_completion_percentage }}" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    {{ current_user.profile_completion_percentage }}%
+                                </div>
+                            </div>
+                            {% if current_user.profile_completion_percentage < 100 %}
+                                <small class="text-muted">برای تکمیل پروفایل، اطلاعات خود را به‌روزرسانی کنید</small>
+                            {% else %}
+                                <small class="text-success">پروفایل شما کامل است!</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">تاریخ عضویت</label>
+                            <p class="form-control-plaintext">{{ current_user.created_at | persian_date }}</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">نقش‌های کاربری</label>
+                            <div class="mt-2">
+                                {% if current_user.is_admin %}
+                                    <span class="badge bg-danger me-1 mb-1">
+                                        <i class="fas fa-crown me-1"></i>مدیر سیستم
+                                    </span>
+                                {% endif %}
+                                {% if current_user.is_bulk_buyer %}
+                                    <span class="badge bg-success me-1 mb-1">
+                                        <i class="fas fa-handshake me-1"></i>خریدار عمده
+                                    </span>
+                                {% endif %}
+                                {% for user_role in current_user.user_roles %}
+                                    {% if user_role.is_active %}
+                                        <span class="badge bg-primary me-1 mb-1">
+                                            <i class="fas fa-user-tag me-1"></i>{{ user_role.role.name }}
+                                        </span>
+                                    {% endif %}
+                                {% endfor %}
+                                {% if not current_user.is_admin and not current_user.is_bulk_buyer and not current_user.user_roles %}
+                                    <span class="badge bg-secondary me-1 mb-1">
+                                        <i class="fas fa-user me-1"></i>کاربر عادی
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Credit Information -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-credit-card me-2"></i>اطلاعات اعتباری
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>حد اعتبار:</span>
+                                <span class="fw-bold text-success">{{ "{:,.0f}".format(current_user.credit_limit) }} هزار ریال</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>بدهی فعلی:</span>
+                                <span class="fw-bold text-danger">{{ "{:,.0f}".format(current_user.current_debt) }} هزار ریال</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>بستانکاری فعلی:</span>
+                                <span class="fw-bold text-info">{{ "{:,.0f}".format(current_user.current_credit) }} هزار ریال</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="progress" style="height: 20px;">
+                                {% set credit_usage = (current_user.current_debt / current_user.credit_limit * 100) if current_user.credit_limit > 0 else 0 %}
+                                <div class="progress-bar bg-danger" role="progressbar" 
+                                     style="width: {{ credit_usage }}%" 
+                                     aria-valuenow="{{ credit_usage }}" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    {{ "%.1f"|format(credit_usage) }}%
+                                </div>
+                            </div>
+                            <small class="text-muted">استفاده از اعتبار</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Security Settings -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>تنظیمات امنیتی
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#changeUsernameModal">
+                            <i class="fas fa-user-edit me-2"></i>تغییر نام کاربری
+                        </button>
+                        <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                            <i class="fas fa-key me-2"></i>تغییر رمز عبور
+                        </button>
+                        <hr>
+                        <a href="{{ url_for('shop') }}" class="btn btn-outline-danger">
+                            <i class="fas fa-store me-2"></i>فروشگاه
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-danger">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a href="{{ url_for('about') }}" class="btn btn-outline-danger">
+                            <i class="fas fa-info-circle me-2"></i>درباره ما
+                        </a>
+                        {% if current_user.is_admin %}
+                        <hr>
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-warning">
+                            <i class="fas fa-cog me-2"></i>مدیریت سایت
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notifications Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bell me-2"></i>اعلان‌ها
+                    </h5>
+                    <span class="badge bg-light text-dark" id="notification-count">0</span>
+                </div>
+                <div class="card-body">
+                    <div id="notifications-container">
+                        <!-- Notifications will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Documents Section (for bulk buyers) -->
+    {% if current_user.is_bulk_buyer %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-upload me-2"></i>مدارک اعتباری و هویتی
+                    </h5>
+                    <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                        <i class="fas fa-plus me-1"></i>بارگذاری مدرک
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if user_documents %}
+                        <div class="row">
+                            {% for document in user_documents %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        {% if document.document_type == 'identity' %}
+                                            <i class="fas fa-id-card fa-2x text-primary mb-2"></i>
+                                            <h6>کارت ملی</h6>
+                                        {% elif document.document_type == 'credit' %}
+                                            <i class="fas fa-credit-card fa-2x text-success mb-2"></i>
+                                            <h6>مدرک اعتباری</h6>
+                                        {% elif document.document_type == 'business' %}
+                                            <i class="fas fa-building fa-2x text-info mb-2"></i>
+                                            <h6>مدرک تجاری</h6>
+                                        {% else %}
+                                            <i class="fas fa-file fa-2x text-muted mb-2"></i>
+                                            <h6>{{ document.document_type }}</h6>
+                                        {% endif %}
+                                        <small class="text-muted">
+                                            {{ document.uploaded_at | persian_datetime }}
+                                        </small>
+                                        <div class="mt-2">
+                                            <a href="{{ url_for('static', filename=document.file_path) }}" 
+                                               class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <i class="fas fa-download me-1"></i>دانلود
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">هنوز مدرکی بارگذاری نشده است</h5>
+                            <p class="text-muted">برای دریافت اعتبار بیشتر، مدارک خود را بارگذاری کنید</p>
+                            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                                <i class="fas fa-upload me-2"></i>بارگذاری اولین مدرک
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">ویرایش پروفایل</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('profile') }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="national_id" class="form-label">کد ملی</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-id-card"></i>
+                                </span>
+                                <input type="text" class="form-control" id="national_id" name="national_id" 
+                                       value="{{ current_user.national_id or '' }}" maxlength="10" pattern="[0-9]{10}">
+                            </div>
+                            <div class="form-text">کد ملی باید 10 رقم باشد</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="birth_date" class="form-label">تاریخ تولد</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-calendar"></i>
+                                </span>
+                                <input type="date" class="form-control" id="birth_date" name="birth_date" 
+                                       value="{{ current_user.birth_date.strftime('%Y-%m-%d') if current_user.birth_date else '' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">آدرس</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </span>
+                            <textarea class="form-control" id="address" name="address" rows="3" placeholder="آدرس کامل خود را وارد کنید">{{ current_user.address or '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="landline_phone" class="form-label">شماره تلفن ثابت</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-phone"></i>
+                                </span>
+                                <input type="tel" class="form-control" id="landline_phone" name="landline_phone" 
+                                       value="{{ current_user.landline_phone or '' }}" pattern="[0-9]{8,11}">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="secondary_phone" class="form-label">شماره تلفن دوم (در صورت عدم پاسخ)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </span>
+                                <input type="tel" class="form-control" id="secondary_phone" name="secondary_phone" 
+                                       value="{{ current_user.secondary_phone or '' }}" pattern="09[0-9]{9}">
+                            </div>
+                            <div class="form-text">شماره موبایل (مثال: 09123456789)</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="submit" form="editProfileModal" class="btn btn-danger">
+                    <i class="fas fa-save me-2"></i>ذخیره تغییرات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">بارگذاری مدرک</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="profile-document-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="document_type" class="form-label">نوع مدرک</label>
+                        <select class="form-select" id="document_type" name="document_type" required>
+                            <option value="">انتخاب کنید</option>
+                            <option value="identity">کارت ملی</option>
+                            <option value="credit">مدرک اعتباری</option>
+                            <option value="business">مدرک تجاری</option>
+                            <option value="other">سایر</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="file" class="form-label">انتخاب فایل</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <div class="form-text">فرمت‌های مجاز: PDF, JPG, PNG (حداکثر 5 مگابایت)</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="submit" form="profile-document-form" class="btn btn-danger">
+                    <i class="fas fa-upload me-2"></i>بارگذاری
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Username Modal -->
+<div class="modal fade" id="changeUsernameModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">تغییر نام کاربری</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('change_username') }}" id="changeUsernameForm">
+                    <div class="mb-3">
+                        <label for="current_username" class="form-label">نام کاربری فعلی</label>
+                        <input type="text" class="form-control" id="current_username" value="{{ current_user.username }}" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="new_username" class="form-label">نام کاربری جدید</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-user"></i>
+                            </span>
+                            <input type="text" class="form-control" id="new_username" name="new_username" 
+                                   placeholder="نام کاربری جدید را وارد کنید" required>
+                        </div>
+                        <div class="form-text">نام کاربری باید حداقل 3 کاراکتر باشد و فقط شامل حروف، اعداد، خط تیره و زیرخط باشد</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="current_password_username" class="form-label">رمز عبور فعلی</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="current_password_username" name="current_password" 
+                                   placeholder="رمز عبور فعلی را وارد کنید" required>
+                        </div>
+                        <div class="form-text">برای تأیید هویت، رمز عبور فعلی خود را وارد کنید</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="submit" form="changeUsernameForm" class="btn btn-danger">
+                    <i class="fas fa-save me-2"></i>تغییر نام کاربری
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">تغییر رمز عبور</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('change_password') }}" id="changePasswordForm">
+                    <div class="mb-3">
+                        <label for="current_password_change" class="form-label">رمز عبور فعلی</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="current_password_change" name="current_password" 
+                                   placeholder="رمز عبور فعلی را وارد کنید" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">رمز عبور جدید</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-key"></i>
+                            </span>
+                            <input type="password" class="form-control" id="new_password" name="new_password" 
+                                   placeholder="رمز عبور جدید را وارد کنید" required>
+                        </div>
+                        <div class="form-text">رمز عبور باید حداقل 6 کاراکتر باشد</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">تأیید رمز عبور جدید</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-check"></i>
+                            </span>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                                   placeholder="رمز عبور جدید را مجدداً وارد کنید" required>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>نکته امنیتی:</strong> پس از تغییر رمز عبور، از تمام دستگاه‌های دیگر خارج شوید و مجدداً وارد شوید.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="submit" form="changePasswordForm" class="btn btn-danger">
+                    <i class="fas fa-save me-2"></i>تغییر رمز عبور
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // بارگذاری اعلان‌ها
+    loadNotifications();
+    
+    // بارگذاری اعلان‌ها
+    function loadNotifications() {
+        $.ajax({
+            url: '/api/notifications',
+            method: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    displayNotifications(response.notifications);
+                    updateNotificationCount(response.unread_count);
+                }
+            }
+        });
+    }
+    
+    // نمایش اعلان‌ها
+    function displayNotifications(notifications) {
+        const container = $('#notifications-container');
+        container.empty();
+        
+        if (notifications.length === 0) {
+            container.html('<p class="text-muted text-center">اعلانی وجود ندارد</p>');
+            return;
+        }
+        
+        notifications.forEach(function(notification) {
+            const notificationHtml = `
+                <div class="alert ${notification.is_read ? 'alert-light' : 'alert-warning'} mb-3" 
+                     data-notification-id="${notification.id}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="alert-heading">${notification.title}</h6>
+                            <p class="mb-2">${notification.message}</p>
+                            <small class="text-muted">
+                                ${new Date(notification.created_at).toLocaleDateString('fa-IR')}
+                            </small>
+                        </div>
+                        ${!notification.is_read ? 
+                            '<button class="btn btn-sm btn-outline-primary mark-read-btn">خوانده شد</button>' : 
+                            '<span class="badge bg-success">خوانده شده</span>'
+                        }
+                    </div>
+                </div>
+            `;
+            container.append(notificationHtml);
+        });
+        
+        // رویداد کلیک برای علامت‌گذاری به عنوان خوانده شده
+        $('.mark-read-btn').on('click', function() {
+            const notificationId = $(this).closest('.alert').data('notification-id');
+            markAsRead(notificationId);
+        });
+    }
+    
+    // علامت‌گذاری به عنوان خوانده شده
+    function markAsRead(notificationId) {
+        $.ajax({
+            url: '/api/notifications/read',
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({notification_id: notificationId}),
+            success: function(response) {
+                if (response.success) {
+                    loadNotifications(); // بارگذاری مجدد
+                }
+            }
+        });
+    }
+    
+    // به‌روزرسانی شمارنده اعلان‌ها
+    function updateNotificationCount(count) {
+        $('#notification-count').text(count);
+    }
+    
+    // فرم بارگذاری مدرک
+    $('#profile-document-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(this);
+        
+        $.ajax({
+            url: '/upload_profile_document',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                alert('خطا در بارگذاری فایل');
+            }
+        });
+    });
+    
+    // اعتبارسنجی فرم تغییر نام کاربری
+    $('#changeUsernameForm').on('submit', function(e) {
+        var newUsername = $('#new_username').val().trim();
+        var currentPassword = $('#current_password_username').val();
+        
+        // اعتبارسنجی نام کاربری
+        if (newUsername.length < 3) {
+            e.preventDefault();
+            alert('نام کاربری باید حداقل 3 کاراکتر باشد');
+            $('#new_username').focus();
+            return false;
+        }
+        
+        if (!/^[a-zA-Z0-9_-]+$/.test(newUsername)) {
+            e.preventDefault();
+            alert('نام کاربری فقط می‌تواند شامل حروف، اعداد، خط تیره و زیرخط باشد');
+            $('#new_username').focus();
+            return false;
+        }
+        
+        if (newUsername === '{{ current_user.username }}') {
+            e.preventDefault();
+            alert('نام کاربری جدید باید با نام فعلی متفاوت باشد');
+            $('#new_username').focus();
+            return false;
+        }
+        
+        if (!currentPassword) {
+            e.preventDefault();
+            alert('رمز عبور فعلی الزامی است');
+            $('#current_password_username').focus();
+            return false;
+        }
+        
+        // تأیید تغییر
+        if (!confirm('آیا مطمئن هستید که می‌خواهید نام کاربری خود را تغییر دهید؟')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // اعتبارسنجی فرم تغییر رمز عبور
+    $('#changePasswordForm').on('submit', function(e) {
+        var currentPassword = $('#current_password_change').val();
+        var newPassword = $('#new_password').val();
+        var confirmPassword = $('#confirm_password').val();
+        
+        if (!currentPassword) {
+            e.preventDefault();
+            alert('رمز عبور فعلی الزامی است');
+            $('#current_password_change').focus();
+            return false;
+        }
+        
+        if (newPassword.length < 6) {
+            e.preventDefault();
+            alert('رمز عبور جدید باید حداقل 6 کاراکتر باشد');
+            $('#new_password').focus();
+            return false;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            e.preventDefault();
+            alert('رمز عبور جدید و تأیید آن مطابقت ندارند');
+            $('#confirm_password').focus();
+            return false;
+        }
+        
+        // تأیید تغییر
+        if (!confirm('آیا مطمئن هستید که می‌خواهید رمز عبور خود را تغییر دهید؟')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // نمایش/مخفی کردن رمز عبور
+    $('.input-group').on('click', '.password-toggle', function() {
+        var input = $(this).siblings('input');
+        var icon = $(this).find('i');
+        
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}مدیریت تشخیص خودکار{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">مدیریت تشخیص خودکار برند و نوع خودرو</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3>داشبورد</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="stats-dashboard">
+                        <div class="col-md-3">
+                            <div class="stat-box">
+                                <h4>کل محصولات</h4>
+                                <p class="stat-number" id="total-products">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-box">
+                                <h4>با برند</h4>
+                                <p class="stat-number" id="with-brand">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-box">
+                                <h4>با نوع</h4>
+                                <p class="stat-number" id="with-type">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-box">
+                                <h4>پوشش برند</h4>
+                                <p class="stat-number" id="brand-coverage">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button class="btn btn-primary" onclick="loadStats()">به‌روزرسانی آمار</button>
+                        <button class="btn btn-success" onclick="startBatchDetection()">تشخیص دسته‌ای</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadStats() {
+    fetch('/api/detection/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('total-products').textContent = data.data.total_products;
+                document.getElementById('with-brand').textContent = data.data.products_with_brand;
+                document.getElementById('with-type').textContent = data.data.products_with_vehicle_types;
+                document.getElementById('brand-coverage').textContent = data.data.brand_coverage + '%';
+            }
+        });
+}
+
+function startBatchDetection() {
+    if (confirm('آیا مطمئن هستید که می‌خواهید تشخیص دسته‌ای را شروع کنید؟')) {
+        // TODO: Implement batch detection
+        alert('تشخیص دسته‌ای در حال اجرا...');
+    }
+}
+
+// Load stats on page load
+document.addEventListener('DOMContentLoaded', loadStats);
+</script>
+
+<style>
+.stat-box {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+}
+.stat-number {
+    font-size: 2em;
+    font-weight: bold;
+    color: #007bff;
+}
+</style>
+{% endblock %}

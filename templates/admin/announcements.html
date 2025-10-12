@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت اطلاعیه‌ها - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                        <a class="nav-link" href="{{ url_for('excel_reconstruction') }}">
+                            <i class="fas fa-file-excel me-2"></i>واردات اکسل
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <!-- Add Announcement Form -->
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>افزودن اطلاعیه جدید
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_add_announcement') }}">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="title" class="form-label">عنوان اطلاعیه *</label>
+                                <input type="text" class="form-control" id="title" name="title" required>
+                            </div>
+                            <div class="col-12">
+                                <label for="content" class="form-label">متن اطلاعیه *</label>
+                                <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-plus me-2"></i>افزودن اطلاعیه
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Announcements List -->
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bullhorn me-2"></i>لیست اطلاعیه‌ها
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ردیف</th>
+                                    <th>عنوان</th>
+                                    <th>متن</th>
+                                    <th>وضعیت</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for announcement in announcements %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <strong>{{ announcement.title }}</strong>
+                                    </td>
+                                    <td>
+                                        {{ announcement.content[:100] }}{% if announcement.content|length > 100 %}...{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if announcement.is_active %}
+                                            <span class="badge bg-success">فعال</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">غیرفعال</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ announcement.created_at | persian_date }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" title="ویرایش">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" title="حذف">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

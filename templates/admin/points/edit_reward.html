@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}ویرایش جایزه{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">ویرایش جایزه</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">نام جایزه (انگلیسی)</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{{ reward.name }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name_fa" class="form-label">نام جایزه (فارسی)</label>
+                                    <input type="text" class="form-control" id="name_fa" name="name_fa" 
+                                           value="{{ reward.name_fa }}" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">توضیحات (انگلیسی)</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3">{{ reward.description or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="description_fa" class="form-label">توضیحات (فارسی)</label>
+                                    <textarea class="form-control" id="description_fa" name="description_fa" rows="3">{{ reward.description_fa or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="points_required" class="form-label">امتیاز مورد نیاز</label>
+                                    <input type="number" class="form-control" id="points_required" name="points_required" 
+                                           value="{{ reward.points_required }}" required min="1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="reward_type" class="form-label">نوع جایزه</label>
+                                    <select class="form-control" id="reward_type" name="reward_type" required>
+                                        <option value="">انتخاب کنید</option>
+                                        <option value="discount_percentage" {% if reward.reward_type == 'discount_percentage' %}selected{% endif %}>تخفیف درصدی</option>
+                                        <option value="discount_amount" {% if reward.reward_type == 'discount_amount' %}selected{% endif %}>تخفیف مبلغی</option>
+                                        <option value="free_shipping" {% if reward.reward_type == 'free_shipping' %}selected{% endif %}>ارسال رایگان</option>
+                                        <option value="product" {% if reward.reward_type == 'product' %}selected{% endif %}>محصول رایگان</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="discount_percentage" class="form-label">درصد تخفیف</label>
+                                    <input type="number" class="form-control" id="discount_percentage" name="discount_percentage" 
+                                           value="{{ reward.discount_percentage or '' }}" min="0" max="100" step="0.01">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="discount_amount" class="form-label">مقدار تخفیف (ریال)</label>
+                                    <input type="number" class="form-control" id="discount_amount" name="discount_amount" 
+                                           value="{{ reward.discount_amount or '' }}" min="0" step="1000">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="max_redemptions" class="form-label">حداکثر تعداد استفاده</label>
+                                    <input type="number" class="form-control" id="max_redemptions" name="max_redemptions" 
+                                           value="{{ reward.max_redemptions or '' }}" min="1">
+                                    <div class="form-text">خالی بگذارید برای نامحدود</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="valid_from" class="form-label">تاریخ شروع اعتبار</label>
+                                    <input type="date" class="form-control" id="valid_from" name="valid_from" 
+                                           value="{{ reward.valid_from.strftime('%Y-%m-%d') if reward.valid_from else '' }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="valid_until" class="form-label">تاریخ پایان اعتبار</label>
+                                    <input type="date" class="form-control" id="valid_until" name="valid_until" 
+                                           value="{{ reward.valid_until.strftime('%Y-%m-%d') if reward.valid_until else '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                               {% if reward.is_active %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_active">
+                                            فعال
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <h6>آمار استفاده:</h6>
+                                    <p>تعداد استفاده شده: <span class="badge bg-info">{{ reward.current_redemptions }}</span></p>
+                                    {% if reward.max_redemptions %}
+                                        <p>حداکثر استفاده: <span class="badge bg-warning">{{ reward.max_redemptions }}</span></p>
+                                    {% else %}
+                                        <p>حداکثر استفاده: <span class="badge bg-success">نامحدود</span></p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> ذخیره تغییرات
+                                </button>
+                                <a href="{{ url_for('admin_rewards') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> بازگشت
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// نمایش/مخفی کردن فیلدهای مربوط به نوع جایزه
+document.getElementById('reward_type').addEventListener('change', function() {
+    const rewardType = this.value;
+    const discountPercentageField = document.getElementById('discount_percentage').closest('.mb-3');
+    const discountAmountField = document.getElementById('discount_amount').closest('.mb-3');
+    
+    if (rewardType === 'discount_percentage') {
+        discountPercentageField.style.display = 'block';
+        discountAmountField.style.display = 'none';
+    } else if (rewardType === 'discount_amount') {
+        discountPercentageField.style.display = 'none';
+        discountAmountField.style.display = 'block';
+    } else {
+        discountPercentageField.style.display = 'none';
+        discountAmountField.style.display = 'none';
+    }
+});
+
+// اجرای اولیه برای نمایش صحیح فیلدها
+document.getElementById('reward_type').dispatchEvent(new Event('change'));
+</script>
+{% endblock %}
+
+

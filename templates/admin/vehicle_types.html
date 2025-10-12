@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت انواع خودرو - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                        <a class="nav-link" href="{{ url_for('excel_reconstruction') }}">
+                            <i class="fas fa-file-excel me-2"></i>واردات اکسل
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <!-- Add Vehicle Type Form -->
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>افزودن نوع خودرو جدید
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_add_vehicle_type') }}">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label for="name" class="form-label">نام نوع خودرو *</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-plus me-2"></i>افزودن نوع خودرو
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Vehicle Types List -->
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-car me-2"></i>لیست انواع خودرو
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ردیف</th>
+                                    <th>نام نوع خودرو</th>
+                                    <th>تعداد محصولات</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for vehicle_type in vehicle_types %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <strong>{{ vehicle_type.name }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ vehicle_type.products|length }}</span>
+                                    </td>
+                                    <td>{{ vehicle_type.created_at | persian_date }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary edit-vehicle-type-btn" 
+                                                    title="ویرایش" 
+                                                    data-vehicle-type-id="{{ vehicle_type.id }}"
+                                                    data-vehicle-type-name="{{ vehicle_type.name }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <form method="POST" action="{{ url_for('admin_delete_vehicle_type', vehicle_type_id=vehicle_type.id) }}" style="display: inline;" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید این نوع خودرو را حذف کنید؟')">
+                                                <button type="submit" class="btn btn-outline-danger" title="حذف">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Vehicle Type Modal -->
+<div class="modal fade" id="editVehicleTypeModal" tabindex="-1" aria-labelledby="editVehicleTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editVehicleTypeModalLabel">ویرایش نوع خودرو</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editVehicleTypeForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_vehicle_type_name" class="form-label">نام نوع خودرو *</label>
+                        <input type="text" class="form-control" id="edit_vehicle_type_name" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>ذخیره تغییرات
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Edit vehicle type functionality
+    $('.edit-vehicle-type-btn').on('click', function() {
+        var vehicleTypeId = $(this).data('vehicle-type-id');
+        var vehicleTypeName = $(this).data('vehicle-type-name');
+        
+        $('#edit_vehicle_type_name').val(vehicleTypeName);
+        $('#editVehicleTypeForm').attr('action', '/admin/edit_vehicle_type/' + vehicleTypeId);
+        $('#editVehicleTypeModal').modal('show');
+    });
+});
+</script>
+{% endblock %}

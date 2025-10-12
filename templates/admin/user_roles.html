@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت نقش‌های کاربران{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">مدیریت نقش‌های کاربران</h3>
+                </div>
+                <div class="card-body">
+                    <!-- User Selection -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="userSelect" class="form-label">انتخاب کاربر</label>
+                            <select class="form-select" id="userSelect" onchange="loadUserRoles()">
+                                <option value="">انتخاب کاربر...</option>
+                                {% for user in users.items %}
+                                <option value="{{ user.id }}">
+                                    {{ user.full_name }} ({{ user.username }})
+                                    {% if user.is_bulk_buyer %} - خریدار عمده{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="scopeSelect" class="form-label">دامنه</label>
+                            <select class="form-select" id="scopeSelect" onchange="loadUserRoles()">
+                                <option value="site">سایت</option>
+                                <option value="tenant">مستأجر</option>
+                                <option value="store">فروشگاه</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-secondary" onclick="refreshUserRoles()">
+                                <i class="fas fa-refresh"></i> به‌روزرسانی
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- User Info -->
+                    <div id="userInfo" class="row mb-3" style="display: none;">
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <strong>نام کاربری:</strong> <span id="userUsername"></span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>نام کامل:</strong> <span id="userFullName"></span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>ایمیل:</strong> <span id="userEmail"></span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong>وضعیت:</strong> <span id="userStatus"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Roles -->
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">نقش‌های فعلی</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="currentRoles" class="table-responsive">
+                                        <!-- Current roles will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">اختصاص نقش جدید</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="assignRoleForm">
+                                        <div class="mb-3">
+                                            <label for="roleSelect" class="form-label">نقش</label>
+                                            <select class="form-select" id="roleSelect" required>
+                                                <option value="">انتخاب نقش...</option>
+                                                {% for role in roles %}
+                                                <option value="{{ role.slug }}">{{ role.name }} ({{ role.slug }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="auditReason" class="form-label">دلیل اختصاص *</label>
+                                            <textarea class="form-control" id="auditReason" rows="3" required placeholder="دلیل اختصاص این نقش را وارد کنید..."></textarea>
+                                        </div>
+                                        
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            <i class="fas fa-plus"></i> اختصاص نقش
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revoke Role Confirmation Modal -->
+<div class="modal fade" id="revokeRoleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تایید لغو نقش</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>آیا مطمئن هستید که می‌خواهید نقش <strong id="revokeRoleName"></strong> را از کاربر <strong id="revokeUserName"></strong> لغو کنید؟</p>
+                
+                <div class="mb-3">
+                    <label for="revokeAuditReason" class="form-label">دلیل لغو نقش *</label>
+                    <textarea class="form-control" id="revokeAuditReason" rows="3" required placeholder="دلیل لغو این نقش را وارد کنید..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-danger" onclick="confirmRevokeRole()">لغو نقش</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentUserId = null;
+let currentUserData = null;
+let availableRoles = [
+    {% for role in roles %}
+    {
+        "slug": "{{ role.slug }}",
+        "name": "{{ role.name }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+let currentUserRoles = [];
+
+// Load users and roles on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Assign role form
+    document.getElementById('assignRoleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        assignRole();
+    });
+});
+
+function loadUserRoles() {
+    const userId = document.getElementById('userSelect').value;
+    const scope = document.getElementById('scopeSelect').value;
+    
+    if (!userId) {
+        document.getElementById('userInfo').style.display = 'none';
+        document.getElementById('currentRoles').innerHTML = '<p class="text-muted">لطفاً کاربری را انتخاب کنید</p>';
+        return;
+    }
+    
+    currentUserId = userId;
+    
+    // Load user info from the select option
+    const selectedOption = document.getElementById('userSelect').selectedOptions[0];
+    const userText = selectedOption.textContent;
+    
+    // Extract user info from the option text
+    const userMatch = userText.match(/(.+?)\s*\((.+?)\)/);
+    if (userMatch) {
+        const fullName = userMatch[1];
+        const username = userMatch[2];
+        
+        document.getElementById('userUsername').textContent = username;
+        document.getElementById('userFullName').textContent = fullName;
+        document.getElementById('userEmail').textContent = 'N/A'; // Email not shown in select
+        
+        // Show user status
+        let statusHtml = '<span class="badge bg-success">فعال</span>';
+        if (userText.includes('خریدار عمده')) {
+            statusHtml += ' <span class="badge bg-primary ms-1">خریدار عمده</span>';
+        }
+        
+        document.getElementById('userStatus').innerHTML = statusHtml;
+        document.getElementById('userInfo').style.display = 'block';
+    }
+    
+    // For now, show a simple message about roles
+    document.getElementById('currentRoles').innerHTML = '<p class="text-muted">نقش‌های کاربر در حال بارگذاری...</p>';
+}
+
+function assignRole() {
+    const roleSlug = document.getElementById('roleSelect').value;
+    const auditReason = document.getElementById('auditReason').value;
+    
+    if (!roleSlug || !auditReason) {
+        showAlert('لطفاً همه فیلدهای اجباری را پر کنید', 'error');
+        return;
+    }
+    
+    // For now, just show a success message
+    showAlert('نقش با موفقیت اختصاص داده شد (در حال توسعه)', 'success');
+    document.getElementById('assignRoleForm').reset();
+}
+
+function refreshUserRoles() {
+    if (currentUserId) {
+        loadUserRoles();
+    }
+}
+
+function showAlert(message, type) {
+    const alertClass = type === 'error' ? 'alert-danger' : 
+                      type === 'success' ? 'alert-success' : 
+                      type === 'info' ? 'alert-info' : 'alert-warning';
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert at the top of the card body
+    const cardBody = document.querySelector('.card-body');
+    cardBody.insertBefore(alertDiv, cardBody.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

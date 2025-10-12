@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}لاگ‌های حسابرسی{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">لاگ‌های حسابرسی</h3>
+                    <button type="button" class="btn btn-outline-secondary" onclick="refreshAuditLogs()">
+                        <i class="fas fa-refresh"></i> به‌روزرسانی
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Filters -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="actionFilter" class="form-label">نوع عملیات</label>
+                            <select class="form-select" id="actionFilter" onchange="filterAuditLogs()">
+                                <option value="">همه عملیات</option>
+                                <option value="assign_role">اختصاص نقش</option>
+                                <option value="revoke_role">لغو نقش</option>
+                                <option value="create_role">ایجاد نقش</option>
+                                <option value="delete_role">حذف نقش</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="actorFilter" class="form-label">انجام‌دهنده</label>
+                            <input type="text" class="form-control" id="actorFilter" placeholder="نام کاربری..." onchange="filterAuditLogs()">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dateFromFilter" class="form-label">از تاریخ</label>
+                            <input type="date" class="form-control" id="dateFromFilter" onchange="filterAuditLogs()">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dateToFilter" class="form-label">تا تاریخ</label>
+                            <input type="date" class="form-control" id="dateToFilter" onchange="filterAuditLogs()">
+                        </div>
+                    </div>
+
+                    <!-- Audit Logs Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="auditLogsTable">
+                            <thead>
+                                <tr>
+                                    <th>تاریخ و زمان</th>
+                                    <th>انجام‌دهنده</th>
+                                    <th>عملیات</th>
+                                    <th>هدف</th>
+                                    <th>جزئیات</th>
+                                    <th>IP</th>
+                                    <th>Request ID</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditLogsTableBody">
+                                <!-- Audit logs will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav aria-label="Audit logs pagination">
+                        <ul class="pagination justify-content-center" id="auditLogsPagination">
+                            <!-- Pagination will be loaded here -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Details Modal -->
+<div class="modal fade" id="logDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">جزئیات لاگ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="logDetailsContent">
+                <!-- Log details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let auditLogsData = [];
+let filteredLogs = [];
+
+// Load audit logs on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadAuditLogs();
+});
+
+function loadAuditLogs(page = 1) {
+    currentPage = page;
+    
+    const params = new URLSearchParams({
+        page: page,
+        per_page: 50
+    });
+    
+    fetch(`/api/v1/audit-logs?${params}`, {
+        headers: {
+            'X-Request-ID': generateRequestId()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            auditLogsData = data.data.logs;
+            filteredLogs = [...auditLogsData];
+            displayAuditLogs();
+            updatePagination(data.data.pagination);
+        } else {
+            showAlert('خطا در بارگذاری لاگ‌ها: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading audit logs:', error);
+        showAlert('خطا در بارگذاری لاگ‌ها', 'error');
+    });
+}
+
+function displayAuditLogs() {
+    const tbody = document.getElementById('auditLogsTableBody');
+    tbody.innerHTML = '';
+    
+    filteredLogs.forEach(log => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${window.PersianDateUtils ? window.PersianDateUtils.formatDateTimeForDisplay(log.created_at) : new Date(log.created_at).toLocaleString('fa-IR')}</td>
+            <td>${log.actor}</td>
+            <td><span class="badge ${getActionBadgeClass(log.action)}">${getActionLabel(log.action)}</span></td>
+            <td>${log.target_type}: ${log.target_id}</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-info" onclick="viewLogDetails(${log.id})" title="مشاهده جزئیات">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </td>
+            <td><code>${log.ip_address || '-'}</code></td>
+            <td><code>${log.request_id || '-'}</code></td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function getActionBadgeClass(action) {
+    const classes = {
+        'assign_role': 'bg-success',
+        'revoke_role': 'bg-danger',
+        'create_role': 'bg-primary',
+        'delete_role': 'bg-warning'
+    };
+    return classes[action] || 'bg-secondary';
+}
+
+function getActionLabel(action) {
+    const labels = {
+        'assign_role': 'اختصاص نقش',
+        'revoke_role': 'لغو نقش',
+        'create_role': 'ایجاد نقش',
+        'delete_role': 'حذف نقش'
+    };
+    return labels[action] || action;
+}
+
+function updatePagination(pagination) {
+    const paginationContainer = document.getElementById('auditLogsPagination');
+    paginationContainer.innerHTML = '';
+    
+    // Previous button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${pagination.page === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadAuditLogs(${pagination.page - 1})">قبلی</a>`;
+    paginationContainer.appendChild(prevLi);
+    
+    // Page numbers
+    const startPage = Math.max(1, pagination.page - 2);
+    const endPage = Math.min(pagination.pages, pagination.page + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === pagination.page ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="loadAuditLogs(${i})">${i}</a>`;
+        paginationContainer.appendChild(li);
+    }
+    
+    // Next button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${pagination.page === pagination.pages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadAuditLogs(${pagination.page + 1})">بعدی</a>`;
+    paginationContainer.appendChild(nextLi);
+}
+
+function filterAuditLogs() {
+    const actionFilter = document.getElementById('actionFilter').value;
+    const actorFilter = document.getElementById('actorFilter').value.toLowerCase();
+    const dateFromFilter = document.getElementById('dateFromFilter').value;
+    const dateToFilter = document.getElementById('dateToFilter').value;
+    
+    filteredLogs = auditLogsData.filter(log => {
+        // Action filter
+        if (actionFilter && log.action !== actionFilter) {
+            return false;
+        }
+        
+        // Actor filter
+        if (actorFilter && !log.actor.toLowerCase().includes(actorFilter)) {
+            return false;
+        }
+        
+        // Date filters
+        const logDate = new Date(log.created_at).toISOString().split('T')[0];
+        if (dateFromFilter && logDate < dateFromFilter) {
+            return false;
+        }
+        if (dateToFilter && logDate > dateToFilter) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    displayAuditLogs();
+}
+
+function viewLogDetails(logId) {
+    const log = auditLogsData.find(l => l.id === logId);
+    if (!log) return;
+    
+    const content = document.getElementById('logDetailsContent');
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>اطلاعات کلی</h6>
+                <table class="table table-sm">
+                    <tr><td>شناسه لاگ:</td><td>${log.id}</td></tr>
+                    <tr><td>انجام‌دهنده:</td><td>${log.actor}</td></tr>
+                    <tr><td>عملیات:</td><td><span class="badge ${getActionBadgeClass(log.action)}">${getActionLabel(log.action)}</span></td></tr>
+                    <tr><td>نوع هدف:</td><td>${log.target_type}</td></tr>
+                    <tr><td>شناسه هدف:</td><td>${log.target_id}</td></tr>
+                    <tr><td>تاریخ و زمان:</td><td>${new Date(log.created_at).toLocaleString('fa-IR')}</td></tr>
+                    <tr><td>IP Address:</td><td><code>${log.ip_address || '-'}</code></td></tr>
+                    <tr><td>Request ID:</td><td><code>${log.request_id || '-'}</code></td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>جزئیات عملیات</h6>
+                <div class="details-display">
+                    ${Object.entries(log.details).map(([key, value]) => `
+                        <div class="mb-2">
+                            <strong>${key}:</strong> 
+                            <span class="text-muted">${typeof value === 'object' ? JSON.stringify(value) : value}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('logDetailsModal')).show();
+}
+
+function refreshAuditLogs() {
+    loadAuditLogs(currentPage);
+}
+
+function generateRequestId() {
+    return 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function showAlert(message, type) {
+    const alertClass = type === 'error' ? 'alert-danger' : 
+                      type === 'success' ? 'alert-success' : 
+                      type === 'info' ? 'alert-info' : 'alert-warning';
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert at the top of the card body
+    const cardBody = document.querySelector('.card-body');
+    cardBody.insertBefore(alertDiv, cardBody.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

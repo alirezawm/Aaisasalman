@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}اعلانات - {{ current_user.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-bell me-2"></i>اعلانات</h2>
+                {% if notifications.items %}
+                <button class="btn btn-outline-primary" onclick="markAllAsRead()">
+                    <i class="fas fa-check-double me-2"></i>همه را خوانده شده علامت‌گذاری کن
+                </button>
+                {% endif %}
+            </div>
+
+            {% if notifications.items %}
+            <div class="card">
+                <div class="card-body p-0">
+                    {% for notification in notifications.items %}
+                    <div class="notification-item p-3 border-bottom {% if not notification.is_read %}bg-light{% endif %}" 
+                         data-notification-id="{{ notification.id }}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    {% if notification.notification_type == 'bulk_buyer_approved' %}
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                    {% elif notification.notification_type == 'bulk_buyer_rejected' %}
+                                        <i class="fas fa-times-circle text-danger me-2"></i>
+                                    {% elif notification.notification_type == 'bulk_buyer_request' %}
+                                        <i class="fas fa-handshake text-info me-2"></i>
+                                    {% elif notification.notification_type == 'welcome' %}
+                                        <i class="fas fa-star text-warning me-2"></i>
+                                    {% else %}
+                                        <i class="fas fa-info-circle text-primary me-2"></i>
+                                    {% endif %}
+                                    
+                                    <h5 class="mb-0 {% if not notification.is_read %}fw-bold{% endif %}">
+                                        {{ notification.title }}
+                                    </h5>
+                                    
+                                    {% if not notification.is_read %}
+                                    <span class="badge bg-primary ms-2">جدید</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <p class="text-muted mb-2">{{ notification.message }}</p>
+                                
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    {{ notification.created_at | persian_datetime }}
+                                </small>
+                            </div>
+                            
+                            {% if not notification.is_read %}
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    onclick="markAsRead({{ notification.id }})"
+                                    title="علامت‌گذاری به عنوان خوانده شده">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            {% if notifications.pages > 1 %}
+            <nav aria-label="صفحه‌بندی" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if notifications.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('notifications', page=notifications.prev_num) }}">قبلی</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in notifications.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != notifications.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('notifications', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if notifications.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('notifications', page=notifications.next_num) }}">بعدی</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">هیچ اعلانی وجود ندارد</h5>
+                <p class="text-muted">وقتی اعلان جدیدی دریافت کنید، اینجا نمایش داده می‌شود.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function markAsRead(notificationId) {
+    fetch(`/notifications/mark-read/${notificationId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const notificationItem = document.querySelector(`[data-notification-id="${notificationId}"]`);
+            if (notificationItem) {
+                notificationItem.classList.remove('bg-light');
+                const badge = notificationItem.querySelector('.badge');
+                if (badge) {
+                    badge.remove();
+                }
+                const button = notificationItem.querySelector('button');
+                if (button) {
+                    button.remove();
+                }
+                const title = notificationItem.querySelector('h5');
+                if (title) {
+                    title.classList.remove('fw-bold');
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function markAllAsRead() {
+    fetch('/notifications/mark-all-read', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+</script>
+
+<style>
+.notification-item {
+    transition: background-color 0.3s ease;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa !important;
+}
+
+.notification-item:last-child {
+    border-bottom: none !important;
+}
+</style>
+{% endblock %}

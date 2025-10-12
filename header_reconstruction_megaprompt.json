@@ -1,0 +1,524 @@
+{
+  "project_info": {
+    "name": "آسیا سلمان - بازسازی هدر سایت",
+    "description": "مگاپرامپت حرفه‌ای برای بازسازی و بهینه‌سازی هدر سایت شرکت بازرگانی قطعات خودرو آسیا سلمان",
+    "version": "1.0.0",
+    "date": "2024-01-15",
+    "target_audience": "توسعه‌دهندگان وب، طراحان UI/UX، مدیران پروژه"
+  },
+  "current_analysis": {
+    "header_structure": {
+      "navbar_type": "Bootstrap 5 RTL responsive navbar",
+      "current_features": [
+        "لوگو و نام برند",
+        "منوی ناوبری اصلی",
+        "جستجو",
+        "سبد خرید",
+        "منوی کاربر",
+        "پشتیبانی آنلاین"
+      ],
+      "color_scheme": "قرمز (#dc3545) با پس‌زمینه تیره",
+      "responsive_breakpoints": ["xs", "sm", "md", "lg", "xl"],
+      "rtl_support": true,
+      "persian_font": "Vazir"
+    },
+    "identified_issues": [
+      "طراحی قدیمی و نیاز به مدرن‌سازی",
+      "عدم استفاده از تکنیک‌های مدرن CSS",
+      "کمبود انیمیشن‌های تعاملی",
+      "بهبود نیازمند UX/UI",
+      "عدم بهینه‌سازی برای موبایل",
+      "کمبود المان‌های بصری جذاب"
+    ]
+  },
+  "reconstruction_goals": {
+    "primary_objectives": [
+      "طراحی مدرن و جذاب",
+      "بهبود تجربه کاربری (UX)",
+      "بهینه‌سازی برای موبایل",
+      "افزایش تعامل کاربر",
+      "بهبود عملکرد و سرعت",
+      "رعایت اصول طراحی Material Design 3"
+    ],
+    "secondary_objectives": [
+      "افزایش نرخ تبدیل",
+      "بهبود SEO",
+      "کاهش نرخ پرش",
+      "افزایش زمان ماندگاری",
+      "بهبود دسترسی‌پذیری"
+    ]
+  },
+  "design_specifications": {
+    "visual_design": {
+      "color_palette": {
+        "primary": "#dc3545",
+        "primary_dark": "#c82333",
+        "primary_light": "#f8d7da",
+        "secondary": "#6c757d",
+        "accent": "#ff4757",
+        "success": "#28a745",
+        "warning": "#ffc107",
+        "info": "#17a2b8",
+        "light": "#f8f9fa",
+        "dark": "#343a40",
+        "white": "#ffffff"
+      },
+      "typography": {
+        "primary_font": "Vazir, Tahoma, Arial, sans-serif",
+        "font_weights": [300, 400, 500, 600, 700],
+        "font_sizes": {
+          "xs": "0.75rem",
+          "sm": "0.875rem",
+          "base": "1rem",
+          "lg": "1.125rem",
+          "xl": "1.25rem",
+          "2xl": "1.5rem",
+          "3xl": "1.875rem",
+          "4xl": "2.25rem"
+        }
+      },
+      "spacing": {
+        "xs": "0.25rem",
+        "sm": "0.5rem",
+        "md": "1rem",
+        "lg": "1.5rem",
+        "xl": "2rem",
+        "2xl": "3rem"
+      },
+      "border_radius": {
+        "sm": "0.25rem",
+        "md": "0.5rem",
+        "lg": "0.75rem",
+        "xl": "1rem",
+        "full": "50%"
+      }
+    },
+    "layout_structure": {
+      "header_height": {
+        "desktop": "80px",
+        "tablet": "70px",
+        "mobile": "60px"
+      },
+      "container_max_width": "1200px",
+      "grid_system": "Bootstrap 5 Grid",
+      "breakpoints": {
+        "xs": "0px",
+        "sm": "576px",
+        "md": "768px",
+        "lg": "992px",
+        "xl": "1200px",
+        "xxl": "1400px"
+      }
+    }
+  },
+  "header_components": {
+    "top_bar": {
+      "enabled": true,
+      "content": [
+        "اطلاعات تماس",
+        "زبان و ارز",
+        "لینک‌های اجتماعی",
+        "وضعیت سفارش"
+      ],
+      "height": "40px",
+      "background": "linear-gradient(135deg, #1f2937, #374151)",
+      "text_color": "#ffffff",
+      "font_size": "0.875rem"
+    },
+    "main_navbar": {
+      "structure": {
+        "logo_section": {
+          "position": "right",
+          "content": "لوگو + نام برند",
+          "logo_size": "40px",
+          "brand_font_size": "1.5rem",
+          "brand_font_weight": "700"
+        },
+        "navigation_menu": {
+          "position": "center",
+          "items": [
+            "خانه",
+            "دسته‌بندی محصولات",
+            "فروشگاه",
+            "درباره ما",
+            "تماس با ما"
+          ],
+          "dropdown_menus": [
+            "دسته‌بندی محصولات",
+            "خدمات",
+            "پشتیبانی"
+          ]
+        },
+        "action_buttons": {
+          "position": "left",
+          "items": [
+            "جستجو",
+            "سبد خرید",
+            "حساب کاربری"
+          ]
+        }
+      },
+      "styling": {
+        "background": "rgba(255, 255, 255, 0.95)",
+        "backdrop_filter": "blur(10px)",
+        "border_bottom": "1px solid rgba(220, 53, 69, 0.1)",
+        "box_shadow": "0 4px 20px rgba(0, 0, 0, 0.1)",
+        "transition": "all 0.3s ease"
+      }
+    },
+    "search_component": {
+      "type": "enhanced_search_bar",
+      "features": [
+        "جستجوی زنده (Live Search)",
+        "پیشنهادات خودکار",
+        "فیلترهای پیشرفته",
+        "جستجوی صوتی",
+        "تاریخچه جستجو"
+      ],
+      "styling": {
+        "background": "#ffffff",
+        "border": "2px solid #e9ecef",
+        "border_radius": "25px",
+        "padding": "12px 20px",
+        "box_shadow": "0 2px 10px rgba(0, 0, 0, 0.1)",
+        "transition": "all 0.3s ease"
+      }
+    },
+    "cart_component": {
+      "type": "floating_cart_indicator",
+      "features": [
+        "شمارنده محصولات",
+        "پیش‌نمایش سریع",
+        "انیمیشن اضافه شدن",
+        "هشدار موجودی",
+        "لینک مستقیم به سبد خرید"
+      ],
+      "styling": {
+        "background": "linear-gradient(135deg, #dc3545, #c82333)",
+        "color": "#ffffff",
+        "border_radius": "50px",
+        "padding": "12px 20px",
+        "box_shadow": "0 4px 15px rgba(220, 53, 69, 0.3)",
+        "transition": "all 0.3s ease"
+      }
+    },
+    "user_menu": {
+      "type": "dropdown_menu",
+      "features": [
+        "پروفایل کاربر",
+        "سفارشات",
+        "علاقه‌مندی‌ها",
+        "تنظیمات",
+        "خروج"
+      ],
+      "styling": {
+        "background": "#ffffff",
+        "border": "1px solid #e9ecef",
+        "border_radius": "12px",
+        "box_shadow": "0 10px 30px rgba(0, 0, 0, 0.1)",
+        "padding": "8px 0"
+      }
+    }
+  },
+  "interactive_features": {
+    "animations": {
+      "navbar_scroll": {
+        "type": "shrink_on_scroll",
+        "effect": "height reduction + background change",
+        "duration": "0.3s",
+        "easing": "ease-in-out"
+      },
+      "menu_hover": {
+        "type": "underline_animation",
+        "effect": "smooth underline expansion",
+        "duration": "0.2s",
+        "color": "#dc3545"
+      },
+      "button_interactions": {
+        "type": "scale_and_shadow",
+        "effect": "slight scale up + shadow increase",
+        "duration": "0.15s"
+      },
+      "cart_animation": {
+        "type": "bounce_effect",
+        "effect": "bounce when item added",
+        "duration": "0.6s"
+      }
+    },
+    "micro_interactions": {
+      "search_focus": {
+        "effect": "border color change + shadow increase",
+        "duration": "0.2s"
+      },
+      "dropdown_open": {
+        "effect": "fade in + slide down",
+        "duration": "0.3s"
+      },
+      "notification_toast": {
+        "effect": "slide in from top",
+        "duration": "0.4s"
+      }
+    }
+  },
+  "responsive_design": {
+    "mobile_optimization": {
+      "breakpoint": "768px",
+      "changes": [
+        "منوی همبرگری",
+        "جستجو در منوی کشویی",
+        "سبد خرید به صورت آیکون",
+        "کاهش ارتفاع هدر",
+        "بهینه‌سازی فونت‌ها"
+      ],
+      "hamburger_menu": {
+        "style": "animated_hamburger",
+        "animation": "transform to X on open",
+        "color": "#dc3545"
+      }
+    },
+    "tablet_optimization": {
+      "breakpoint": "992px",
+      "changes": [
+        "منوی نیمه‌کشویی",
+        "جستجو در نوار بالایی",
+        "بهینه‌سازی فاصله‌ها"
+      ]
+    },
+    "desktop_enhancements": {
+      "breakpoint": "1200px+",
+      "features": [
+        "منوی کامل",
+        "جستجوی پیشرفته",
+        "انیمیشن‌های کامل",
+        "هوور افکت‌ها"
+      ]
+    }
+  },
+  "accessibility_features": {
+    "keyboard_navigation": {
+      "tab_order": "logical sequence",
+      "focus_indicators": "visible and clear",
+      "skip_links": "to main content"
+    },
+    "screen_reader_support": {
+      "aria_labels": "comprehensive",
+      "semantic_html": "proper structure",
+      "alt_texts": "descriptive"
+    },
+    "color_contrast": {
+      "minimum_ratio": "4.5:1",
+      "preferred_ratio": "7:1",
+      "color_blind_friendly": true
+    }
+  },
+  "performance_optimizations": {
+    "css_optimizations": [
+      "CSS Grid and Flexbox",
+      "CSS Custom Properties",
+      "Minimal CSS framework usage",
+      "Critical CSS inlining",
+      "CSS purging"
+    ],
+    "javascript_optimizations": [
+      "Lazy loading for non-critical features",
+      "Event delegation",
+      "Debounced search",
+      "Intersection Observer API",
+      "Web Workers for heavy tasks"
+    ],
+    "image_optimizations": [
+      "WebP format support",
+      "Responsive images",
+      "Lazy loading",
+      "Optimized file sizes"
+    ]
+  },
+  "implementation_phases": {
+    "phase_1": {
+      "name": "طراحی و برنامه‌ریزی",
+      "duration": "2-3 روز",
+      "tasks": [
+        "تحلیل نیازهای کاربر",
+        "طراحی wireframe",
+        "انتخاب رنگ‌بندی",
+        "تعریف typography",
+        "برنامه‌ریزی responsive"
+      ]
+    },
+    "phase_2": {
+      "name": "توسعه HTML/CSS",
+      "duration": "3-4 روز",
+      "tasks": [
+        "ایجاد ساختار HTML",
+        "پیاده‌سازی CSS",
+        "رعایت RTL",
+        "بهینه‌سازی موبایل",
+        "تست cross-browser"
+      ]
+    },
+    "phase_3": {
+      "name": "افزودن تعاملات",
+      "duration": "2-3 روز",
+      "tasks": [
+        "پیاده‌سازی JavaScript",
+        "انیمیشن‌ها",
+        "جستجوی زنده",
+        "منوی کشویی",
+        "بهینه‌سازی عملکرد"
+      ]
+    },
+    "phase_4": {
+      "name": "تست و بهینه‌سازی",
+      "duration": "1-2 روز",
+      "tasks": [
+        "تست دسترسی‌پذیری",
+        "تست عملکرد",
+        "تست responsive",
+        "رفع باگ‌ها",
+        "بهینه‌سازی نهایی"
+      ]
+    }
+  },
+  "technical_requirements": {
+    "dependencies": {
+      "css_frameworks": ["Bootstrap 5.3+", "Font Awesome 6.4+"],
+      "javascript_libraries": ["jQuery 3.7+", "Bootstrap JS"],
+      "fonts": ["Vazir Font", "System Fonts"],
+      "icons": ["Font Awesome", "Custom SVG Icons"]
+    },
+    "browser_support": {
+      "modern_browsers": "Chrome 90+, Firefox 88+, Safari 14+, Edge 90+",
+      "mobile_browsers": "iOS Safari 14+, Chrome Mobile 90+",
+      "fallbacks": "Graceful degradation for older browsers"
+    },
+    "performance_targets": {
+      "first_contentful_paint": "< 1.5s",
+      "largest_contentful_paint": "< 2.5s",
+      "cumulative_layout_shift": "< 0.1",
+      "first_input_delay": "< 100ms"
+    }
+  },
+  "code_examples": {
+    "html_structure": {
+      "top_bar": "<div class=\"top-bar bg-dark text-white py-2\"><div class=\"container\"><div class=\"row align-items-center\"><div class=\"col-md-6\"><small><i class=\"fas fa-phone me-2\"></i>۰۲۱-۱۲۳۴۵۶۷۸</small></div><div class=\"col-md-6 text-end\"><div class=\"social-links\"><a href=\"#\" class=\"text-white me-3\"><i class=\"fab fa-telegram\"></i></a><a href=\"#\" class=\"text-white me-3\"><i class=\"fab fa-instagram\"></i></a><a href=\"#\" class=\"text-white\"><i class=\"fab fa-whatsapp\"></i></a></div></div></div></div></div>",
+      "main_navbar": "<nav class=\"navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top\"><div class=\"container\"><a class=\"navbar-brand fw-bold text-danger\" href=\"/\"><img src=\"/static/images/logo.png\" alt=\"آسیا سلمان\" height=\"40\" class=\"me-2\">آسیا سلمان</a><button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"collapse\" data-bs-target=\"#navbarNav\"><span class=\"navbar-toggler-icon\"></span></button><div class=\"collapse navbar-collapse\" id=\"navbarNav\"><ul class=\"navbar-nav me-auto\"><li class=\"nav-item\"><a class=\"nav-link\" href=\"/\">خانه</a></li><li class=\"nav-item dropdown\"><a class=\"nav-link dropdown-toggle\" href=\"#\" role=\"button\" data-bs-toggle=\"dropdown\">محصولات</a><ul class=\"dropdown-menu\"><li><a class=\"dropdown-item\" href=\"/categories\">دسته‌بندی‌ها</a></li><li><a class=\"dropdown-item\" href=\"/brands\">برندها</a></li></ul></li><li class=\"nav-item\"><a class=\"nav-link\" href=\"/shop\">فروشگاه</a></li><li class=\"nav-item\"><a class=\"nav-link\" href=\"/about\">درباره ما</a></li><li class=\"nav-item\"><a class=\"nav-link\" href=\"/contact\">تماس</a></li></ul><div class=\"d-flex align-items-center\"><div class=\"search-container me-3\"><input type=\"text\" class=\"form-control search-input\" placeholder=\"جستجو...\"><button class=\"btn btn-outline-danger search-btn\"><i class=\"fas fa-search\"></i></button></div><a href=\"#\" class=\"btn btn-danger position-relative me-3\"><i class=\"fas fa-shopping-cart\"></i><span class=\"position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark\">0</span></a><div class=\"dropdown\"><a class=\"btn btn-outline-danger dropdown-toggle\" href=\"#\" role=\"button\" data-bs-toggle=\"dropdown\"><i class=\"fas fa-user\"></i></a><ul class=\"dropdown-menu dropdown-menu-end\"><li><a class=\"dropdown-item\" href=\"/profile\">پروفایل</a></li><li><a class=\"dropdown-item\" href=\"/orders\">سفارشات</a></li><li><hr class=\"dropdown-divider\"></li><li><a class=\"dropdown-item\" href=\"/logout\">خروج</a></li></ul></div></div></div></div></nav>"
+    },
+    "css_styles": {
+      "top_bar": ".top-bar { background: linear-gradient(135deg, #1f2937, #374151); font-size: 0.875rem; } .social-links a { transition: color 0.3s ease; } .social-links a:hover { color: #dc3545 !important; }",
+      "main_navbar": ".navbar { backdrop-filter: blur(10px); transition: all 0.3s ease; } .navbar.scrolled { background: rgba(255, 255, 255, 0.98) !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); } .navbar-brand { font-size: 1.5rem; font-weight: 700; } .nav-link { font-weight: 500; position: relative; transition: color 0.3s ease; } .nav-link::after { content: ''; position: absolute; bottom: -5px; left: 0; width: 0; height: 2px; background: #dc3545; transition: width 0.3s ease; } .nav-link:hover::after { width: 100%; } .search-container { position: relative; } .search-input { border-radius: 25px; padding: 12px 20px; border: 2px solid #e9ecef; transition: all 0.3s ease; } .search-input:focus { border-color: #dc3545; box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25); } .search-btn { border-radius: 25px; padding: 12px 20px; }",
+      "animations": "@keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } } @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } } @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } } .fade-in-down { animation: fadeInDown 0.5s ease-out; } .slide-in-right { animation: slideInRight 0.5s ease-out; } .bounce { animation: bounce 0.6s ease-in-out; }"
+    },
+    "javascript_functionality": {
+      "navbar_scroll": "window.addEventListener('scroll', function() { const navbar = document.querySelector('.navbar'); if (window.scrollY > 50) { navbar.classList.add('scrolled'); } else { navbar.classList.remove('scrolled'); } });",
+      "search_functionality": "document.querySelector('.search-input').addEventListener('input', debounce(function(e) { const query = e.target.value; if (query.length > 2) { fetchSearchSuggestions(query); } }, 300)); function debounce(func, wait) { let timeout; return function executedFunction(...args) { const later = () => { clearTimeout(timeout); func(...args); }; clearTimeout(timeout); timeout = setTimeout(later, wait); }; }",
+      "cart_animation": "function addToCartAnimation() { const cartIcon = document.querySelector('.cart-icon'); cartIcon.classList.add('bounce'); setTimeout(() => { cartIcon.classList.remove('bounce'); }, 600); }",
+      "mobile_menu": "document.querySelector('.navbar-toggler').addEventListener('click', function() { this.classList.toggle('active'); });"
+    }
+  },
+  "testing_checklist": {
+    "functionality_tests": [
+      "تست منوی ناوبری",
+      "تست جستجو",
+      "تست سبد خرید",
+      "تست منوی کاربر",
+      "تست responsive design",
+      "تست keyboard navigation",
+      "تست screen reader"
+    ],
+    "performance_tests": [
+      "تست سرعت بارگذاری",
+      "تست Core Web Vitals",
+      "تست mobile performance",
+      "تست network throttling",
+      "تست memory usage"
+    ],
+    "compatibility_tests": [
+      "تست cross-browser",
+      "تست mobile browsers",
+      "تست tablet devices",
+      "تست desktop resolutions",
+      "تست accessibility tools"
+    ]
+  },
+  "deployment_considerations": {
+    "cdn_usage": {
+      "bootstrap": "CDN for faster loading",
+      "font_awesome": "CDN for icons",
+      "google_fonts": "CDN for Vazir font"
+    },
+    "optimization": {
+      "minification": "CSS and JS minification",
+      "compression": "Gzip compression",
+      "caching": "Browser caching headers",
+      "lazy_loading": "Non-critical resource lazy loading"
+    },
+    "monitoring": {
+      "performance": "Google PageSpeed Insights",
+      "analytics": "Google Analytics 4",
+      "errors": "Error tracking and logging",
+      "user_feedback": "User experience monitoring"
+    }
+  },
+  "maintenance_guidelines": {
+    "regular_updates": [
+      "بروزرسانی dependencies",
+      "بررسی performance metrics",
+      "تست accessibility",
+      "بررسی browser compatibility",
+      "بهینه‌سازی کد"
+    ],
+    "monitoring": [
+      "نظارت بر Core Web Vitals",
+      "بررسی user feedback",
+      "تحلیل user behavior",
+      "بررسی error logs",
+      "نظارت بر security"
+    ],
+    "improvements": [
+      "بهبود UX بر اساس feedback",
+      "افزودن features جدید",
+      "بهینه‌سازی performance",
+      "بهبود accessibility",
+      "بروزرسانی design trends"
+    ]
+  },
+  "success_metrics": {
+    "performance_metrics": {
+      "page_load_time": "< 2 seconds",
+      "first_contentful_paint": "< 1.5 seconds",
+      "largest_contentful_paint": "< 2.5 seconds",
+      "cumulative_layout_shift": "< 0.1",
+      "first_input_delay": "< 100ms"
+    },
+    "user_experience_metrics": {
+      "bounce_rate": "< 40%",
+      "time_on_site": "> 2 minutes",
+      "pages_per_session": "> 3",
+      "conversion_rate": "> 5%",
+      "user_satisfaction": "> 4.5/5"
+    },
+    "accessibility_metrics": {
+      "wcag_compliance": "AA level",
+      "keyboard_navigation": "100% functional",
+      "screen_reader_compatibility": "Fully compatible",
+      "color_contrast_ratio": "> 4.5:1"
+    }
+  },
+  "conclusion": {
+    "summary": "این مگاپرامپت راهنمای کاملی برای بازسازی هدر سایت آسیا سلمان ارائه می‌دهد که شامل طراحی مدرن، بهینه‌سازی عملکرد، بهبود تجربه کاربری و رعایت اصول دسترسی‌پذیری است.",
+    "next_steps": [
+      "بررسی و تأیید requirements",
+      "شروع فاز طراحی",
+      "پیاده‌سازی مرحله به مرحله",
+      "تست و بهینه‌سازی",
+      "استقرار و نظارت"
+    ],
+    "expected_outcomes": [
+      "بهبود 30% در performance",
+      "افزایش 25% در user engagement",
+      "کاهش 20% در bounce rate",
+      "بهبود 40% در mobile experience",
+      "دسترسی‌پذیری کامل"
+    ]
+  }
+}

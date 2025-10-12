@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block title %}تشخیص خودکار برند و نوع خودرو{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-search"></i>
+                        تشخیص خودکار برند و نوع خودرو
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- آمار کلی -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-info">
+                                    <i class="fas fa-box"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">کل محصولات</span>
+                                    <span class="info-box-number" id="total-products">{{ stats.total_products or 0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-success">
+                                    <i class="fas fa-tag"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">محصولات با برند</span>
+                                    <span class="info-box-number" id="products-with-brand">{{ stats.products_with_brand or 0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-warning">
+                                    <i class="fas fa-car"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">محصولات با نوع خودرو</span>
+                                    <span class="info-box-number" id="products-with-vehicle-types">{{ stats.products_with_vehicle_types or 0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-primary">
+                                    <i class="fas fa-percentage"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">پوشش برند</span>
+                                    <span class="info-box-number" id="brand-coverage">{{ stats.brand_coverage or 0 }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ابزارهای تشخیص -->
+                    <div class="row">
+                        <!-- تشخیص تک محصول -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">
+                                        <i class="fas fa-search-plus"></i>
+                                        تشخیص تک محصول
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <form id="single-detection-form">
+                                        <div class="form-group">
+                                            <label for="product-name">نام محصول:</label>
+                                            <input type="text" class="form-control" id="product-name" 
+                                                   placeholder="مثال: لنت ترمز تویوتا کورولا سدان" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-search"></i>
+                                            تشخیص برند و نوع خودرو
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- نتیجه تشخیص -->
+                                    <div id="detection-result" class="mt-3" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <h5><i class="fas fa-info-circle"></i> نتیجه تشخیص:</h5>
+                                            <div id="detection-details"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- تشخیص دسته‌ای -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">
+                                        <i class="fas fa-tasks"></i>
+                                        تشخیص دسته‌ای
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label>انتخاب محصولات:</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="batch-option" 
+                                                   id="all-products" value="all" checked>
+                                            <label class="form-check-label" for="all-products">
+                                                همه محصولات فعال
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="batch-option" 
+                                                   id="selected-products" value="selected">
+                                            <label class="form-check-label" for="selected-products">
+                                                محصولات انتخاب شده
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-success" id="batch-detect-btn">
+                                        <i class="fas fa-play"></i>
+                                        شروع تشخیص دسته‌ای
+                                    </button>
+                                    
+                                    <!-- پیشرفت تشخیص دسته‌ای -->
+                                    <div id="batch-progress" class="mt-3" style="display: none;">
+                                        <div class="progress">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                 role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                        <small class="text-muted" id="batch-status">در حال پردازش...</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- نتایج تشخیص دسته‌ای -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">
+                                        <i class="fas fa-list"></i>
+                                        نتایج تشخیص دسته‌ای
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="batch-results" style="display: none;">
+                                        <div class="alert alert-success">
+                                            <h5><i class="fas fa-check-circle"></i> تشخیص با موفقیت انجام شد</h5>
+                                            <div id="batch-summary"></div>
+                                        </div>
+                                        
+                                        <div class="table-responsive">
+                                            <table class="table table-striped" id="results-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>شناسه محصول</th>
+                                                        <th>نام محصول</th>
+                                                        <th>برند تشخیص داده شده</th>
+                                                        <th>انواع خودرو تشخیص داده شده</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="results-tbody">
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ابزارهای مدیریت -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">
+                                        <i class="fas fa-cogs"></i>
+                                        ابزارهای مدیریت
+                                    </h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-info" id="refresh-stats-btn">
+                                            <i class="fas fa-sync"></i>
+                                            به‌روزرسانی آمار
+                                        </button>
+                                        <button type="button" class="btn btn-warning" id="refresh-cache-btn">
+                                            <i class="fas fa-database"></i>
+                                            به‌روزرسانی کش
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">در حال بارگذاری...</span>
+                </div>
+                <p class="mt-2">در حال پردازش...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // تشخیص تک محصول
+    $('#single-detection-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const productName = $('#product-name').val().trim();
+        if (!productName) {
+            showAlert('لطفاً نام محصول را وارد کنید', 'warning');
+            return;
+        }
+        
+        $('#loadingModal').modal('show');
+        
+        $.ajax({
+            url: '/api/detect-brand-vehicle',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                product_name: productName
+            }),
+            success: function(response) {
+                $('#loadingModal').modal('hide');
+                
+                if (response.status === 'success') {
+                    displayDetectionResult(response.data);
+                } else {
+                    showAlert(response.message || 'خطا در تشخیص', 'error');
+                }
+            },
+            error: function(xhr) {
+                $('#loadingModal').modal('hide');
+                const response = xhr.responseJSON;
+                showAlert(response?.message || 'خطا در ارتباط با سرور', 'error');
+            }
+        });
+    });
+    
+    // تشخیص دسته‌ای
+    $('#batch-detect-btn').on('click', function() {
+        const batchOption = $('input[name="batch-option"]:checked').val();
+        
+        if (batchOption === 'selected') {
+            showAlert('لطفاً ابتدا محصولات مورد نظر را انتخاب کنید', 'warning');
+            return;
+        }
+        
+        if (!confirm('آیا مطمئن هستید که می‌خواهید تشخیص دسته‌ای را شروع کنید؟')) {
+            return;
+        }
+        
+        $('#batch-progress').show();
+        $('#batch-results').hide();
+        
+        $.ajax({
+            url: '/api/batch-detect-products',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                product_ids: batchOption === 'selected' ? [] : null
+            }),
+            success: function(response) {
+                $('#batch-progress').hide();
+                
+                if (response.status === 'success') {
+                    displayBatchResults(response.data);
+                } else {
+                    showAlert(response.message || 'خطا در تشخیص دسته‌ای', 'error');
+                }
+            },
+            error: function(xhr) {
+                $('#batch-progress').hide();
+                const response = xhr.responseJSON;
+                showAlert(response?.message || 'خطا در ارتباط با سرور', 'error');
+            }
+        });
+    });
+    
+    // به‌روزرسانی آمار
+    $('#refresh-stats-btn').on('click', function() {
+        $.ajax({
+            url: '/api/detection-stats',
+            method: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    updateStats(response.data);
+                    showAlert('آمار با موفقیت به‌روزرسانی شد', 'success');
+                } else {
+                    showAlert(response.message || 'خطا در دریافت آمار', 'error');
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert(response?.message || 'خطا در ارتباط با سرور', 'error');
+            }
+        });
+    });
+    
+    // به‌روزرسانی کش
+    $('#refresh-cache-btn').on('click', function() {
+        if (!confirm('آیا مطمئن هستید که می‌خواهید کش تشخیص را به‌روزرسانی کنید؟')) {
+            return;
+        }
+        
+        $.ajax({
+            url: '/api/refresh-detection-cache',
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    showAlert(response.message, 'success');
+                } else {
+                    showAlert(response.message || 'خطا در به‌روزرسانی کش', 'error');
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert(response?.message || 'خطا در ارتباط با سرور', 'error');
+            }
+        });
+    });
+    
+    // نمایش نتیجه تشخیص تک محصول
+    function displayDetectionResult(data) {
+        let html = '<div class="row">';
+        
+        // برند
+        html += '<div class="col-md-6">';
+        html += '<h6><i class="fas fa-tag"></i> برند تشخیص داده شده:</h6>';
+        if (data.detected_brand) {
+            html += `<p class="text-success"><strong>${data.detected_brand.name_fa}</strong> (${data.detected_brand.name})</p>`;
+            html += `<small class="text-muted">سطح اطمینان: ${data.detected_brand.confidence}</small>`;
+        } else {
+            html += '<p class="text-muted">هیچ برندی تشخیص داده نشد</p>';
+        }
+        html += '</div>';
+        
+        // انواع خودرو
+        html += '<div class="col-md-6">';
+        html += '<h6><i class="fas fa-car"></i> انواع خودرو تشخیص داده شده:</h6>';
+        if (data.detected_vehicle_types && data.detected_vehicle_types.length > 0) {
+            data.detected_vehicle_types.forEach(function(vt) {
+                html += `<span class="badge badge-primary mr-1">${vt.name}</span>`;
+            });
+        } else {
+            html += '<p class="text-muted">هیچ نوع خودرویی تشخیص داده نشد</p>';
+        }
+        html += '</div>';
+        
+        html += '</div>';
+        html += `<small class="text-muted">زمان پردازش: ${data.processing_time} میلی‌ثانیه</small>`;
+        
+        $('#detection-details').html(html);
+        $('#detection-result').show();
+    }
+    
+    // نمایش نتایج تشخیص دسته‌ای
+    function displayBatchResults(data) {
+        let summaryHtml = `
+            <p><strong>تعداد کل محصولات پردازش شده:</strong> ${data.total_processed}</p>
+            <p><strong>تعداد محصولات به‌روزرسانی شده:</strong> ${data.updated_count}</p>
+        `;
+        
+        $('#batch-summary').html(summaryHtml);
+        
+        // جدول نتایج
+        let tbodyHtml = '';
+        data.results.forEach(function(result) {
+            let brandText = result.detected_brand ? 
+                `${result.detected_brand.name_fa} (${result.detected_brand.name})` : 
+                'هیچ برندی تشخیص داده نشد';
+            
+            let vehicleTypesText = '';
+            if (result.detected_vehicle_types && result.detected_vehicle_types.length > 0) {
+                vehicleTypesText = result.detected_vehicle_types.map(vt => vt.name).join(', ');
+            } else {
+                vehicleTypesText = 'هیچ نوع خودرویی تشخیص داده نشد';
+            }
+            
+            tbodyHtml += `
+                <tr>
+                    <td>${result.product_id}</td>
+                    <td>${result.product_name}</td>
+                    <td>${brandText}</td>
+                    <td>${vehicleTypesText}</td>
+                </tr>
+            `;
+        });
+        
+        $('#results-tbody').html(tbodyHtml);
+        $('#batch-results').show();
+    }
+    
+    // به‌روزرسانی آمار
+    function updateStats(stats) {
+        $('#total-products').text(stats.total_products || 0);
+        $('#products-with-brand').text(stats.products_with_brand || 0);
+        $('#products-with-vehicle-types').text(stats.products_with_vehicle_types || 0);
+        $('#brand-coverage').text((stats.brand_coverage || 0) + '%');
+    }
+    
+    // نمایش پیام
+    function showAlert(message, type) {
+        const alertClass = type === 'error' ? 'alert-danger' : 
+                          type === 'warning' ? 'alert-warning' : 
+                          type === 'success' ? 'alert-success' : 'alert-info';
+        
+        const alertHtml = `
+            <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="close" data-dismiss="alert">
+                    <span>&times;</span>
+                </button>
+            </div>
+        `;
+        
+        $('.card-body').prepend(alertHtml);
+        
+        // حذف خودکار پیام بعد از 5 ثانیه
+        setTimeout(function() {
+            $('.alert').fadeOut();
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

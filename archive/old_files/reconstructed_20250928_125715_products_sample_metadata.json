@@ -1,0 +1,35 @@
+{
+  "processing_date": "2025-09-28T12:57:18.101550",
+  "input_file": "uploads\\products\\temp_20250928_125715_products_sample.xlsx",
+  "output_file": "uploads\\products\\reconstructed_20250928_125715_products_sample.xlsx",
+  "error_report_file": null,
+  "statistics": {
+    "input_rows": 2527,
+    "successful_rows": 2527,
+    "error_rows": 0,
+    "duplicate_rows": 2,
+    "mapped_columns": {
+      "کد کالا": "کد کالا",
+      "شرح کالا": "شرح کالا",
+      "قیمت تکی": "قیمت تکی",
+      "قیمت نقدی عمده": "قیمت نقدی عمده",
+      "قیمت چکی عمده": "قیمت چکی عمده",
+      "موجودی": "موجودی"
+    },
+    "conversion_rules": [],
+    "errors": []
+  },
+  "column_mapping": {
+    "کد کالا": "کد کالا",
+    "شرح کالا": "شرح کالا",
+    "قیمت تکی": "قیمت تکی",
+    "قیمت نقدی عمده": "قیمت نقدی عمده",
+    "قیمت چکی عمده": "قیمت چکی عمده",
+    "موجودی": "موجودی"
+  },
+  "settings": {
+    "missing_value_strategy": "leave_blank",
+    "duplicate_strategy": "merge_sum_inventory",
+    "output_format": "xlsx"
+  }
+}

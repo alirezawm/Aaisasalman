@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت جوایز{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">مدیریت جوایز</h2>
+        </div>
+    </div>
+
+    <!-- دکمه اضافه کردن جایزه -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addRewardModal">
+                <i class="fas fa-plus"></i> اضافه کردن جایزه جدید
+            </button>
+        </div>
+    </div>
+
+    <!-- لیست جوایز -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">لیست جوایز</h5>
+                    {% if rewards %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>نام جایزه</th>
+                                    <th>امتیاز مورد نیاز</th>
+                                    <th>نوع جایزه</th>
+                                    <th>مقدار تخفیف</th>
+                                    <th>وضعیت</th>
+                                    <th>استفاده شده</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reward in rewards %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ reward.name_fa }}</strong>
+                                        {% if reward.description_fa %}
+                                            <br><small class="text-muted">{{ reward.description_fa }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ "{:,}".format(reward.points_required) }}</span>
+                                    </td>
+                                    <td>
+                                        {% if reward.reward_type == 'discount_percentage' %}
+                                            <span class="badge bg-info">تخفیف درصدی</span>
+                                        {% elif reward.reward_type == 'discount_amount' %}
+                                            <span class="badge bg-info">تخفیف مبلغی</span>
+                                        {% elif reward.reward_type == 'free_shipping' %}
+                                            <span class="badge bg-info">ارسال رایگان</span>
+                                        {% elif reward.reward_type == 'product' %}
+                                            <span class="badge bg-info">محصول رایگان</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ reward.reward_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if reward.discount_percentage %}
+                                            {{ reward.discount_percentage }}%
+                                        {% elif reward.discount_amount %}
+                                            {{ "{:,}".format(reward.discount_amount) }} ریال
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if reward.is_active %}
+                                            <span class="badge bg-success">فعال</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">غیرفعال</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if reward.max_redemptions %}
+                                            {{ reward.current_redemptions }} / {{ reward.max_redemptions }}
+                                        {% else %}
+                                            {{ reward.current_redemptions }} / نامحدود
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if reward.created_at %}
+                                            {{ reward.created_at.strftime('%Y/%m/%d') }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin_edit_reward', reward_id=reward.id) }}" 
+                                           class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit"></i> ویرایش
+                                        </a>
+                                        <button class="btn btn-sm btn-danger" 
+                                                onclick="deleteReward({{ reward.id }}, '{{ reward.name_fa }}')">
+                                            <i class="fas fa-trash"></i> حذف
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">هیچ جایزه‌ای یافت نشد.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal اضافه کردن جایزه -->
+<div class="modal fade" id="addRewardModal" tabindex="-1" aria-labelledby="addRewardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addRewardModalLabel">اضافه کردن جایزه جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_add_reward') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">نام جایزه (انگلیسی)</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name_fa" class="form-label">نام جایزه (فارسی)</label>
+                                <input type="text" class="form-control" id="name_fa" name="name_fa" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="description" class="form-label">توضیحات (انگلیسی)</label>
+                                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="description_fa" class="form-label">توضیحات (فارسی)</label>
+                                <textarea class="form-control" id="description_fa" name="description_fa" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="points_required" class="form-label">امتیاز مورد نیاز</label>
+                                <input type="number" class="form-control" id="points_required" name="points_required" required min="1">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reward_type" class="form-label">نوع جایزه</label>
+                                <select class="form-control" id="reward_type" name="reward_type" required>
+                                    <option value="">انتخاب کنید</option>
+                                    <option value="discount_percentage">تخفیف درصدی</option>
+                                    <option value="discount_amount">تخفیف مبلغی</option>
+                                    <option value="free_shipping">ارسال رایگان</option>
+                                    <option value="product">محصول رایگان</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="discount_percentage" class="form-label">درصد تخفیف</label>
+                                <input type="number" class="form-control" id="discount_percentage" name="discount_percentage" 
+                                       min="0" max="100" step="0.01">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="discount_amount" class="form-label">مقدار تخفیف (ریال)</label>
+                                <input type="number" class="form-control" id="discount_amount" name="discount_amount" 
+                                       min="0" step="1000">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="max_redemptions" class="form-label">حداکثر تعداد استفاده</label>
+                                <input type="number" class="form-control" id="max_redemptions" name="max_redemptions" 
+                                       min="1">
+                                <div class="form-text">خالی بگذارید برای نامحدود</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="valid_from" class="form-label">تاریخ شروع اعتبار</label>
+                                <input type="date" class="form-control" id="valid_from" name="valid_from">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="valid_until" class="form-label">تاریخ پایان اعتبار</label>
+                                <input type="date" class="form-control" id="valid_until" name="valid_until">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                    <label class="form-check-label" for="is_active">
+                                        فعال
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-success">اضافه کردن</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal حذف جایزه -->
+<div class="modal fade" id="deleteRewardModal" tabindex="-1" aria-labelledby="deleteRewardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteRewardModalLabel">حذف جایزه</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>آیا مطمئن هستید که می‌خواهید جایزه "<span id="deleteRewardName"></span>" را حذف کنید؟</p>
+                <p class="text-danger">این عمل قابل بازگشت نیست.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <form method="POST" action="" id="deleteRewardForm" class="d-inline">
+                    <button type="submit" class="btn btn-danger">حذف</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteReward(rewardId, rewardName) {
+    document.getElementById('deleteRewardName').textContent = rewardName;
+    document.getElementById('deleteRewardForm').action = '{{ url_for("admin_delete_reward", reward_id=0) }}'.replace('0', rewardId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteRewardModal'));
+    modal.show();
+}
+
+// نمایش/مخفی کردن فیلدهای مربوط به نوع جایزه
+document.getElementById('reward_type').addEventListener('change', function() {
+    const rewardType = this.value;
+    const discountPercentageField = document.getElementById('discount_percentage').closest('.mb-3');
+    const discountAmountField = document.getElementById('discount_amount').closest('.mb-3');
+    
+    if (rewardType === 'discount_percentage') {
+        discountPercentageField.style.display = 'block';
+        discountAmountField.style.display = 'none';
+    } else if (rewardType === 'discount_amount') {
+        discountPercentageField.style.display = 'none';
+        discountAmountField.style.display = 'block';
+    } else {
+        discountPercentageField.style.display = 'none';
+        discountAmountField.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
+
+

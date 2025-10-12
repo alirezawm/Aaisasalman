@@ -1,0 +1,422 @@
+{
+  "project_name": "سیستم سبد خرید چندتایی پیشرفته - آسیا سلمان",
+  "version": "2.0.0",
+  "description": "پیاده‌سازی سیستم سبد خرید مدرن با قابلیت انتخاب چندتایی محصولات و رابط کاربری کامل",
+  "created_date": "2024-12-19",
+  "author": "تیم فنی آسیا سلمان",
+  
+  "requirements": {
+    "core_features": [
+      "انتخاب چندتایی محصولات از لیست فروشگاه",
+      "دکمه افزودن به سبد خرید برای محصولات انتخاب شده",
+      "نمایش سبد خرید کامل هنگام کلیک روی آیکون سبد",
+      "مدیریت تعداد و نوع قیمت برای هر محصول",
+      "محاسبه مجموع قیمت‌ها به صورت زنده",
+      "ذخیره‌سازی در دیتابیس و بازیابی",
+      "رابط کاربری واکنش‌گرا و مدرن"
+    ],
+    
+    "user_experience": [
+      "انتخاب آسان محصولات با checkbox",
+      "نمایش تعداد محصولات انتخاب شده",
+      "دکمه افزودن به سبد برای همه محصولات انتخاب شده",
+      "تأیید قبل از افزودن به سبد",
+      "نمایش پیام موفقیت/خطا",
+      "به‌روزرسانی زنده آیکون سبد خرید",
+      "باز شدن سبد خرید کامل در sidebar"
+    ],
+    
+    "technical_requirements": [
+      "استفاده از JavaScript ES6+",
+      "Bootstrap 5 برای UI",
+      "jQuery برای DOM manipulation",
+      "AJAX برای ارتباط با سرور",
+      "LocalStorage برای ذخیره موقت",
+      "Responsive design",
+      "RTL support برای فارسی"
+    ]
+  },
+
+  "database_schema": {
+    "cart_table": {
+      "table_name": "cart",
+      "columns": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "user_id": "INTEGER NOT NULL REFERENCES users(id)",
+        "product_id": "INTEGER NOT NULL REFERENCES products(id)",
+        "quantity": "INTEGER NOT NULL DEFAULT 1",
+        "price_type": "VARCHAR(10) NOT NULL DEFAULT 'cash'",
+        "unit_price": "DECIMAL(15,2) NOT NULL",
+        "total_price": "DECIMAL(15,2) NOT NULL",
+        "notes": "TEXT",
+        "created_at": "DATETIME DEFAULT CURRENT_TIMESTAMP",
+        "updated_at": "DATETIME DEFAULT CURRENT_TIMESTAMP"
+      },
+      "indexes": [
+        "CREATE INDEX idx_cart_user_id ON cart(user_id)",
+        "CREATE INDEX idx_cart_product_id ON cart(product_id)",
+        "CREATE UNIQUE INDEX idx_cart_user_product ON cart(user_id, product_id, price_type)"
+      ]
+    }
+  },
+
+  "api_endpoints": {
+    "cart_management": {
+      "GET /api/cart": {
+        "description": "دریافت محتویات سبد خرید کاربر",
+        "response": {
+          "success": "boolean",
+          "items": "array of cart items",
+          "totals": "object with price breakdown"
+        }
+      },
+      "POST /api/cart/add-multiple": {
+        "description": "افزودن چندین محصول به سبد خرید",
+        "request_body": {
+          "products": "array of {product_id, quantity, price_type, unit_price}"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string",
+          "added_count": "number"
+        }
+      },
+      "PUT /api/cart/update": {
+        "description": "به‌روزرسانی آیتم سبد خرید",
+        "request_body": {
+          "cart_id": "integer",
+          "quantity": "integer"
+        }
+      },
+      "DELETE /api/cart/remove": {
+        "description": "حذف آیتم از سبد خرید",
+        "request_body": {
+          "cart_id": "integer"
+        }
+      },
+      "DELETE /api/cart/clear": {
+        "description": "خالی کردن کامل سبد خرید"
+      }
+    },
+    
+    "cart_analytics": {
+      "GET /api/cart/count": {
+        "description": "دریافت تعداد آیتم‌های سبد خرید"
+      },
+      "GET /api/cart/totals": {
+        "description": "محاسبه مجموع قیمت‌ها",
+        "response": {
+          "cash_total": "number",
+          "check_total": "number",
+          "grand_total": "number",
+          "formatted_totals": "object with formatted strings"
+        }
+      }
+    }
+  },
+
+  "frontend_components": {
+    "multi_select_interface": {
+      "location": "templates/shop.html",
+      "features": [
+        "Checkbox برای انتخاب هر محصول",
+        "Select All / Deselect All buttons",
+        "نمایش تعداد محصولات انتخاب شده",
+        "دکمه افزودن به سبد برای محصولات انتخاب شده",
+        "Modal تأیید قبل از افزودن"
+      ],
+      "html_structure": `
+        <!-- Multi-select controls -->
+        <div class="multi-select-controls mb-3">
+          <div class="row align-items-center">
+            <div class="col-md-6">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAll">
+                <label class="form-check-label" for="selectAll">
+                  انتخاب همه
+                </label>
+              </div>
+            </div>
+            <div class="col-md-6 text-end">
+              <span class="selected-count badge bg-primary">0 محصول انتخاب شده</span>
+              <button class="btn btn-success ms-2" id="addSelectedToCart" disabled>
+                <i class="fas fa-cart-plus"></i> افزودن انتخاب شده‌ها
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Product table with checkboxes -->
+        <table class="table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAllHeader"></th>
+              <th>محصول</th>
+              <th>قیمت</th>
+              <th>تعداد</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" class="product-checkbox" data-product-id="1"></td>
+              <td>نام محصول</td>
+              <td>قیمت</td>
+              <td><input type="number" class="quantity-input" value="1" min="1"></td>
+              <td>
+                <select class="price-type-select">
+                  <option value="cash">نقدی</option>
+                  <option value="check">چکی</option>
+                </select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      `
+    },
+    
+    "cart_sidebar": {
+      "location": "templates/base.html",
+      "features": [
+        "Sidebar با عرض 400px",
+        "لیست کامل محصولات سبد خرید",
+        "کنترل تعداد برای هر محصول",
+        "حذف محصولات",
+        "محاسبه مجموع قیمت‌ها",
+        "دکمه تسویه حساب"
+      ],
+      "html_structure": `
+        <!-- Cart Sidebar -->
+        <div class="cart-sidebar">
+          <div class="cart-header">
+            <h5><i class="fas fa-shopping-cart"></i> سبد خرید</h5>
+            <button class="cart-close">&times;</button>
+          </div>
+          <div class="cart-items">
+            <!-- Cart items will be loaded here -->
+          </div>
+          <div class="cart-totals">
+            <div class="total-breakdown"></div>
+            <button class="btn btn-danger w-100 checkout-btn">تسویه حساب</button>
+          </div>
+        </div>
+        <div class="cart-overlay"></div>
+      `
+    },
+    
+    "confirmation_modal": {
+      "description": "Modal تأیید قبل از افزودن محصولات به سبد",
+      "features": [
+        "نمایش لیست محصولات انتخاب شده",
+        "تأیید تعداد و نوع قیمت",
+        "دکمه‌های تأیید/انصراف",
+        "نمایش مجموع قیمت"
+      ]
+    }
+  },
+
+  "javascript_implementation": {
+    "main_class": "MultiSelectCartSystem",
+    "key_methods": [
+      "init() - Initialize the system",
+      "bindEvents() - Bind event listeners",
+      "handleSelectAll() - Handle select all functionality",
+      "updateSelectedCount() - Update selected products count",
+      "showAddToCartModal() - Show confirmation modal",
+      "addSelectedToCart() - Add selected products to cart",
+      "loadCartData() - Load cart from server",
+      "updateCartDisplay() - Update cart UI",
+      "openCartSidebar() - Open cart sidebar",
+      "closeCartSidebar() - Close cart sidebar"
+    ],
+    
+    "event_handlers": [
+      "selectAll checkbox change",
+      "individual product checkbox change",
+      "quantity input change",
+      "price type select change",
+      "add to cart button click",
+      "cart icon click",
+      "cart close button click"
+    ],
+    
+    "local_storage_keys": [
+      "selectedProducts - Array of selected product IDs",
+      "cartData - Current cart data",
+      "lastUpdate - Last update timestamp"
+    ]
+  },
+
+  "css_styling": {
+    "cart_sidebar": {
+      "position": "fixed",
+      "top": "0",
+      "right": "-400px",
+      "width": "400px",
+      "height": "100vh",
+      "background": "#fff",
+      "box-shadow": "-5px 0 15px rgba(0,0,0,0.1)",
+      "z-index": "1050",
+      "transition": "right 0.3s ease-in-out"
+    },
+    
+    "multi_select_controls": {
+      "background": "#f8f9fa",
+      "padding": "1rem",
+      "border-radius": "0.5rem",
+      "margin-bottom": "1rem"
+    },
+    
+    "selected_count_badge": {
+      "font-size": "0.9rem",
+      "padding": "0.5rem 1rem"
+    },
+    
+    "product_checkbox": {
+      "transform": "scale(1.2)",
+      "margin": "0.5rem"
+    }
+  },
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "title": "حذف سیستم سبد خرید قبلی",
+      "description": "حذف تمام فایل‌های مربوط به سیستم سبد خرید قبلی",
+      "files_to_remove": [
+        "static/js/cart-system.js",
+        "static/css/cart-system.css",
+        "static/js/cart-notifications.js",
+        "static/js/cart-analytics.js",
+        "templates/cart.html"
+      ]
+    },
+    {
+      "step": 2,
+      "title": "ایجاد API endpoints جدید",
+      "description": "پیاده‌سازی API endpoints برای مدیریت سبد خرید چندتایی",
+      "files_to_modify": [
+        "routes.py - اضافه کردن endpoints جدید",
+        "models.py - بررسی مدل Cart"
+      ]
+    },
+    {
+      "step": 3,
+      "title": "پیاده‌سازی رابط انتخاب چندتایی",
+      "description": "اضافه کردن checkbox ها و کنترل‌های انتخاب چندتایی به shop.html",
+      "files_to_modify": [
+        "templates/shop.html - اضافه کردن multi-select interface"
+      ]
+    },
+    {
+      "step": 4,
+      "title": "ایجاد JavaScript سیستم جدید",
+      "description": "پیاده‌سازی کلاس MultiSelectCartSystem",
+      "files_to_create": [
+        "static/js/multi-select-cart.js"
+      ]
+    },
+    {
+      "step": 5,
+      "title": "ایجاد CSS برای سیستم جدید",
+      "description": "استایل‌دهی برای cart sidebar و multi-select interface",
+      "files_to_create": [
+        "static/css/multi-select-cart.css"
+      ]
+    },
+    {
+      "step": 6,
+      "title": "به‌روزرسانی base.html",
+      "description": "اضافه کردن cart sidebar و JavaScript files",
+      "files_to_modify": [
+        "templates/base.html"
+      ]
+    },
+    {
+      "step": 7,
+      "title": "تست و بهینه‌سازی",
+      "description": "تست عملکرد سیستم و رفع مشکلات",
+      "tasks": [
+        "تست انتخاب چندتایی",
+        "تست افزودن به سبد خرید",
+        "تست نمایش سبد خرید",
+        "تست responsive design",
+        "بهینه‌سازی عملکرد"
+      ]
+    }
+  ],
+
+  "error_handling": {
+    "client_side": [
+      "بررسی انتخاب حداقل یک محصول",
+      "اعتبارسنجی تعداد محصولات",
+      "مدیریت خطاهای AJAX",
+      "نمایش پیام‌های خطا به کاربر"
+    ],
+    
+    "server_side": [
+      "بررسی وجود محصولات",
+      "بررسی موجودی انبار",
+      "اعتبارسنجی نوع قیمت",
+      "مدیریت خطاهای دیتابیس"
+    ]
+  },
+
+  "performance_optimizations": [
+    "استفاده از debounce برای به‌روزرسانی تعداد",
+    "Lazy loading برای محصولات زیاد",
+    "Caching برای داده‌های سبد خرید",
+    "Minification فایل‌های JavaScript و CSS",
+    "استفاده از CDN برای کتابخانه‌ها"
+  ],
+
+  "accessibility_features": [
+    "پشتیبانی از keyboard navigation",
+    "ARIA labels برای screen readers",
+    "High contrast mode support",
+    "Focus management",
+    "Screen reader announcements"
+  ],
+
+  "browser_compatibility": {
+    "supported_browsers": [
+      "Chrome 80+",
+      "Firefox 75+",
+      "Safari 13+",
+      "Edge 80+"
+    ],
+    "fallbacks": [
+      "Polyfill برای ES6 features",
+      "Graceful degradation برای JavaScript disabled"
+    ]
+  },
+
+  "testing_checklist": [
+    "تست انتخاب همه محصولات",
+    "تست انتخاب محصولات خاص",
+    "تست افزودن به سبد خرید",
+    "تست نمایش سبد خرید",
+    "تست تغییر تعداد محصولات",
+    "تست حذف محصولات",
+    "تست responsive design",
+    "تست عملکرد در مرورگرهای مختلف",
+    "تست accessibility",
+    "تست performance"
+  ],
+
+  "deployment_notes": [
+    "بررسی dependencies",
+    "Minification فایل‌ها",
+    "تنظیم cache headers",
+    "بررسی security headers",
+    "تست در محیط production"
+  ],
+
+  "maintenance_tasks": [
+    "به‌روزرسانی منظم dependencies",
+    "مانیتورینگ performance",
+    "بررسی error logs",
+    "به‌روزرسانی documentation",
+    "تست‌های دوره‌ای"
+  ]
+}

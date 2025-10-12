@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}شرایط خرید عمده - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <h1 class="display-4 fw-bold text-danger mb-4">
+                <i class="fas fa-handshake me-3"></i>
+                شرایط خرید عمده
+            </h1>
+            <p class="lead text-muted">
+                شرایط و مزایای ویژه برای خریداران عمده
+            </p>
+        </div>
+    </div>
+    
+    <!-- Conditions Content -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-contract me-2"></i>شرایط عمومی
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if company_info.bulk_purchase_conditions %}
+                        <div class="content">
+                            {{ company_info.bulk_purchase_conditions|replace('\n', '<br>')|safe }}
+                        </div>
+                    {% else %}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h5 class="text-danger mb-3">
+                                    <i class="fas fa-check-circle me-2"></i>مزایای خرید عمده
+                                </h5>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <i class="fas fa-arrow-down text-success me-2"></i>
+                                        قیمت‌های ویژه و تخفیفات خاص
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-truck text-info me-2"></i>
+                                        ارسال رایگان به سراسر کشور
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-clock text-warning me-2"></i>
+                                        اولویت در ارسال و تحویل
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-headset text-primary me-2"></i>
+                                        پشتیبانی ویژه و اختصاصی
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-file-invoice text-secondary me-2"></i>
+                                        امکان خرید چکی با شرایط مناسب
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="text-danger mb-3">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>شرایط و ضوابط
+                                </h5>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <i class="fas fa-shopping-cart text-danger me-2"></i>
+                                        حداقل سفارش 10,000,000 ریال
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-id-card text-info me-2"></i>
+                                        ارائه مدارک هویتی و تجاری
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-credit-card text-success me-2"></i>
+                                        ارائه مدارک اعتباری معتبر
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-handshake text-warning me-2"></i>
+                                        امضای قرارداد همکاری
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-calendar text-primary me-2"></i>
+                                        تعهد به خرید منظم و مستمر
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pricing Information -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-tags me-2"></i>تعرفه‌های خرید عمده
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="card h-100 border-success">
+                                <div class="card-header bg-success text-white text-center">
+                                    <h5 class="mb-0">سطح برنزی</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h3 class="text-success mb-3">10,000,000-50,000,000 ریال</h3>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-success me-2"></i>
+                                            تخفیف 5% نقدی
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-success me-2"></i>
+                                            ارسال رایگان
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-success me-2"></i>
+                                            پشتیبانی تلفنی
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 border-warning">
+                                <div class="card-header bg-warning text-white text-center">
+                                    <h5 class="mb-0">سطح نقره‌ای</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h3 class="text-warning mb-3">50,000,000-100,000,000 ریال</h3>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-warning me-2"></i>
+                                            تخفیف 10% نقدی
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-warning me-2"></i>
+                                            ارسال رایگان
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-warning me-2"></i>
+                                            پشتیبانی اختصاصی
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-warning me-2"></i>
+                                            امکان خرید چکی
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 border-danger">
+                                <div class="card-header bg-danger text-white text-center">
+                                    <h5 class="mb-0">سطح طلایی</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h3 class="text-danger mb-3">بالای 100,000,000 ریال</h3>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-danger me-2"></i>
+                                            تخفیف 15% نقدی
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-danger me-2"></i>
+                                            ارسال رایگان و سریع
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-danger me-2"></i>
+                                            پشتیبانی VIP
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-danger me-2"></i>
+                                            شرایط چکی ویژه
+                                        </li>
+                                        <li class="mb-2">
+                                            <i class="fas fa-check text-danger me-2"></i>
+                                            مشاوره تخصصی
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Required Documents -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>مدارک مورد نیاز
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h5 class="text-danger mb-3">مدارک هویتی</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-id-card text-primary me-3"></i>
+                                    کپی کارت ملی
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-user text-info me-3"></i>
+                                    کپی شناسنامه
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-home text-success me-3"></i>
+                                    کپی سند محل سکونت
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-danger mb-3">مدارک تجاری</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-building text-warning me-3"></i>
+                                    پروانه کسب یا جواز تاسیس
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-file-invoice text-danger me-3"></i>
+                                    کد اقتصادی
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-bank text-info me-3"></i>
+                                    کپی حساب بانکی
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Application Process -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-list-ol me-2"></i>مراحل درخواست خرید عمده
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="bg-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                     style="width: 60px; height: 60px;">
+                                    <span class="text-white fw-bold">1</span>
+                                </div>
+                                <h6>ثبت نام</h6>
+                                <p class="text-muted small">ثبت نام در سایت و تکمیل پروفایل</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="bg-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                     style="width: 60px; height: 60px;">
+                                    <span class="text-white fw-bold">2</span>
+                                </div>
+                                <h6>ارسال مدارک</h6>
+                                <p class="text-muted small">بارگذاری مدارک هویتی و تجاری</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="bg-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                     style="width: 60px; height: 60px;">
+                                    <span class="text-white fw-bold">3</span>
+                                </div>
+                                <h6>بررسی و تایید</h6>
+                                <p class="text-muted small">بررسی مدارک توسط کارشناس فروش</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="bg-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                     style="width: 60px; height: 60px;">
+                                    <span class="text-white fw-bold">4</span>
+                                </div>
+                                <h6>فعالسازی</h6>
+                                <p class="text-muted small">فعالسازی حساب و شروع خرید</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Call to Action -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center py-5">
+                    <h3 class="mb-4">آماده شروع همکاری هستید؟</h3>
+                    <p class="lead mb-4">
+                        همین حالا ثبت نام کنید و از مزایای خرید عمده بهره‌مند شوید
+                    </p>
+                    {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">
+                        <i class="fas fa-user-plus me-2"></i>ثبت نام خریدار عمده
+                    </a>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-sign-in-alt me-2"></i>ورود
+                    </a>
+                    {% elif not current_user.is_bulk_buyer %}
+                    <a href="{{ url_for('profile') }}" class="btn btn-light btn-lg">
+                        <i class="fas fa-handshake me-2"></i>ارتقا به خریدار عمده
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('shop') }}" class="btn btn-light btn-lg">
+                        <i class="fas fa-store me-2"></i>ورود به فروشگاه
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

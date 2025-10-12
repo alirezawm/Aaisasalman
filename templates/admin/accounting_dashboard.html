@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block title %}داشبورد حسابداری تدبیر{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">داشبورد حسابداری تدبیر</h1>
+                <div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualSyncModal">
+                        <i class="fas fa-sync"></i> همگام‌سازی دستی
+                    </button>
+                    <button type="button" class="btn btn-outline-info" onclick="getTotalCounts()">
+                        <i class="fas fa-chart-bar"></i> تعداد کل داده‌ها
+                    </button>
+                    <button type="button" class="btn btn-outline-success" onclick="startScheduler()">
+                        <i class="fas fa-play"></i> شروع زمان‌بندی
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="stopScheduler()">
+                        <i class="fas fa-stop"></i> توقف زمان‌بندی
+                    </button>
+                    <button type="button" class="btn btn-outline-warning" onclick="syncPricesToProducts()">
+                        <i class="fas fa-sync-alt"></i> همگام‌سازی قیمت‌ها با محصولات
+                    </button>
+                    <button type="button" class="btn btn-outline-info" onclick="showPriceInfo()">
+                        <i class="fas fa-info-circle"></i> اطلاعات قیمت‌ها
+                    </button>
+                    <a href="{{ url_for('admin_accounting_settings') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-cog"></i> تنظیمات
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Status Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.products_count }}</h4>
+                            <p class="card-text">کالاهای کش شده</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-box fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.inventory_count }}</h4>
+                            <p class="card-text">موجودی کش شده</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-warehouse fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.prices_count }}</h4>
+                            <p class="card-text">قیمت‌های کش شده</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-tags fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.total_cached_items }}</h4>
+                            <p class="card-text">کل آیتم‌های کش</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-database fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Status -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">وضعیت همگام‌سازی</h5>
+                </div>
+                <div class="card-body">
+                    {% if sync_status %}
+                    <div class="row">
+                        <div class="col-6">
+                            <h6>کالاها</h6>
+                            <p class="text-muted">
+                                وضعیت: 
+                                <span class="badge bg-{% if sync_status.last_products_sync.status == 'completed' %}success{% elif sync_status.last_products_sync.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                    {{ sync_status.last_products_sync.status or 'نامشخص' }}
+                                </span>
+                            </p>
+                            <p class="text-muted">
+                                آخرین همگام‌سازی: 
+                                {% if sync_status.last_products_sync.completed_at %}
+                                    {{ sync_status.last_products_sync.completed_at | persian_datetime }}
+                                {% else %}
+                                    هیچ‌گاه
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-6">
+                            <h6>موجودی</h6>
+                            <p class="text-muted">
+                                وضعیت: 
+                                <span class="badge bg-{% if sync_status.last_inventory_sync.status == 'completed' %}success{% elif sync_status.last_inventory_sync.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                    {{ sync_status.last_inventory_sync.status or 'نامشخص' }}
+                                </span>
+                            </p>
+                            <p class="text-muted">
+                                آخرین همگام‌سازی: 
+                                {% if sync_status.last_inventory_sync.completed_at %}
+                                    {{ sync_status.last_inventory_sync.completed_at | persian_datetime }}
+                                {% else %}
+                                    هیچ‌گاه
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <h6>قیمت‌ها</h6>
+                            <p class="text-muted">
+                                وضعیت: 
+                                <span class="badge bg-{% if sync_status.last_prices_sync.status == 'completed' %}success{% elif sync_status.last_prices_sync.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                    {{ sync_status.last_prices_sync.status or 'نامشخص' }}
+                                </span>
+                            </p>
+                            <p class="text-muted">
+                                آخرین همگام‌سازی: 
+                                {% if sync_status.last_prices_sync.completed_at %}
+                                    {{ sync_status.last_prices_sync.completed_at | persian_datetime }}
+                                {% else %}
+                                    هیچ‌گاه
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-6">
+                            <h6>API تدبیر</h6>
+                            <p class="text-muted">
+                                وضعیت: 
+                                <span class="badge bg-{% if sync_status.api_status.has_token %}success{% else %}danger{% endif %}">
+                                    {% if sync_status.api_status.has_token %}متصل{% else %}قطع{% endif %}
+                                </span>
+                            </p>
+                            <p class="text-muted">
+                                آدرس: {{ sync_status.api_status.base_url }}
+                            </p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">وضعیت همگام‌سازی در دسترس نیست</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">وضعیت زمان‌بندی</h5>
+                </div>
+                <div class="card-body">
+                    {% if scheduler_status %}
+                    <div class="row">
+                        <div class="col-6">
+                            <h6>وضعیت</h6>
+                            <p class="text-muted">
+                                <span class="badge bg-{% if scheduler_status.is_running %}success{% else %}danger{% endif %}">
+                                    {% if scheduler_status.is_running %}فعال{% else %}غیرفعال{% endif %}
+                                </span>
+                            </p>
+                            <p class="text-muted">
+                                فاصله زمانی: {{ scheduler_status.settings.sync_interval }} ساعت
+                            </p>
+                        </div>
+                        <div class="col-6">
+                            <h6>اجرای بعدی</h6>
+                            <p class="text-muted">
+                                {{ scheduler_status.next_run or 'نامشخص' }}
+                            </p>
+                            <p class="text-muted">
+                                تعداد کارهای زمان‌بندی شده: {{ scheduler_status.scheduled_jobs }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>تنظیمات</h6>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" {% if scheduler_status.settings.auto_sync_enabled %}checked{% endif %} disabled>
+                                <label class="form-check-label">همگام‌سازی خودکار</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" {% if scheduler_status.settings.sync_products %}checked{% endif %} disabled>
+                                <label class="form-check-label">کالاها</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" {% if scheduler_status.settings.sync_inventory %}checked{% endif %} disabled>
+                                <label class="form-check-label">موجودی</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" {% if scheduler_status.settings.sync_prices %}checked{% endif %} disabled>
+                                <label class="form-check-label">قیمت‌ها</label>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">وضعیت زمان‌بندی در دسترس نیست</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Sync Logs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">آخرین همگام‌سازی‌ها</h5>
+                    <a href="{{ url_for('admin_accounting_sync_history') }}" class="btn btn-sm btn-outline-primary">
+                        مشاهده همه
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_logs %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>نوع</th>
+                                    <th>وضعیت</th>
+                                    <th>شروع</th>
+                                    <th>پایان</th>
+                                    <th>مدت</th>
+                                    <th>موفق</th>
+                                    <th>ناموفق</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ log.sync_type }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if log.status == 'completed' %}success{% elif log.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                            {{ log.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.started_at | persian_datetime }}</td>
+                                    <td>{{ log.completed_at | persian_datetime if log.completed_at else '-' }}</td>
+                                    <td>{{ log.duration_seconds }} ثانیه</td>
+                                    <td class="text-success">{{ log.records_successful }}</td>
+                                    <td class="text-danger">{{ log.records_failed }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">هیچ همگام‌سازی‌ای انجام نشده است</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">دسترسی سریع</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{{ url_for('admin_accounting_products') }}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-box"></i> مدیریت کالاها
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('admin_accounting_inventory') }}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-warehouse"></i> مدیریت موجودی
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('admin_accounting_prices') }}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-tags"></i> مدیریت قیمت‌ها
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('admin_accounting_sync_history') }}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-history"></i> تاریخچه همگام‌سازی
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Sync Modal -->
+<div class="modal fade" id="manualSyncModal" tabindex="-1" aria-labelledby="manualSyncModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="manualSyncModalLabel">همگام‌سازی دستی</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_accounting_manual_sync') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sync_type" class="form-label">نوع همگام‌سازی</label>
+                        <select class="form-select" id="sync_type" name="sync_type" required>
+                            <option value="full">همگام‌سازی کامل</option>
+                            <option value="products">کالاها</option>
+                            <option value="inventory">موجودی</option>
+                            <option value="prices">قیمت‌ها</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        همگام‌سازی دستی ممکن است چند دقیقه طول بکشد. لطفاً صبر کنید.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> شروع همگام‌سازی
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Total Counts Modal -->
+<div class="modal fade" id="totalCountsModal" tabindex="-1" aria-labelledby="totalCountsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="totalCountsModalLabel">تعداد کل داده‌های تدبیر</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="totalCountsResult">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">در حال دریافت...</span>
+                        </div>
+                        <p class="mt-2">در حال دریافت تعداد کل داده‌ها از API تدبیر...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getTotalCounts() {
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('totalCountsModal'));
+    modal.show();
+    
+    // Reset result content
+    document.getElementById('totalCountsResult').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">در حال دریافت...</span>
+            </div>
+            <p class="mt-2">در حال دریافت تعداد کل داده‌ها از API تدبیر...</p>
+        </div>
+    `;
+    
+    // Make API call
+    fetch('/api/accounting/total-counts', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const counts = data.counts;
+            let html = `
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> تعداد کل داده‌های موجود در API تدبیر</h6>
+                    <p class="mb-0">این اعداد نشان‌دهنده کل داده‌های موجود در سرور تدبیر است.</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white text-center">
+                            <div class="card-body">
+                                <h3 class="card-title">${counts.total_products || 0}</h3>
+                                <p class="card-text">کل کالاها</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white text-center">
+                            <div class="card-body">
+                                <h3 class="card-title">${counts.total_prices || 0}</h3>
+                                <p class="card-text">کل قیمت‌ها</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-warning text-white text-center">
+                            <div class="card-body">
+                                <h3 class="card-title">${counts.total_inventory || 0}</h3>
+                                <p class="card-text">کل موجودی‌ها</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mt-3">
+                    <h6><i class="fas fa-lightbulb"></i> راهنمای تفسیر:</h6>
+                    <ul class="mb-0">
+                        <li><strong>کل کالاها:</strong> تعداد کل کالاهای موجود در سیستم تدبیر</li>
+                        <li><strong>کل قیمت‌ها:</strong> تعداد کل رکوردهای قیمت (شامل انواع مختلف)</li>
+                        <li><strong>کل موجودی‌ها:</strong> تعداد کل رکوردهای موجودی انبار شماره 10</li>
+                    </ul>
+                </div>
+            `;
+            
+            document.getElementById('totalCountsResult').innerHTML = html;
+        } else {
+            document.getElementById('totalCountsResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-triangle"></i> خطا در دریافت تعداد کل</h6>
+                    <p>${data.message}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('totalCountsResult').innerHTML = `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-exclamation-triangle"></i> خطا در ارتباط</h6>
+                <p>خطا در ارتباط با سرور: ${error.message}</p>
+            </div>
+        `;
+    });
+}
+        function startScheduler() {
+            if (confirm('آیا مطمئن هستید که می‌خواهید سرویس زمان‌بندی را شروع کنید؟')) {
+                fetch('/api/accounting/scheduler/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('سرویس زمان‌بندی با موفقیت شروع شد');
+                        location.reload(); // Refresh page to update status
+                    } else {
+                        alert('خطا در شروع سرویس زمان‌بندی: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('خطا در ارتباط با سرور: ' + error.message);
+                });
+            }
+        }
+
+        function stopScheduler() {
+            if (confirm('آیا مطمئن هستید که می‌خواهید سرویس زمان‌بندی را متوقف کنید؟')) {
+                fetch('/api/accounting/scheduler/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('سرویس زمان‌بندی با موفقیت متوقف شد');
+                        location.reload(); // Refresh page to update status
+                    } else {
+                        alert('خطا در توقف سرویس زمان‌بندی: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('خطا در ارتباط با سرور: ' + error.message);
+                });
+            }
+        }
+
+        function syncPricesToProducts() {
+            if (confirm('آیا مطمئن هستید که می‌خواهید قیمت‌های تدبیر را با محصولات محلی همگام‌سازی کنید؟')) {
+                fetch('/api/accounting/sync/prices-to-products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload(); // Refresh page to update status
+                    } else {
+                        alert('خطا در همگام‌سازی قیمت‌ها: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('خطا در ارتباط با سرور: ' + error.message);
+                });
+            }
+        }
+
+        function showPriceInfo() {
+            const info = `
+اطلاعات سیستم قیمت‌گذاری:
+
+📊 لیست‌های قیمت پشتیبانی شده:
+• لیست 14: قیمت نقدی (Cash) - خرده و عمده
+• لیست 13: قیمت چکی (Check) - خرده و عمده
+
+💰 استراتژی قیمت‌گذاری فعلی:
+• نقدی خرده: قیمت تدبیر + 5%
+• چکی خرده: قیمت تدبیر + 10%
+• نقدی عمده: قیمت تدبیر + 3%
+• چکی عمده: قیمت تدبیر + 8%
+
+🔄 وضعیت همگام‌سازی:
+• قیمت‌ها از تدبیر دریافت می‌شوند
+• با محصولات محلی همگام‌سازی می‌شوند
+• قیمت‌های فعلی کاملاً جایگزین می‌شوند
+• واحد پولی: ریال کامل
+
+💡 نکته: در حال حاضر از لیست قیمت 13 تدبیر استفاده می‌شود
+            `;
+            alert(info);
+        }
+</script>
+{% endblock %}

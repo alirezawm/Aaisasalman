@@ -1,0 +1,600 @@
+{% extends "base.html" %}
+
+{% block title %}بهینه‌سازی رنگ متن{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/text-color-optimizer.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-palette"></i>
+                        بهینه‌سازی رنگ متن
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Color Input Section -->
+                        <div class="col-md-4">
+                            <div class="card card-primary">
+                                <div class="card-header">
+                                    <h3 class="card-title">انتخاب رنگ پس‌زمینه</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label for="background-color">رنگ پس‌زمینه:</label>
+                                        <input type="color" id="background-color" class="form-control" value="#ffffff">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="background-color-text">یا وارد کنید:</label>
+                                        <input type="text" id="background-color-text" class="form-control" placeholder="#ffffff" value="#ffffff">
+                                    </div>
+                                    <button type="button" id="optimize-colors" class="btn btn-primary btn-block">
+                                        <i class="fas fa-magic"></i>
+                                        بهینه‌سازی رنگ‌ها
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Contrast Checker -->
+                            <div class="card card-info">
+                                <div class="card-header">
+                                    <h3 class="card-title">بررسی کنتراست</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label for="foreground-color">رنگ متن:</label>
+                                        <input type="color" id="foreground-color" class="form-control" value="#000000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="foreground-color-text">یا وارد کنید:</label>
+                                        <input type="text" id="foreground-color-text" class="form-control" placeholder="#000000" value="#000000">
+                                    </div>
+                                    <button type="button" id="check-contrast" class="btn btn-info btn-block">
+                                        <i class="fas fa-search"></i>
+                                        بررسی کنتراست
+                                    </button>
+                                    <div id="contrast-result" class="mt-3" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <h5>نتیجه بررسی:</h5>
+                                            <p id="contrast-ratio"></p>
+                                            <p id="accessibility-level"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Results Section -->
+                        <div class="col-md-8">
+                            <div id="optimization-results" style="display: none;">
+                                <!-- Primary Results -->
+                                <div class="card card-success">
+                                    <div class="card-header">
+                                        <h3 class="card-title">رنگ‌های بهینه‌سازی شده</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="color-preview" id="primary-preview">
+                                                    <div class="color-box" id="primary-color-box"></div>
+                                                    <div class="color-info">
+                                                        <h5>متن اصلی</h5>
+                                                        <p id="primary-color-code"></p>
+                                                        <p id="primary-contrast"></p>
+                                                        <span id="primary-accessibility" class="badge"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="color-preview" id="secondary-preview">
+                                                    <div class="color-box" id="secondary-color-box"></div>
+                                                    <div class="color-info">
+                                                        <h5>متن ثانویه</h5>
+                                                        <p id="secondary-color-code"></p>
+                                                        <p id="secondary-contrast"></p>
+                                                        <span id="secondary-accessibility" class="badge"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="color-preview" id="accent-preview">
+                                                    <div class="color-box" id="accent-color-box"></div>
+                                                    <div class="color-info">
+                                                        <h5>متن تأکیدی</h5>
+                                                        <p id="accent-color-code"></p>
+                                                        <p id="accent-contrast"></p>
+                                                        <span id="accent-accessibility" class="badge"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Alternatives -->
+                                <div class="card card-warning">
+                                    <div class="card-header">
+                                        <h3 class="card-title">گزینه‌های جایگزین</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="alternatives-container" class="row">
+                                            <!-- Alternatives will be populated by JavaScript -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Implementation -->
+                                <div class="card card-secondary">
+                                    <div class="card-header">
+                                        <h3 class="card-title">پیاده‌سازی CSS</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label>کد CSS:</label>
+                                            <textarea id="css-code" class="form-control" rows="10" readonly></textarea>
+                                            <button type="button" id="copy-css" class="btn btn-sm btn-outline-secondary mt-2">
+                                                <i class="fas fa-copy"></i>
+                                                کپی کردن
+                                            </button>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>نمونه HTML:</label>
+                                            <textarea id="html-example" class="form-control" rows="3" readonly></textarea>
+                                            <button type="button" id="copy-html" class="btn btn-sm btn-outline-secondary mt-2">
+                                                <i class="fas fa-copy"></i>
+                                                کپی کردن
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Live Preview -->
+                                <div class="card card-dark">
+                                    <div class="card-header">
+                                        <h3 class="card-title">پیش‌نمایش زنده</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="live-preview" class="p-4 rounded">
+                                            <h4 id="preview-title">عنوان نمونه</h4>
+                                            <p id="preview-text">این یک متن نمونه است که برای نمایش کنتراست رنگ‌ها استفاده می‌شود. متن باید به وضوح قابل خواندن باشد.</p>
+                                            <a href="#" id="preview-link">لینک نمونه</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Loading State -->
+                            <div id="loading-state" style="display: none;">
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="sr-only">در حال بارگذاری...</span>
+                                    </div>
+                                    <p class="mt-2">در حال بهینه‌سازی رنگ‌ها...</p>
+                                </div>
+                            </div>
+
+                            <!-- Error State -->
+                            <div id="error-state" style="display: none;">
+                                <div class="alert alert-danger">
+                                    <h5>خطا در بهینه‌سازی</h5>
+                                    <p id="error-message"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.color-preview {
+    text-align: center;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.color-box {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.color-info h5 {
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.color-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.badge {
+    font-size: 12px;
+}
+
+.badge.badge-success {
+    background-color: #28a745;
+}
+
+.badge.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge.badge-danger {
+    background-color: #dc3545;
+}
+
+.alternative-scheme {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.alternative-scheme:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 10px rgba(0,123,255,0.1);
+}
+
+.alternative-scheme.selected {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.alternative-colors {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+}
+
+.alternative-color {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+}
+
+#live-preview {
+    min-height: 200px;
+    transition: all 0.3s ease;
+}
+
+#live-preview h4 {
+    margin-bottom: 15px;
+}
+
+#live-preview p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+#live-preview a {
+    text-decoration: none;
+    font-weight: bold;
+}
+
+#live-preview a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const backgroundColorInput = document.getElementById('background-color');
+    const backgroundColorText = document.getElementById('background-color-text');
+    const foregroundColorInput = document.getElementById('foreground-color');
+    const foregroundColorText = document.getElementById('foreground-color-text');
+    const optimizeButton = document.getElementById('optimize-colors');
+    const contrastButton = document.getElementById('check-contrast');
+    const resultsDiv = document.getElementById('optimization-results');
+    const loadingDiv = document.getElementById('loading-state');
+    const errorDiv = document.getElementById('error-state');
+    const contrastResult = document.getElementById('contrast-result');
+
+    // Sync color inputs
+    backgroundColorInput.addEventListener('input', function() {
+        backgroundColorText.value = this.value;
+    });
+
+    backgroundColorText.addEventListener('input', function() {
+        if (this.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+            backgroundColorInput.value = this.value;
+        }
+    });
+
+    foregroundColorInput.addEventListener('input', function() {
+        foregroundColorText.value = this.value;
+    });
+
+    foregroundColorText.addEventListener('input', function() {
+        if (this.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+            foregroundColorInput.value = this.value;
+        }
+    });
+
+    // Optimize colors
+    optimizeButton.addEventListener('click', function() {
+        const backgroundColor = backgroundColorText.value;
+        
+        if (!backgroundColor || !backgroundColor.match(/^#[0-9A-Fa-f]{6}$/)) {
+            alert('لطفاً یک رنگ معتبر وارد کنید');
+            return;
+        }
+
+        showLoading();
+        
+        fetch('/api/v1/text-color-optimization', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                background_color: backgroundColor
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                displayResults(data.data);
+            } else {
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showError('خطا در ارتباط با سرور: ' + error.message);
+        });
+    });
+
+    // Check contrast
+    contrastButton.addEventListener('click', function() {
+        const foregroundColor = foregroundColorText.value;
+        const backgroundColor = backgroundColorText.value;
+        
+        if (!foregroundColor || !backgroundColor || 
+            !foregroundColor.match(/^#[0-9A-Fa-f]{6}$/) || 
+            !backgroundColor.match(/^#[0-9A-Fa-f]{6}$/)) {
+            alert('لطفاً رنگ‌های معتبر وارد کنید');
+            return;
+        }
+
+        fetch('/api/v1/color-contrast-check', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                foreground_color: foregroundColor,
+                background_color: backgroundColor
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayContrastResult(data.data);
+            } else {
+                alert('خطا: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('خطا در ارتباط با سرور: ' + error.message);
+        });
+    });
+
+    function showLoading() {
+        loadingDiv.style.display = 'block';
+        resultsDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+    }
+
+    function hideLoading() {
+        loadingDiv.style.display = 'none';
+    }
+
+    function showError(message) {
+        errorDiv.style.display = 'block';
+        resultsDiv.style.display = 'none';
+        document.getElementById('error-message').textContent = message;
+    }
+
+    function displayResults(data) {
+        resultsDiv.style.display = 'block';
+        errorDiv.style.display = 'none';
+
+        // Display primary colors
+        displayColorPreview('primary', data.recommendations.primary_text, data.background_color);
+        displayColorPreview('secondary', data.recommendations.secondary_text, data.background_color);
+        displayColorPreview('accent', data.recommendations.accent_text, data.background_color);
+
+        // Display alternatives
+        displayAlternatives(data.alternatives, data.background_color);
+
+        // Display CSS and HTML
+        document.getElementById('css-code').value = data.implementation.css;
+        document.getElementById('html-example').value = data.implementation.html_example;
+
+        // Update live preview
+        updateLivePreview(data.background_color, data.recommendations);
+
+        // Copy functionality
+        setupCopyButtons();
+    }
+
+    function displayColorPreview(type, colorData, backgroundColor) {
+        const colorBox = document.getElementById(type + '-color-box');
+        const colorCode = document.getElementById(type + '-color-code');
+        const contrast = document.getElementById(type + '-contrast');
+        const accessibility = document.getElementById(type + '-accessibility');
+
+        colorBox.style.backgroundColor = colorData.color;
+        colorCode.textContent = colorData.color;
+        contrast.textContent = `کنتراست: ${colorData.contrast_ratio}:1`;
+        
+        accessibility.textContent = colorData.accessibility_level;
+        accessibility.className = 'badge ' + getAccessibilityBadgeClass(colorData.accessibility_level);
+    }
+
+    function displayAlternatives(alternatives, backgroundColor) {
+        const container = document.getElementById('alternatives-container');
+        container.innerHTML = '';
+
+        alternatives.forEach((alt, index) => {
+            const div = document.createElement('div');
+            div.className = 'col-md-4';
+            div.innerHTML = `
+                <div class="alternative-scheme" data-index="${index}">
+                    <h6>${alt.name}</h6>
+                    <div class="alternative-colors">
+                        <div class="alternative-color" style="background-color: ${alt.primary}" title="متن اصلی"></div>
+                        <div class="alternative-color" style="background-color: ${alt.secondary}" title="متن ثانویه"></div>
+                        <div class="alternative-color" style="background-color: ${alt.accent}" title="متن تأکیدی"></div>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            کنتراست: ${alt.primary_contrast}:1 (${alt.primary_accessibility})
+                        </small>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+
+            // Add click handler
+            div.querySelector('.alternative-scheme').addEventListener('click', function() {
+                selectAlternative(alt, backgroundColor);
+            });
+        });
+    }
+
+    function selectAlternative(alternative, backgroundColor) {
+        // Update color inputs
+        backgroundColorText.value = backgroundColor;
+        backgroundColorInput.value = backgroundColor;
+
+        // Update previews
+        displayColorPreview('primary', {
+            color: alternative.primary,
+            contrast_ratio: alternative.primary_contrast,
+            accessibility_level: alternative.primary_accessibility
+        }, backgroundColor);
+
+        displayColorPreview('secondary', {
+            color: alternative.secondary,
+            contrast_ratio: alternative.secondary_contrast,
+            accessibility_level: alternative.secondary_accessibility
+        }, backgroundColor);
+
+        displayColorPreview('accent', {
+            color: alternative.accent,
+            contrast_ratio: alternative.accent_contrast,
+            accessibility_level: alternative.accent_accessibility
+        }, backgroundColor);
+
+        // Update CSS
+        const css = `:root {
+    --bg-color: ${backgroundColor};
+    --text-primary: ${alternative.primary};
+    --text-secondary: ${alternative.secondary};
+    --text-accent: ${alternative.accent};
+}
+
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-accent { color: var(--text-accent); }`;
+
+        document.getElementById('css-code').value = css;
+        document.getElementById('html-example').value = `<div style="background-color: ${backgroundColor}; color: ${alternative.primary};">متن نمونه</div>`;
+
+        // Update live preview
+        updateLivePreview(backgroundColor, {
+            primary_text: { color: alternative.primary },
+            secondary_text: { color: alternative.secondary },
+            accent_text: { color: alternative.accent }
+        });
+
+        // Highlight selected alternative
+        document.querySelectorAll('.alternative-scheme').forEach(el => el.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+    }
+
+    function updateLivePreview(backgroundColor, colors) {
+        const preview = document.getElementById('live-preview');
+        const title = document.getElementById('preview-title');
+        const text = document.getElementById('preview-text');
+        const link = document.getElementById('preview-link');
+
+        preview.style.backgroundColor = backgroundColor;
+        title.style.color = colors.primary_text.color;
+        text.style.color = colors.secondary_text.color;
+        link.style.color = colors.accent_text.color;
+    }
+
+    function displayContrastResult(data) {
+        contrastResult.style.display = 'block';
+        document.getElementById('contrast-ratio').textContent = `نسبت کنتراست: ${data.contrast_ratio}:1`;
+        document.getElementById('accessibility-level').textContent = `سطح دسترسی: ${data.accessibility.normal_text} (متن عادی), ${data.accessibility.large_text} (متن بزرگ)`;
+    }
+
+    function getAccessibilityBadgeClass(level) {
+        switch(level) {
+            case 'AAA': return 'badge-success';
+            case 'AA': return 'badge-warning';
+            default: return 'badge-danger';
+        }
+    }
+
+    function setupCopyButtons() {
+        document.getElementById('copy-css').addEventListener('click', function() {
+            copyToClipboard('css-code');
+        });
+
+        document.getElementById('copy-html').addEventListener('click', function() {
+            copyToClipboard('html-example');
+        });
+    }
+
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        element.select();
+        element.setSelectionRange(0, 99999); // For mobile devices
+        document.execCommand('copy');
+        
+        // Show feedback
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> کپی شد!';
+        button.classList.add('btn-success');
+        button.classList.remove('btn-outline-secondary');
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    }
+});
+</script>
+{% endblock %}

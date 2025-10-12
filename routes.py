@@ -1,0 +1,3086 @@
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, abort
+from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+from datetime import datetime, timedelta
+import os
+import json
+import uuid
+from models import *
+from app import app
+import models
+
+# Define format_price function here to avoid circular import
+def format_price(price):
+    """Format price for display - prices are stored in thousands Rials"""
+    if price is None:
+        return "0 هزار ریال"
+    # Prices are stored directly in thousands Rials (no conversion needed)
+    price_in_thousands = int(price)
+    return f"{price_in_thousands:,} هزار ریال"
+
+# ==================== MAIN ROUTES ====================
+
+@app.route('/')
+def index():
+    """Homepage"""
+    # Get featured products
+    featured_products = Product.query.filter_by(is_featured=True, is_active=True).limit(8).all()
+    
+    # Get latest products
+    latest_products = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).limit(8).all()
+    
+    # Get announcements
+    announcements = Announcement.query.filter_by(is_active=True).order_by(Announcement.created_at.desc()).limit(3).all()
+    
+    # Get company info
+    company_info = CompanyInfo.query.first()
+    
+    return render_template('index.html', 
+                         featured_products=featured_products,
+                         latest_products=latest_products,
+                         announcements=announcements,
+                         company_info=company_info)
+
+@app.route('/about')
+def about():
+    """About page"""
+    company_info = CompanyInfo.query.first()
+    return render_template('about.html', company_info=company_info)
+
+@app.route('/shop')
+def shop():
+    """Shop page with products"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 12
+    
+    # Get filter parameters
+    brand_id = request.args.get('brand_id', type=int)
+    category_id = request.args.get('category_id', type=int)
+    vehicle_type_id = request.args.get('vehicle_type_id', type=int)
+    search_query = request.args.get('search', '')
+    in_stock_only = request.args.get('in_stock_only', type=bool)
+    
+    # Build query
+    query = Product.query.filter_by(is_active=True)
+    
+    if brand_id:
+        query = query.filter_by(brand_id=brand_id)
+    
+    if category_id:
+        query = query.filter_by(category_id=category_id)
+    
+    if vehicle_type_id:
+        # Filter by vehicle type through the relationship
+        query = query.join(ProductVehicleType).filter(
+            ProductVehicleType.vehicle_type_id == vehicle_type_id
+        )
+    
+    if search_query:
+        query = query.filter(
+            models.db.or_(
+                Product.name.contains(search_query),
+                Product.name_fa.contains(search_query),
+                Product.sku.contains(search_query),
+                Product.oem_code.contains(search_query)
+            )
+        )
+    
+    if in_stock_only:
+        query = query.filter(Product.stock_quantity > 0)
+    
+    products = query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get brands, categories, and vehicle types for filters
+    brands = Brand.query.filter_by(is_active=True).all()
+    categories = PartCategory.query.filter_by(is_active=True).all()
+    vehicle_types = VehicleType.query.all()
+    
+    # Create current_filters object for template
+    current_filters = {
+        'search': search_query,
+        'brand_id': brand_id,
+        'category_id': category_id,
+        'vehicle_type_id': vehicle_type_id,
+        'in_stock_only': in_stock_only
+    }
+    
+    return render_template('shop.html', 
+                          products=products,
+                          brands=brands,
+                          categories=categories,
+                          vehicle_types=vehicle_types,
+                          current_filters=current_filters)
+
+@app.route('/brands')
+def brands():
+    """Brands page"""
+    brands = Brand.query.filter_by(is_active=True).all()
+    return render_template('brands.html', brands=brands)
+
+@app.route('/brand/<int:brand_id>/models')
+def brand_models(brand_id):
+    """Vehicle models for a specific brand"""
+    brand = Brand.query.get_or_404(brand_id)
+    models = VehicleModel.query.filter_by(brand_id=brand_id, is_active=True).all()
+    
+    # Group models by year range
+    models_by_year = {}
+    for model in models:
+        if model.year_from and model.year_to:
+            year_range = f"{model.year_from}-{model.year_to}"
+        elif model.year_from:
+            year_range = f"{model.year_from}+"
+        else:
+            year_range = "نامشخص"
+        
+        if year_range not in models_by_year:
+            models_by_year[year_range] = []
+        models_by_year[year_range].append(model)
+    
+    # Sort year ranges
+    sorted_models_by_year = {}
+    for year_range in sorted(models_by_year.keys(), key=lambda x: x if x != "نامشخص" else "9999"):
+        sorted_models_by_year[year_range] = models_by_year[year_range]
+    
+    return render_template('brand_models.html', brand=brand, models=models, models_by_year=sorted_models_by_year)
+
+@app.route('/brand/<int:brand_id>/products')
+def brand_products(brand_id):
+    """Products for a specific brand"""
+    brand = Brand.query.get_or_404(brand_id)
+    page = request.args.get('page', 1, type=int)
+    per_page = 12
+    
+    # Get filter parameters
+    category_id = request.args.get('category_id', type=int)
+    search_query = request.args.get('search', '')
+    in_stock_only = request.args.get('in_stock_only', type=bool)
+    
+    # Build query for products of this brand
+    query = Product.query.filter_by(brand_id=brand_id, is_active=True)
+    
+    if category_id:
+        query = query.filter_by(category_id=category_id)
+    
+    if search_query:
+        query = query.filter(
+            models.db.or_(
+                Product.name.contains(search_query),
+                Product.name_fa.contains(search_query),
+                Product.sku.contains(search_query),
+                Product.oem_code.contains(search_query)
+            )
+        )
+    
+    if in_stock_only:
+        query = query.filter(Product.stock_quantity > 0)
+    
+    products = query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get categories that have products for this brand
+    categories = models.db.session.query(PartCategory).join(Product).filter(
+        Product.brand_id == brand_id,
+        Product.is_active == True,
+        PartCategory.is_active == True
+    ).distinct().all()
+    
+    # Create current_filters object for template
+    current_filters = {
+        'search': search_query,
+        'category_id': category_id,
+        'in_stock_only': in_stock_only
+    }
+    
+    return render_template('brand_products.html', 
+                         brand=brand, 
+                         products=products,
+                         categories=categories,
+                         current_filters=current_filters)
+
+@app.route('/model/<int:model_id>/categories')
+def model_categories(model_id):
+    """Categories for a specific vehicle model"""
+    model = VehicleModel.query.get_or_404(model_id)
+    # Get categories that have products for this model
+    categories = models.db.session.query(PartCategory).join(Product).join(
+        ProductVehicleModel
+    ).filter(
+        ProductVehicleModel.vehicle_model_id == model_id,
+        Product.is_active == True,
+        PartCategory.is_active == True
+    ).distinct().all()
+    
+    return render_template('model_categories.html', model=model, categories=categories)
+
+@app.route('/category/<int:category_id>/products')
+def category_products(category_id):
+    """Products in a specific category"""
+    category = PartCategory.query.get_or_404(category_id)
+    page = request.args.get('page', 1, type=int)
+    per_page = 12
+    
+    products = Product.query.filter_by(
+        category_id=category_id, 
+        is_active=True
+    ).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('category_products.html', 
+                         category=category, 
+                         products=products)
+
+@app.route('/product/<int:product_id>')
+def product_detail(product_id):
+    """Product detail page"""
+    product = Product.query.get_or_404(product_id)
+    
+    # Get related products (same category)
+    related_products = Product.query.filter(
+        Product.category_id == product.category_id,
+        Product.id != product_id,
+        Product.is_active == True
+    ).limit(4).all()
+    
+    return render_template('product_detail.html', 
+                         product=product, 
+                         related_products=related_products)
+
+@app.route('/bulk-conditions')
+def bulk_conditions():
+    """Bulk purchase conditions page"""
+    company_info = CompanyInfo.query.first()
+    return render_template('bulk_conditions.html', company_info=company_info)
+
+# ==================== AUTHENTICATION ROUTES ====================
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and check_password_hash(user.password_hash, password):
+            if user.is_active:
+                login_user(user)
+                user.last_login = datetime.utcnow()
+                models.db.session.commit()
+                
+                next_page = request.args.get('next')
+                return redirect(next_page) if next_page else redirect(url_for('dashboard'))
+            else:
+                flash('حساب کاربری شما غیرفعال است.', 'error')
+        else:
+            flash('نام کاربری یا رمز عبور اشتباه است.', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """User registration"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        full_name = request.form.get('full_name')
+        phone = request.form.get('phone')
+        company_name = request.form.get('company_name')
+        is_bulk_buyer_request = request.form.get('is_bulk_buyer') == 'on'
+        
+        # Validation
+        if password != confirm_password:
+            flash('رمزهای عبور مطابقت ندارند.', 'error')
+            return render_template('register.html')
+        
+        if User.query.filter_by(username=username).first():
+            flash('نام کاربری قبلاً استفاده شده است.', 'error')
+            return render_template('register.html')
+        
+        if email and User.query.filter_by(email=email).first():
+            flash('ایمیل قبلاً استفاده شده است.', 'error')
+            return render_template('register.html')
+        
+        # Create user
+        user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password),
+            full_name=full_name,
+            phone=phone,
+            company_name=company_name,
+            is_bulk_buyer=is_bulk_buyer_request,  # Set based on checkbox
+            user_type='bulk_buyer' if is_bulk_buyer_request else 'regular',
+            bulk_buyer_approval_status='pending' if is_bulk_buyer_request else 'approved'  # Regular users are auto-approved
+        )
+        
+        models.db.session.add(user)
+        models.db.session.commit()
+        
+        # Send notification to admin if bulk buyer request
+        if is_bulk_buyer_request:
+            # Find admin user (first admin user)
+            admin_user = User.query.filter_by(is_admin=True).first()
+            if admin_user:
+                admin_notification = UserNotification(
+                    user_id=admin_user.id,
+                    notification_type='bulk_buyer_request',
+                    title='درخواست خریدار عمده جدید',
+                    message=f'کاربر {full_name} ({username}) درخواست خریدار عمده کرده است. لطفاً بررسی کنید.'
+                )
+                models.db.session.add(admin_notification)
+                models.db.session.commit()
+            
+            flash('ثبت نام با موفقیت انجام شد. درخواست خریدار عمده شما در انتظار تایید مدیریت است.', 'success')
+        else:
+            flash('ثبت نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.', 'success')
+        
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    """User logout"""
+    logout_user()
+    flash('با موفقیت خارج شدید.', 'info')
+    return redirect(url_for('index'))
+
+# ==================== USER DASHBOARD ROUTES ====================
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """User dashboard"""
+    # Get user's recent invoices
+    recent_invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(
+        Invoice.created_at.desc()
+    ).limit(5).all()
+    
+    # Get all user's invoices for statistics
+    all_invoices = Invoice.query.filter_by(user_id=current_user.id).all()
+    
+    # Calculate statistics
+    total_invoices = len(all_invoices)
+    total_amount = sum(invoice.total_amount for invoice in all_invoices)
+    
+    # Calculate debt and credit (simplified - you may need to adjust based on your business logic)
+    paid_invoices = [inv for inv in all_invoices if inv.status == 'paid']
+    pending_invoices = [inv for inv in all_invoices if inv.status == 'pending']
+    
+    total_debt = sum(invoice.total_amount for invoice in pending_invoices)
+    total_credit = 0  # This would need to be calculated based on your business logic
+    
+    # Get user's cart items count
+    cart_count = Cart.query.filter_by(user_id=current_user.id).count()
+    
+    # Get user's wishlist count
+    wishlist_count = Wishlist.query.filter_by(user_id=current_user.id).count()
+    
+    return render_template('dashboard.html',
+                         recent_invoices=recent_invoices,
+                         invoices=all_invoices,
+                         total_invoices=total_invoices,
+                         total_amount=total_amount,
+                         total_debt=total_debt,
+                         total_credit=total_credit,
+                         cart_count=cart_count,
+                         wishlist_count=wishlist_count)
+
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    """User profile management"""
+    if request.method == 'POST':
+        # Update profile fields
+        current_user.full_name = request.form.get('full_name', current_user.full_name)
+        current_user.email = request.form.get('email', current_user.email)
+        current_user.phone = request.form.get('phone', current_user.phone)
+        current_user.company_name = request.form.get('company_name', current_user.company_name)
+        current_user.national_id = request.form.get('national_id', current_user.national_id)
+        current_user.address = request.form.get('address', current_user.address)
+        current_user.landline_phone = request.form.get('landline_phone', current_user.landline_phone)
+        current_user.secondary_phone = request.form.get('secondary_phone', current_user.secondary_phone)
+        
+        # Calculate profile completion
+        current_user.calculate_profile_completion()
+        
+        models.db.session.commit()
+        flash('پروفایل با موفقیت به‌روزرسانی شد.', 'success')
+        return redirect(url_for('profile'))
+    
+    return render_template('profile.html')
+
+@app.route('/change-username', methods=['POST'])
+@login_required
+def change_username():
+    """Change user username"""
+    new_username = request.form.get('new_username', '').strip()
+    
+    # Validation
+    if not new_username:
+        flash('نام کاربری جدید الزامی است.', 'error')
+        return redirect(url_for('profile'))
+    
+    if len(new_username) < 3:
+        flash('نام کاربری باید حداقل 3 کاراکتر باشد.', 'error')
+        return redirect(url_for('profile'))
+    
+    # Check if username already exists
+    existing_user = User.query.filter_by(username=new_username).first()
+    if existing_user and existing_user.id != current_user.id:
+        flash('این نام کاربری قبلاً استفاده شده است.', 'error')
+        return redirect(url_for('profile'))
+    
+    # Update username
+    old_username = current_user.username
+    current_user.username = new_username
+    models.db.session.commit()
+    
+    flash(f'نام کاربری از "{old_username}" به "{new_username}" تغییر یافت.', 'success')
+    return redirect(url_for('profile'))
+
+@app.route('/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """Change user password"""
+    current_password = request.form.get('current_password', '')
+    new_password = request.form.get('new_password', '')
+    confirm_password = request.form.get('confirm_password', '')
+    
+    # Validation
+    if not current_password or not new_password or not confirm_password:
+        flash('تمام فیلدها الزامی است.', 'error')
+        return redirect(url_for('profile'))
+    
+    # Verify current password
+    if not check_password_hash(current_user.password_hash, current_password):
+        flash('رمز عبور فعلی اشتباه است.', 'error')
+        return redirect(url_for('profile'))
+    
+    # Check if new password matches confirmation
+    if new_password != confirm_password:
+        flash('رمزهای عبور جدید مطابقت ندارند.', 'error')
+        return redirect(url_for('profile'))
+    
+    # Check password strength
+    if len(new_password) < 6:
+        flash('رمز عبور باید حداقل 6 کاراکتر باشد.', 'error')
+        return redirect(url_for('profile'))
+    
+    # Update password
+    current_user.password_hash = generate_password_hash(new_password)
+    models.db.session.commit()
+    
+    flash('رمز عبور با موفقیت تغییر یافت.', 'success')
+    return redirect(url_for('profile'))
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    """User notifications page"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    notifications = UserNotification.query.filter_by(user_id=current_user.id).order_by(
+        UserNotification.created_at.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('notifications.html', notifications=notifications)
+
+@app.route('/notifications/mark-read/<int:notification_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    """Mark notification as read"""
+    notification = UserNotification.query.filter_by(
+        id=notification_id,
+        user_id=current_user.id
+    ).first_or_404()
+    
+    notification.mark_as_read()
+    models.db.session.commit()
+    
+    return jsonify({'success': True})
+
+@app.route('/notifications/mark-all-read', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    """Mark all notifications as read"""
+    UserNotification.query.filter_by(
+        user_id=current_user.id,
+        is_read=False
+    ).update({'is_read': True, 'read_at': datetime.utcnow()})
+    
+    models.db.session.commit()
+    
+    return jsonify({'success': True})
+
+# ==================== CART ROUTES ====================
+
+@app.route('/cart')
+@login_required
+def cart():
+    """Shopping cart page"""
+    cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+    total_amount = sum(item.get_total_price() for item in cart_items)
+    
+    return render_template('cart.html', 
+                         cart_items=cart_items, 
+                         total_amount=total_amount)
+
+@app.route('/add-to-cart', methods=['POST'])
+@login_required
+def add_to_cart():
+    """Add product to cart"""
+    product_id = request.form.get('product_id', type=int)
+    quantity = request.form.get('quantity', 1, type=int)
+    price_type = request.form.get('price_type', 'cash')
+    
+    product = Product.query.get_or_404(product_id)
+    
+    # Check if item already exists in cart
+    existing_item = Cart.query.filter_by(
+        user_id=current_user.id,
+        product_id=product_id,
+        price_type=price_type
+    ).first()
+    
+    if existing_item:
+        existing_item.quantity += quantity
+    else:
+        # Get price based on user type, approval status and payment method
+        if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
+            unit_price = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+        else:
+            unit_price = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
+        
+        cart_item = Cart(
+            user_id=current_user.id,
+            product_id=product_id,
+            quantity=quantity,
+            price_type=price_type,
+            unit_price=unit_price
+        )
+        models.db.session.add(cart_item)
+    
+    models.db.session.commit()
+    flash('محصول به سبد خرید اضافه شد.', 'success')
+    
+    return redirect(request.referrer or url_for('shop'))
+
+@app.route('/remove-from-cart/<int:cart_item_id>', methods=['POST'])
+@login_required
+def remove_from_cart(cart_item_id):
+    """Remove item from cart"""
+    cart_item = Cart.query.filter_by(
+        id=cart_item_id,
+        user_id=current_user.id
+    ).first_or_404()
+    
+    models.db.session.delete(cart_item)
+    models.db.session.commit()
+    
+    flash('محصول از سبد خرید حذف شد.', 'info')
+    return redirect(url_for('cart'))
+
+@app.route('/update-cart-quantity', methods=['POST'])
+@login_required
+def update_cart_quantity():
+    """Update cart item quantity"""
+    cart_item_id = request.form.get('cart_item_id', type=int)
+    quantity = request.form.get('quantity', 1, type=int)
+    
+    cart_item = Cart.query.filter_by(
+        id=cart_item_id,
+        user_id=current_user.id
+    ).first_or_404()
+    
+    if quantity > 0:
+        cart_item.quantity = quantity
+        models.db.session.commit()
+        flash('تعداد محصول به‌روزرسانی شد.', 'success')
+    else:
+        models.db.session.delete(cart_item)
+        models.db.session.commit()
+        flash('محصول از سبد خرید حذف شد.', 'info')
+    
+    return redirect(url_for('cart'))
+
+@app.route('/create-invoice', methods=['POST'])
+@login_required
+def create_invoice():
+    """Create invoice from cart items"""
+    payment_type = request.form.get('payment_type', 'cash')
+    
+    # Get cart items
+    cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+    
+    if not cart_items:
+        flash('سبد خرید شما خالی است.', 'error')
+        return redirect(url_for('cart'))
+    
+    # Generate invoice number
+    invoice_number = f"INV-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
+    
+    # Calculate total amount
+    total_amount = sum(item.get_total_price() for item in cart_items)
+    
+    # Create invoice
+    invoice = Invoice(
+        invoice_number=invoice_number,
+        user_id=current_user.id,
+        total_amount=total_amount,
+        payment_type=payment_type,
+        status='pending'
+    )
+    
+    models.db.session.add(invoice)
+    models.db.session.flush()  # Get the invoice ID
+    
+    # Create invoice items
+    for cart_item in cart_items:
+        invoice_item = InvoiceItem(
+            invoice_id=invoice.id,
+            product_id=cart_item.product_id,
+            quantity=cart_item.quantity,
+            unit_price=cart_item.unit_price,
+            total_price=cart_item.get_total_price(),
+            price_type=cart_item.price_type
+        )
+        models.db.session.add(invoice_item)
+    
+    # Clear cart
+    Cart.query.filter_by(user_id=current_user.id).delete()
+    
+    models.db.session.commit()
+    
+    # اعطای امتیاز برای فاکتور
+    try:
+        from points_service import PointsService
+        points_service = PointsService()
+        points_result = points_service.award_points_for_invoice(invoice.id)
+        if points_result['success']:
+            flash(f'فاکتور با موفقیت ایجاد شد. {points_result["points"]["total_points"]} امتیاز اعطا شد.', 'success')
+        else:
+            flash('فاکتور با موفقیت ایجاد شد.', 'success')
+    except Exception as e:
+        flash('فاکتور با موفقیت ایجاد شد.', 'success')
+    
+    return redirect(url_for('invoice_detail', invoice_id=invoice.id))
+
+# ==================== INVOICE ROUTES ====================
+
+@app.route('/invoices')
+@login_required
+def invoices():
+    """User invoices list"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(
+        Invoice.created_at.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('invoices.html', invoices=invoices)
+
+@app.route('/invoice/<int:invoice_id>')
+@login_required
+def invoice_detail(invoice_id):
+    """Invoice detail page"""
+    invoice = Invoice.query.filter_by(
+        id=invoice_id,
+        user_id=current_user.id
+    ).first_or_404()
+    
+    return render_template('invoice_detail.html', invoice=invoice)
+
+@app.route('/invoice/<int:invoice_id>/print')
+@login_required
+def invoice_print(invoice_id):
+    """Print invoice"""
+    invoice = Invoice.query.filter_by(
+        id=invoice_id,
+        user_id=current_user.id
+    ).first_or_404()
+    
+    return render_template('invoice_print.html', invoice=invoice)
+
+# ==================== ADMIN ROUTES ====================
+
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    """Admin dashboard"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    # Get statistics
+    total_users = User.query.count()
+    total_products = Product.query.count()
+    total_invoices = Invoice.query.count()
+    total_brands = Brand.query.count()
+    
+    # Create stats object for template
+    stats = {
+        'total_users': total_users,
+        'total_products': total_products,
+        'total_invoices': total_invoices,
+        'total_brands': total_brands
+    }
+    
+    # Get recent activities
+    recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
+    recent_invoices = Invoice.query.order_by(Invoice.created_at.desc()).limit(5).all()
+    
+    return render_template('admin/dashboard.html',
+                         stats=stats,
+                         recent_users=recent_users,
+                         recent_invoices=recent_invoices)
+
+@app.route('/admin/products')
+@login_required
+def admin_products():
+    """Admin products management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    products = Product.query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get brands for the add product form
+    brands = Brand.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/products.html', products=products, brands=brands)
+
+@app.route('/admin/add-product', methods=['POST'])
+@login_required
+def admin_add_product():
+    """Add new product (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        # Get form data
+        code = request.form.get('code', '').strip()
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        brand_id = request.form.get('brand_id', type=int) or None
+        stock_quantity = request.form.get('stock_quantity', type=int) or 0
+        bulk_price_cash = request.form.get('bulk_price_cash', type=float) or 0
+        retail_price_cash = request.form.get('retail_price_cash', type=float) or 0
+        bulk_price_check = request.form.get('bulk_price_check', type=float) or 0
+        retail_price_check = request.form.get('retail_price_check', type=float) or 0
+        settlement_period = request.form.get('settlement_period', type=int) or 0
+        credit_amount = request.form.get('credit_amount', type=float) or 0
+        cash_discount_percentage = request.form.get('cash_discount_percentage', type=float) or 0
+        
+        # Validation
+        if not code or not name:
+            flash('کد کالا و نام کالا الزامی است.', 'error')
+            return redirect(url_for('admin_products'))
+        
+        # Check if code already exists
+        if Product.query.filter_by(code=code).first():
+            flash('کد کالا قبلاً استفاده شده است.', 'error')
+            return redirect(url_for('admin_products'))
+        
+        # Create new product
+        product = Product(
+            code=code,
+            sku=code,  # Use code as SKU for now
+            name=name,
+            name_fa=name,  # Use same name for Persian
+            description=description,
+            description_fa=description,  # Use same description for Persian
+            brand_id=brand_id,
+            stock_quantity=stock_quantity,
+            bulk_price_cash=bulk_price_cash,
+            retail_price_cash=retail_price_cash,
+            bulk_price_check=bulk_price_check,
+            retail_price_check=retail_price_check,
+            settlement_period=settlement_period,
+            credit_amount=credit_amount,
+            cash_discount_percentage=cash_discount_percentage,
+            is_active=True
+        )
+        
+        models.db.session.add(product)
+        models.db.session.commit()
+        
+        flash(f'محصول "{name}" با موفقیت اضافه شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در افزودن محصول. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_products'))
+
+@app.route('/admin/edit-product/<int:product_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_product(product_id):
+    """Edit product (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    product = Product.query.get_or_404(product_id)
+    
+    if request.method == 'POST':
+        try:
+            # Get form data
+            code = request.form.get('code', '').strip()
+            name = request.form.get('name', '').strip()
+            description = request.form.get('description', '').strip()
+            brand_id = request.form.get('brand_id', type=int) or None
+            stock_quantity = request.form.get('stock_quantity', type=int) or 0
+            bulk_price_cash = request.form.get('bulk_price_cash', type=float) or 0
+            retail_price_cash = request.form.get('retail_price_cash', type=float) or 0
+            bulk_price_check = request.form.get('bulk_price_check', type=float) or 0
+            retail_price_check = request.form.get('retail_price_check', type=float) or 0
+            settlement_period = request.form.get('settlement_period', type=int) or 0
+            credit_amount = request.form.get('credit_amount', type=float) or 0
+            cash_discount_percentage = request.form.get('cash_discount_percentage', type=float) or 0
+            is_active = request.form.get('is_active') == 'on'
+            
+            # Validation
+            if not code or not name:
+                flash('کد کالا و نام کالا الزامی است.', 'error')
+                return redirect(url_for('admin_edit_product', product_id=product_id))
+            
+            # Check if code already exists (excluding current product)
+            existing_product = Product.query.filter(Product.code == code, Product.id != product_id).first()
+            if existing_product:
+                flash('کد کالا قبلاً استفاده شده است.', 'error')
+                return redirect(url_for('admin_edit_product', product_id=product_id))
+            
+            # Update product
+            product.code = code
+            product.sku = code  # Use code as SKU
+            product.name = name
+            product.name_fa = name  # Use same name for Persian
+            product.description = description
+            product.description_fa = description  # Use same description for Persian
+            product.brand_id = brand_id
+            product.stock_quantity = stock_quantity
+            product.bulk_price_cash = bulk_price_cash
+            product.retail_price_cash = retail_price_cash
+            product.bulk_price_check = bulk_price_check
+            product.retail_price_check = retail_price_check
+            product.settlement_period = settlement_period
+            product.credit_amount = credit_amount
+            product.cash_discount_percentage = cash_discount_percentage
+            product.is_active = is_active
+            
+            models.db.session.commit()
+            
+            flash(f'محصول "{name}" با موفقیت به‌روزرسانی شد.', 'success')
+            return redirect(url_for('admin_products'))
+            
+        except Exception as e:
+            models.db.session.rollback()
+            flash('خطا در به‌روزرسانی محصول. لطفاً دوباره تلاش کنید.', 'error')
+    
+    # Get brands for the edit form
+    brands = Brand.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/edit_product.html', product=product, brands=brands)
+
+@app.route('/admin/delete-product/<int:product_id>', methods=['POST'])
+@login_required
+def admin_delete_product(product_id):
+    """Delete product (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    product = Product.query.get_or_404(product_id)
+    product_name = product.name
+    
+    try:
+        # Check if product has associated cart items or invoice items
+        cart_items = Cart.query.filter_by(product_id=product_id).count()
+        invoice_items = InvoiceItem.query.filter_by(product_id=product_id).count()
+        
+        if cart_items > 0 or invoice_items > 0:
+            flash(f'نمی‌توان محصول "{product_name}" را حذف کرد زیرا در سبد خرید یا فاکتورها استفاده شده است.', 'error')
+            return redirect(url_for('admin_products'))
+        
+        # Delete the product
+        models.db.session.delete(product)
+        models.db.session.commit()
+        
+        flash(f'محصول "{product_name}" با موفقیت حذف شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در حذف محصول. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_products'))
+
+
+@app.route('/admin/export-products-excel')
+@login_required
+def admin_export_products_excel():
+    """Export products to Excel (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        # This is a placeholder for Excel export logic
+        # You can implement the actual Excel export using openpyxl or xlsxwriter
+        flash('صادرات اکسل در حال توسعه است.', 'info')
+    except Exception as e:
+        flash('خطا در صادرات اکسل. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_products'))
+
+@app.route('/admin/brands')
+@login_required
+def admin_brands():
+    """Admin brands management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    brands = Brand.query.all()
+    return render_template('admin/brands.html', brands=brands)
+
+@app.route('/admin/add-brand', methods=['POST'])
+@login_required
+def admin_add_brand():
+    """Add new brand (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        # Get form data
+        name = request.form.get('name', '').strip()
+        name_fa = request.form.get('name_fa', '').strip()
+        
+        # Validation
+        if not name:
+            flash('نام برند الزامی است.', 'error')
+            return redirect(url_for('admin_brands'))
+        
+        # Use name as name_fa if not provided
+        if not name_fa:
+            name_fa = name
+        
+        # Check if brand already exists
+        if Brand.query.filter_by(name=name).first():
+            flash('این برند قبلاً وجود دارد.', 'error')
+            return redirect(url_for('admin_brands'))
+        
+        # Create new brand
+        brand = Brand(
+            name=name,
+            name_fa=name_fa,
+            is_active=True
+        )
+        
+        models.db.session.add(brand)
+        models.db.session.commit()
+        
+        flash(f'برند "{name}" با موفقیت اضافه شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در افزودن برند. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_brands'))
+
+@app.route('/admin/delete-brand/<int:brand_id>', methods=['POST'])
+@login_required
+def admin_delete_brand(brand_id):
+    """Delete brand (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        brand = Brand.query.get_or_404(brand_id)
+        brand_name = brand.name
+        
+        # Check if brand has associated products
+        if brand.products:
+            flash(f'نمی‌توان برند "{brand_name}" را حذف کرد زیرا دارای محصولات مرتبط است.', 'error')
+            return redirect(url_for('admin_brands'))
+        
+        # Delete the brand
+        models.db.session.delete(brand)
+        models.db.session.commit()
+        
+        flash(f'برند "{brand_name}" با موفقیت حذف شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در حذف برند. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_brands'))
+
+@app.route('/admin/add-vehicle-type', methods=['POST'])
+@login_required
+def admin_add_vehicle_type():
+    """Add new vehicle type (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        # Get form data
+        name = request.form.get('name', '').strip()
+        
+        # Validation
+        if not name:
+            flash('نام نوع خودرو الزامی است.', 'error')
+            return redirect(url_for('admin_vehicle_types'))
+        
+        # Check if vehicle type already exists
+        if VehicleType.query.filter_by(name=name).first():
+            flash('این نوع خودرو قبلاً وجود دارد.', 'error')
+            return redirect(url_for('admin_vehicle_types'))
+        
+        # Create new vehicle type
+        vehicle_type = VehicleType(name=name)
+        
+        models.db.session.add(vehicle_type)
+        models.db.session.commit()
+        
+        flash(f'نوع خودرو "{name}" با موفقیت اضافه شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در افزودن نوع خودرو. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_vehicle_types'))
+
+@app.route('/admin/delete-vehicle-type/<int:vehicle_type_id>', methods=['POST'])
+@login_required
+def admin_delete_vehicle_type(vehicle_type_id):
+    """Delete vehicle type (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        vehicle_type = VehicleType.query.get_or_404(vehicle_type_id)
+        vehicle_type_name = vehicle_type.name
+        
+        # Check if vehicle type has associated products
+        if vehicle_type.products:
+            flash(f'نمی‌توان نوع خودرو "{vehicle_type_name}" را حذف کرد زیرا دارای محصولات مرتبط است.', 'error')
+            return redirect(url_for('admin_vehicle_types'))
+        
+        # Delete the vehicle type
+        models.db.session.delete(vehicle_type)
+        models.db.session.commit()
+        
+        flash(f'نوع خودرو "{vehicle_type_name}" با موفقیت حذف شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در حذف نوع خودرو. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_vehicle_types'))
+
+@app.route('/admin/add-announcement', methods=['POST'])
+@login_required
+def admin_add_announcement():
+    """Add new announcement (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        # Get form data
+        title = request.form.get('title', '').strip()
+        content = request.form.get('content', '').strip()
+        is_active = request.form.get('is_active') == 'on'
+        
+        # Validation
+        if not title or not content:
+            flash('عنوان و محتوا الزامی است.', 'error')
+            return redirect(url_for('admin_announcements'))
+        
+        # Create new announcement
+        announcement = Announcement(
+            title=title,
+            content=content,
+            is_active=is_active
+        )
+        
+        models.db.session.add(announcement)
+        models.db.session.commit()
+        
+        flash(f'اطلاعیه "{title}" با موفقیت اضافه شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در افزودن اطلاعیه. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_announcements'))
+
+@app.route('/admin/update-company-info', methods=['POST'])
+@login_required
+def admin_update_company_info():
+    """Update company info (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        # Get form data
+        company_name = request.form.get('company_name', '').strip()
+        address = request.form.get('address', '').strip()
+        phone = request.form.get('phone', '').strip()
+        email = request.form.get('email', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        # Get or create company info
+        company_info = CompanyInfo.query.first()
+        if not company_info:
+            company_info = CompanyInfo()
+            models.db.session.add(company_info)
+        
+        # Update fields
+        company_info.company_name = company_name
+        company_info.address = address
+        company_info.phone = phone
+        company_info.email = email
+        company_info.description = description
+        
+        models.db.session.commit()
+        
+        flash('اطلاعات شرکت با موفقیت به‌روزرسانی شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در به‌روزرسانی اطلاعات شرکت. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_company_info'))
+
+@app.route('/admin/invoices')
+@login_required
+def admin_invoices():
+    """Admin invoices management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get filter parameters
+    approval_status = request.args.get('approval_status', '')
+    payment_type = request.args.get('payment_type', '')
+    user_search = request.args.get('user_search', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    
+    # Build query
+    query = Invoice.query
+    
+    if approval_status:
+        query = query.filter_by(approval_status=approval_status)
+    
+    if payment_type:
+        query = query.filter_by(payment_type=payment_type)
+    
+    if user_search:
+        query = query.join(User).filter(
+            models.db.or_(
+                User.username.contains(user_search),
+                User.full_name.contains(user_search),
+                User.company_name.contains(user_search)
+            )
+        )
+    
+    if date_from:
+        query = query.filter(Invoice.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+    
+    if date_to:
+        query = query.filter(Invoice.created_at <= datetime.strptime(date_to, '%Y-%m-%d'))
+    
+    # Get all invoices for statistics (before filtering)
+    all_invoices = Invoice.query.all()
+    
+    # Calculate statistics
+    total_invoices = len(all_invoices)
+    pending_approval = len([inv for inv in all_invoices if inv.approval_status == 'pending'])
+    approved = len([inv for inv in all_invoices if inv.approval_status == 'approved'])
+    rejected = len([inv for inv in all_invoices if inv.approval_status == 'rejected'])
+    under_review = len([inv for inv in all_invoices if inv.approval_status == 'under_review'])
+    
+    # Create stats object for template
+    stats = {
+        'total_invoices': total_invoices,
+        'pending_approval': pending_approval,
+        'approved': approved,
+        'rejected': rejected,
+        'under_review': under_review
+    }
+    
+    # Create current_filters object for template
+    current_filters = {
+        'approval_status': approval_status,
+        'payment_type': payment_type,
+        'user_search': user_search,
+        'date_from': date_from,
+        'date_to': date_to
+    }
+    
+    invoices = query.order_by(Invoice.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/invoices.html', invoices=invoices, stats=stats, current_filters=current_filters)
+
+@app.route('/admin/invoice/<int:invoice_id>')
+@login_required
+def admin_invoice_detail(invoice_id):
+    """Admin invoice detail page"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    invoice = Invoice.query.get_or_404(invoice_id)
+    
+    return render_template('admin/invoice_detail.html', invoice=invoice)
+
+@app.route('/admin/roles')
+@login_required
+def admin_roles():
+    """Admin roles management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    roles = Role.query.all()
+    return render_template('admin/roles.html', roles=roles)
+
+@app.route('/admin/user-roles')
+@login_required
+def admin_user_roles():
+    """Admin user roles management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    users = User.query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    roles = Role.query.all()
+    
+    return render_template('admin/user_roles.html', users=users, roles=roles)
+
+@app.route('/admin/announcements')
+@login_required
+def admin_announcements():
+    """Admin announcements management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+    return render_template('admin/announcements.html', announcements=announcements)
+
+@app.route('/admin/company-info')
+@login_required
+def admin_company_info():
+    """Admin company info management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    company_info = CompanyInfo.query.first()
+    return render_template('admin/company_info.html', company_info=company_info)
+
+@app.route('/admin/vehicle-types')
+@login_required
+def admin_vehicle_types():
+    """Admin vehicle types management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    vehicle_types = VehicleType.query.all()
+    return render_template('admin/vehicle_types.html', vehicle_types=vehicle_types)
+
+@app.route('/admin/audit-logs')
+@login_required
+def admin_audit_logs():
+    """Admin audit logs"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    audit_logs = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/audit_logs.html', audit_logs=audit_logs)
+
+@app.route('/admin/delete-invoice/<int:invoice_id>', methods=['POST'])
+@login_required
+def admin_delete_invoice(invoice_id):
+    """Delete invoice (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    invoice = Invoice.query.get_or_404(invoice_id)
+    
+    try:
+        # Delete the invoice (cascade will handle related items and documents)
+        models.db.session.delete(invoice)
+        models.db.session.commit()
+        
+        flash(f'فاکتور {invoice.invoice_number} با موفقیت حذف شد.', 'success')
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در حذف فاکتور. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_invoices'))
+
+@app.route('/admin/text-color-optimization')
+@login_required
+def admin_text_color_optimization():
+    """Admin text color optimization tool"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    return render_template('admin/text_color_optimization.html')
+
+@app.route('/admin/excel-reconstruction')
+@login_required
+def excel_reconstruction():
+    """Admin Excel reconstruction tool"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    return render_template('admin/excel_reconstruction.html')
+
+@app.route('/admin/bulk-buyer-requests')
+@login_required
+def admin_bulk_buyer_requests():
+    """Admin bulk buyer requests management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get filter parameters
+    approval_status = request.args.get('approval_status', '')
+    user_search = request.args.get('user_search', '')
+    
+    # Build query
+    query = User.query.filter(User.is_bulk_buyer == True)
+    
+    if approval_status:
+        query = query.filter_by(bulk_buyer_approval_status=approval_status)
+    
+    if user_search:
+        query = query.filter(
+            models.db.or_(
+                User.username.contains(user_search),
+                User.full_name.contains(user_search),
+                User.company_name.contains(user_search)
+            )
+        )
+    
+    # Get all bulk buyer requests for statistics
+    all_requests = User.query.filter(User.is_bulk_buyer == True).all()
+    
+    # Calculate statistics
+    total_requests = len(all_requests)
+    pending_requests = len([req for req in all_requests if req.bulk_buyer_approval_status == 'pending'])
+    approved_requests = len([req for req in all_requests if req.bulk_buyer_approval_status == 'approved'])
+    rejected_requests = len([req for req in all_requests if req.bulk_buyer_approval_status == 'rejected'])
+    
+    # Create stats object for template
+    stats = {
+        'total_requests': total_requests,
+        'pending_requests': pending_requests,
+        'approved_requests': approved_requests,
+        'rejected_requests': rejected_requests
+    }
+    
+    # Create current_filters object for template
+    current_filters = {
+        'approval_status': approval_status,
+        'user_search': user_search
+    }
+    
+    requests = query.order_by(User.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/bulk_buyer_requests.html', 
+                         requests=requests, 
+                         stats=stats, 
+                         current_filters=current_filters)
+
+@app.route('/admin/approve-bulk-buyer/<int:user_id>', methods=['POST'])
+@login_required
+def admin_approve_bulk_buyer(user_id):
+    """Approve bulk buyer request"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    user = User.query.get_or_404(user_id)
+    
+    if not user.is_bulk_buyer:
+        flash('این کاربر درخواست خریدار عمده نداشته است.', 'error')
+        return redirect(url_for('admin_bulk_buyer_requests'))
+    
+    try:
+        # Update user approval status
+        user.bulk_buyer_approval_status = 'approved'
+        user.bulk_buyer_approved_at = datetime.utcnow()
+        user.bulk_buyer_approved_by = current_user.id
+        
+        # Send notification to user
+        notification = UserNotification(
+            user_id=user.id,
+            notification_type='bulk_buyer_approved',
+            title='تایید خریدار عمده',
+            message='درخواست خریدار عمده شما تایید شد. اکنون می‌توانید از قیمت‌های ویژه و شرایط خاص بهره‌مند شوید.'
+        )
+        models.db.session.add(notification)
+        
+        models.db.session.commit()
+        
+        flash(f'درخواست خریدار عمده کاربر {user.full_name} تایید شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در تایید درخواست. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_bulk_buyer_requests'))
+
+@app.route('/admin/reject-bulk-buyer/<int:user_id>', methods=['POST'])
+@login_required
+def admin_reject_bulk_buyer(user_id):
+    """Reject bulk buyer request"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    user = User.query.get_or_404(user_id)
+    rejection_reason = request.form.get('rejection_reason', '')
+    
+    if not user.is_bulk_buyer:
+        flash('این کاربر درخواست خریدار عمده نداشته است.', 'error')
+        return redirect(url_for('admin_bulk_buyer_requests'))
+    
+    try:
+        # Update user approval status
+        user.bulk_buyer_approval_status = 'rejected'
+        user.bulk_buyer_approved_at = datetime.utcnow()
+        user.bulk_buyer_approved_by = current_user.id
+        
+        # Send notification to user
+        notification = UserNotification(
+            user_id=user.id,
+            notification_type='bulk_buyer_rejected',
+            title='رد درخواست خریدار عمده',
+            message=f'متأسفانه درخواست خریدار عمده شما رد شد. دلیل: {rejection_reason if rejection_reason else "لطفاً با پشتیبانی تماس بگیرید."}'
+        )
+        models.db.session.add(notification)
+        
+        models.db.session.commit()
+        
+        flash(f'درخواست خریدار عمده کاربر {user.full_name} رد شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در رد درخواست. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_bulk_buyer_requests'))
+
+# ==================== API ROUTES ====================
+
+@app.route('/api/search')
+def api_search():
+    """Search API endpoint"""
+    query = request.args.get('q', '')
+    limit = request.args.get('limit', 10, type=int)
+    
+    if not query:
+        return jsonify([])
+    
+    products = Product.query.filter(
+        models.db.or_(
+            Product.name.contains(query),
+            Product.name_fa.contains(query),
+            Product.sku.contains(query),
+            Product.oem_code.contains(query)
+        ),
+        Product.is_active == True
+    ).limit(limit).all()
+    
+    results = []
+    for product in products:
+        results.append({
+            'id': product.id,
+            'name': product.name_fa,
+            'sku': product.sku,
+            'price': product.retail_price_cash,
+            'image': product.primary_image,
+            'url': url_for('product_detail', product_id=product.id)
+        })
+    
+    return jsonify(results)
+
+@app.route('/api/cart-count')
+@login_required
+def api_cart_count():
+    """Get cart items count"""
+    count = Cart.query.filter_by(user_id=current_user.id).count()
+    return jsonify({'count': count})
+
+@app.route('/api/cart/add-multiple', methods=['POST'])
+@login_required
+def api_add_multiple_to_cart():
+    """Add multiple products to cart via API"""
+    try:
+        data = request.get_json()
+        products = data.get('products', [])
+        
+        if not products:
+            return jsonify({'success': False, 'message': 'هیچ محصولی انتخاب نشده است'}), 400
+        
+        added_count = 0
+        errors = []
+        
+        for product_data in products:
+            try:
+                product_id = product_data.get('product_id')
+                quantity = product_data.get('quantity', 1)
+                price_type = product_data.get('price_type', 'cash')
+                notes = product_data.get('notes', '')
+                
+                if not product_id:
+                    continue
+                
+                product = Product.query.get(product_id)
+                if not product:
+                    errors.append(f"محصول با شناسه {product_id} یافت نشد")
+                    continue
+                
+                # Check if item already exists in cart
+                existing_item = Cart.query.filter_by(
+                    user_id=current_user.id,
+                    product_id=product_id,
+                    price_type=price_type
+                ).first()
+                
+                if existing_item:
+                    existing_item.quantity += quantity
+                else:
+                    # Get price based on user type, approval status and payment method
+                    if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
+                        unit_price = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+                    else:
+                        unit_price = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
+                    
+                    cart_item = Cart(
+                        user_id=current_user.id,
+                        product_id=product_id,
+                        quantity=quantity,
+                        price_type=price_type,
+                        unit_price=unit_price,
+                        notes=notes
+                    )
+                    models.db.session.add(cart_item)
+                
+                added_count += 1
+                
+            except Exception as e:
+                errors.append(f"خطا در افزودن محصول {product_id}: {str(e)}")
+                continue
+        
+        models.db.session.commit()
+        
+        message = f"{added_count} محصول به سبد خرید اضافه شد"
+        if errors:
+            message += f". خطاها: {'; '.join(errors)}"
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'added_count': added_count,
+            'errors': errors
+        })
+        
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'خطا در افزودن محصولات به سبد خرید'
+        }), 500
+
+@app.route('/api/cart', methods=['GET'])
+@login_required
+def api_get_cart():
+    """Get cart items via API"""
+    try:
+        cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+        items_data = [item.to_dict() for item in cart_items]
+        
+        return jsonify({
+            'success': True,
+            'items': items_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': 'خطا در دریافت سبد خرید'
+        }), 500
+
+@app.route('/api/cart/remove', methods=['DELETE'])
+@login_required
+def api_remove_from_cart():
+    """Remove item from cart via API"""
+    try:
+        data = request.get_json()
+        cart_id = data.get('cart_id')
+        
+        if not cart_id:
+            return jsonify({'success': False, 'message': 'شناسه آیتم سبد الزامی است'}), 400
+        
+        cart_item = Cart.query.filter_by(
+            id=cart_id,
+            user_id=current_user.id
+        ).first_or_404()
+        
+        models.db.session.delete(cart_item)
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'محصول از سبد خرید حذف شد'
+        })
+        
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'خطا در حذف محصول از سبد خرید'
+        }), 500
+
+@app.route('/api/cart/update', methods=['PUT'])
+@login_required
+def api_update_cart_quantity():
+    """Update cart item quantity via API"""
+    try:
+        data = request.get_json()
+        cart_id = data.get('cart_id')
+        quantity = data.get('quantity', 1)
+        
+        if not cart_id:
+            return jsonify({'success': False, 'message': 'شناسه آیتم سبد الزامی است'}), 400
+        
+        cart_item = Cart.query.filter_by(
+            id=cart_id,
+            user_id=current_user.id
+        ).first_or_404()
+        
+        if quantity > 0:
+            cart_item.quantity = quantity
+            models.db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': 'تعداد محصول به‌روزرسانی شد'
+            })
+        else:
+            models.db.session.delete(cart_item)
+            models.db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': 'محصول از سبد خرید حذف شد'
+            })
+        
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'خطا در به‌روزرسانی تعداد'
+        }), 500
+
+@app.route('/api/cart/totals', methods=['GET'])
+@login_required
+def api_get_cart_totals():
+    """Get cart totals with breakdown"""
+    try:
+        cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+        
+        cash_total = 0
+        check_total = 0
+        
+        for item in cart_items:
+            total_price = item.unit_price * item.quantity
+            if item.price_type == 'cash':
+                cash_total += total_price
+            else:
+                check_total += total_price
+        
+        grand_total = cash_total + check_total
+        
+        # Format prices for display (prices are stored in thousands Rials)
+        def format_price(price):
+            if price is None or price == 0:
+                return "0 هزار ریال"
+            price_in_thousands = int(price)
+            return f"{price_in_thousands:,} هزار ریال"
+        
+        return jsonify({
+            'success': True,
+            'cash_total': cash_total,
+            'check_total': check_total,
+            'grand_total': grand_total,
+            'formatted_cash_total': format_price(cash_total),
+            'formatted_check_total': format_price(check_total),
+            'formatted_grand_total': format_price(grand_total)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': 'خطا در محاسبه مجموع قیمت‌ها'
+        }), 500
+
+
+# ==================== BRAND VEHICLE DETECTION ====================
+
+@app.route('/admin/brand-detection')
+@login_required
+def admin_brand_detection():
+    """صفحه مدیریت تشخیص برند و نوع خودرو"""
+    if not current_user.is_admin:
+        flash('شما دسترسی لازم برای این صفحه را ندارید', 'error')
+        return redirect(url_for('dashboard'))
+    
+    # آمار تشخیص
+    from brand_vehicle_detector import get_detector
+    detector = get_detector()
+    stats = detector.get_detection_stats()
+    
+    return render_template('admin/brand_detection.html', stats=stats)
+
+@app.route('/api/detect-brand-vehicle', methods=['POST'])
+@login_required
+def api_detect_brand_vehicle():
+    """API تشخیص برند و نوع خودرو"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        data = request.get_json()
+        product_name = data.get('product_name', '').strip()
+        
+        if not product_name:
+            return jsonify({
+                'success': False,
+                'message': 'نام محصول نمی‌تواند خالی باشد'
+            }), 400
+        
+        from brand_vehicle_detector import get_detector
+        detector = get_detector()
+        result = detector.detect_brand_and_vehicle_types(product_name)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در تشخیص: {str(e)}'
+        }), 500
+
+@app.route('/api/batch-detect-products', methods=['POST'])
+@login_required
+def api_batch_detect_products():
+    """API تشخیص دسته‌ای محصولات"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        data = request.get_json()
+        product_ids = data.get('product_ids')
+        
+        from brand_vehicle_detector import get_detector
+        detector = get_detector()
+        
+        if product_ids and len(product_ids) > 0:
+            result = detector.batch_detect_products(product_ids)
+        else:
+            result = detector.batch_detect_products()
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در تشخیص دسته‌ای: {str(e)}'
+        }), 500
+
+@app.route('/api/detection-stats', methods=['GET'])
+@login_required
+def api_detection_stats():
+    """API آمار تشخیص"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from brand_vehicle_detector import get_detector
+        detector = get_detector()
+        stats = detector.get_detection_stats()
+        
+        return jsonify({
+            'success': True,
+            'data': stats
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در دریافت آمار: {str(e)}'
+        }), 500
+
+@app.route('/api/refresh-detection-cache', methods=['POST'])
+@login_required
+def api_refresh_detection_cache():
+    """API به‌روزرسانی کش تشخیص"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from brand_vehicle_detector import get_detector
+        detector = get_detector()
+        detector.refresh_cache()
+        
+        return jsonify({
+            'success': True,
+            'message': 'کش تشخیص با موفقیت به‌روزرسانی شد'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در به‌روزرسانی کش: {str(e)}'
+        }), 500
+
+# ==================== TADBIR ACCOUNTING SYSTEM ROUTES ====================
+
+@app.route('/admin/accounting/dashboard')
+@login_required
+def admin_accounting_dashboard():
+    """داشبورد حسابداری تدبیر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        from tadbir_sync_service import TadbirSyncService
+        from tadbir_scheduler_service import get_scheduler
+        
+        sync_service = TadbirSyncService()
+        scheduler = get_scheduler()
+        
+        # Get sync status
+        sync_status = sync_service.get_sync_status()
+        scheduler_status = scheduler.get_scheduler_status()
+        
+        # Get recent sync logs
+        recent_logs = TadbirSyncLog.query.order_by(
+            TadbirSyncLog.started_at.desc()
+        ).limit(10).all()
+        
+        # Get cache statistics
+        products_count = TadbirProductCache.query.count()
+        inventory_count = TadbirInventoryCache.query.count()
+        prices_count = TadbirPriceCache.query.count()
+        
+        stats = {
+            'products_count': products_count,
+            'inventory_count': inventory_count,
+            'prices_count': prices_count,
+            'total_cached_items': products_count + inventory_count + prices_count
+        }
+        
+        return render_template('admin/accounting_dashboard.html',
+                             sync_status=sync_status,
+                             scheduler_status=scheduler_status,
+                             recent_logs=recent_logs,
+                             stats=stats)
+        
+    except Exception as e:
+        flash(f'خطا در بارگذاری داشبورد حسابداری: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/accounting/sync/manual', methods=['POST'])
+@login_required
+def admin_accounting_manual_sync():
+    """همگام‌سازی دستی تدبیر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        from tadbir_scheduler_service import get_scheduler
+        
+        sync_type = request.form.get('sync_type', 'full')
+        scheduler = get_scheduler()
+        
+        # Run sync
+        result = scheduler.run_sync_now(sync_type)
+        
+        if sync_type == 'full':
+            flash('همگام‌سازی کامل با موفقیت انجام شد.', 'success')
+        else:
+            flash(f'همگام‌سازی {sync_type} با موفقیت انجام شد.', 'success')
+        
+        return redirect(url_for('admin_accounting_dashboard'))
+        
+    except Exception as e:
+        flash(f'خطا در همگام‌سازی: {str(e)}', 'error')
+        return redirect(url_for('admin_accounting_dashboard'))
+
+@app.route('/admin/accounting/sync/history')
+@login_required
+def admin_accounting_sync_history():
+    """تاریخچه همگام‌سازی تدبیر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get filter parameters
+    sync_type = request.args.get('sync_type', '')
+    status = request.args.get('status', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    
+    # Build query
+    query = TadbirSyncLog.query
+    
+    if sync_type:
+        query = query.filter_by(sync_type=sync_type)
+    
+    if status:
+        query = query.filter_by(status=status)
+    
+    if date_from:
+        query = query.filter(TadbirSyncLog.started_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+    
+    if date_to:
+        query = query.filter(TadbirSyncLog.started_at <= datetime.strptime(date_to, '%Y-%m-%d'))
+    
+    # Get statistics
+    total_logs = TadbirSyncLog.query.count()
+    successful_logs = TadbirSyncLog.query.filter_by(status='completed').count()
+    failed_logs = TadbirSyncLog.query.filter_by(status='failed').count()
+    
+    stats = {
+        'total_logs': total_logs,
+        'successful_logs': successful_logs,
+        'failed_logs': failed_logs
+    }
+    
+    # Create current_filters object for template
+    current_filters = {
+        'sync_type': sync_type,
+        'status': status,
+        'date_from': date_from,
+        'date_to': date_to
+    }
+    
+    logs = query.order_by(TadbirSyncLog.started_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/accounting_sync_history.html',
+                         logs=logs,
+                         stats=stats,
+                         current_filters=current_filters)
+
+@app.route('/admin/accounting/products')
+@login_required
+def admin_accounting_products():
+    """لیست کالاهای تدبیر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get filter parameters
+    search = request.args.get('search', '')
+    is_active = request.args.get('is_active', '')
+    last_update_from = request.args.get('last_update_from', '')
+    last_update_to = request.args.get('last_update_to', '')
+    
+    # Build query
+    query = TadbirProductCache.query
+    
+    if search:
+        query = query.filter(
+            models.db.or_(
+                TadbirProductCache.item_code.contains(search),
+                TadbirProductCache.description.contains(search),
+                TadbirProductCache.alias.contains(search)
+            )
+        )
+    
+    if is_active == 'true':
+        query = query.filter_by(is_active=True)
+    elif is_active == 'false':
+        query = query.filter_by(is_active=False)
+    
+    if last_update_from:
+        query = query.filter(TadbirProductCache.last_update >= datetime.strptime(last_update_from, '%Y-%m-%d'))
+    
+    if last_update_to:
+        query = query.filter(TadbirProductCache.last_update <= datetime.strptime(last_update_to, '%Y-%m-%d'))
+    
+    # Get statistics
+    total_products = TadbirProductCache.query.count()
+    active_products = TadbirProductCache.query.filter_by(is_active=True).count()
+    inactive_products = TadbirProductCache.query.filter_by(is_active=False).count()
+    
+    stats = {
+        'total_products': total_products,
+        'active_products': active_products,
+        'inactive_products': inactive_products
+    }
+    
+    # Create current_filters object for template
+    current_filters = {
+        'search': search,
+        'is_active': is_active,
+        'last_update_from': last_update_from,
+        'last_update_to': last_update_to
+    }
+    
+    products = query.order_by(TadbirProductCache.cached_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/accounting_products.html',
+                         products=products,
+                         stats=stats,
+                         current_filters=current_filters)
+
+@app.route('/admin/accounting/inventory')
+@login_required
+def admin_accounting_inventory():
+    """موجودی انبار تدبیر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get filter parameters
+    search = request.args.get('search', '')
+    stock_filter = request.args.get('stock_filter', 'all')
+    
+    # Build query
+    query = TadbirInventoryCache.query
+    
+    if search:
+        query = query.filter(
+            models.db.or_(
+                TadbirInventoryCache.item_code.contains(search)
+            )
+        )
+    
+    if stock_filter == 'in_stock':
+        query = query.filter(TadbirInventoryCache.quantity > 0)
+    elif stock_filter == 'out_of_stock':
+        query = query.filter(TadbirInventoryCache.quantity == 0)
+    elif stock_filter == 'low_stock':
+        query = query.filter(TadbirInventoryCache.quantity > 0, TadbirInventoryCache.quantity < 10)
+    
+    # Get statistics
+    total_items = TadbirInventoryCache.query.count()
+    in_stock_items = TadbirInventoryCache.query.filter(TadbirInventoryCache.quantity > 0).count()
+    out_of_stock_items = TadbirInventoryCache.query.filter(TadbirInventoryCache.quantity == 0).count()
+    low_stock_items = TadbirInventoryCache.query.filter(
+        TadbirInventoryCache.quantity > 0, 
+        TadbirInventoryCache.quantity < 10
+    ).count()
+    
+    stats = {
+        'total_items': total_items,
+        'in_stock_items': in_stock_items,
+        'out_of_stock_items': out_of_stock_items,
+        'low_stock_items': low_stock_items
+    }
+    
+    # Create current_filters object for template
+    current_filters = {
+        'search': search,
+        'stock_filter': stock_filter
+    }
+    
+    inventory = query.order_by(TadbirInventoryCache.cached_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/accounting_inventory.html',
+                         inventory=inventory,
+                         stats=stats,
+                         current_filters=current_filters)
+
+@app.route('/admin/accounting/prices')
+@login_required
+def admin_accounting_prices():
+    """قیمت‌های کالاهای تدبیر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get filter parameters
+    price_type = request.args.get('price_type', '')
+    search = request.args.get('search', '')
+    
+    # Build query
+    query = TadbirPriceCache.query
+    
+    if price_type:
+        query = query.filter_by(price_type=price_type)
+    
+    if search:
+        query = query.filter(
+            models.db.or_(
+                TadbirPriceCache.item_code.contains(search)
+            )
+        )
+    
+    # Get statistics
+    total_prices = TadbirPriceCache.query.count()
+    retail_check_prices = TadbirPriceCache.query.filter_by(price_type='retail_check').count()
+    bulk_check_prices = TadbirPriceCache.query.filter_by(price_type='bulk_check').count()
+    bulk_cash_prices = TadbirPriceCache.query.filter_by(price_type='bulk_cash').count()
+    
+    stats = {
+        'total_prices': total_prices,
+        'retail_check_prices': retail_check_prices,
+        'bulk_check_prices': bulk_check_prices,
+        'bulk_cash_prices': bulk_cash_prices
+    }
+    
+    # Create current_filters object for template
+    current_filters = {
+        'price_type': price_type,
+        'search': search
+    }
+    
+    prices = query.order_by(TadbirPriceCache.cached_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/accounting_prices.html',
+                         prices=prices,
+                         stats=stats,
+                         current_filters=current_filters)
+
+@app.route('/admin/accounting/settings', methods=['GET', 'POST'])
+@login_required
+def admin_accounting_settings():
+    """تنظیمات سیستم حسابداری تدبیر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    if request.method == 'POST':
+        try:
+            # Get form data
+            settings = {
+                'auto_sync_enabled': request.form.get('auto_sync_enabled') == 'on',
+                'sync_interval': int(request.form.get('sync_interval', 3)),
+                'batch_size': int(request.form.get('batch_size', 1000)),
+                'retry_attempts': int(request.form.get('retry_attempts', 3)),
+                'enable_incremental_sync': request.form.get('enable_incremental_sync') == 'on',
+                'sync_products': request.form.get('sync_products') == 'on',
+                'sync_inventory': request.form.get('sync_inventory') == 'on',
+                'sync_prices': request.form.get('sync_prices') == 'on',
+                'default_markup_percentage': float(request.form.get('default_markup_percentage', 10)),
+                'price_rounding': request.form.get('price_rounding', 'round'),
+                'currency_format': request.form.get('currency_format', 'هزار تومان')
+            }
+            
+            # Validate decimal values
+            markup_percentage = settings['default_markup_percentage']
+            if not isinstance(markup_percentage, (int, float)) or markup_percentage < 0 or markup_percentage > 100:
+                flash('درصد اضافی باید عددی بین 0 تا 100 باشد', 'error')
+                return redirect(url_for('admin_accounting_settings'))
+            
+            # Update settings in database
+            for key, value in settings.items():
+                setting = TadbirSyncSettings.query.filter_by(setting_key=key).first()
+                if setting:
+                    setting.setting_value = str(value)
+                    setting.updated_at = datetime.utcnow()
+                    setting.updated_by = current_user.id
+                else:
+                    setting = TadbirSyncSettings(
+                        setting_key=key,
+                        setting_value=str(value),
+                        updated_at=datetime.utcnow(),
+                        updated_by=current_user.id
+                    )
+                    models.db.session.add(setting)
+            
+            models.db.session.commit()
+            
+            # Update scheduler if needed
+            from tadbir_scheduler_service import get_scheduler
+            scheduler = get_scheduler()
+            scheduler.update_settings(settings)
+            
+            flash('تنظیمات با موفقیت به‌روزرسانی شد.', 'success')
+            return redirect(url_for('admin_accounting_settings'))
+            
+        except Exception as e:
+            models.db.session.rollback()
+            flash(f'خطا در به‌روزرسانی تنظیمات: {str(e)}', 'error')
+    
+    # Get current settings
+    settings = {}
+    for setting in TadbirSyncSettings.query.all():
+        # Convert to appropriate type
+        value = setting.setting_value
+        if value.lower() in ('true', 'false'):
+            value = value.lower() == 'true'
+        elif value.isdigit():
+            value = int(value)
+        elif value.replace('.', '').isdigit():
+            value = float(value)
+        settings[setting.setting_key] = value
+    
+    return render_template('admin/accounting_settings.html', settings=settings)
+
+@app.route('/api/accounting/test-connection', methods=['POST'])
+@login_required
+def api_accounting_test_connection():
+    """تست اتصال به API تدبیر"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from tadbir_api_service import TadbirAPIService
+        
+        api_service = TadbirAPIService()
+        result = api_service.test_connection()
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در تست اتصال: {str(e)}'
+        }), 500
+
+@app.route('/api/accounting/sync-status', methods=['GET'])
+@login_required
+def api_accounting_sync_status():
+    """دریافت وضعیت همگام‌سازی"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from tadbir_sync_service import TadbirSyncService
+        from tadbir_scheduler_service import get_scheduler
+        
+        sync_service = TadbirSyncService()
+        scheduler = get_scheduler()
+        
+        sync_status = sync_service.get_sync_status()
+        scheduler_status = scheduler.get_scheduler_status()
+        
+        return jsonify({
+            'success': True,
+            'sync_status': sync_status,
+            'scheduler_status': scheduler_status
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در دریافت وضعیت: {str(e)}'
+        }), 500
+
+@app.route('/api/accounting/debug-api', methods=['POST'])
+@login_required
+def api_accounting_debug_api():
+    """Debug API endpoints"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from tadbir_api_service import TadbirAPIService
+        
+        api_service = TadbirAPIService()
+        debug_info = api_service.debug_api_endpoints()
+        
+        return jsonify({
+            'success': True,
+            'debug_info': debug_info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در دیباگ API: {str(e)}'
+        }), 500
+
+@app.route('/api/accounting/total-counts', methods=['GET'])
+@login_required
+def api_accounting_total_counts():
+    """دریافت تعداد کل کالاها و قیمت‌ها"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from tadbir_api_service import TadbirAPIService
+        
+        api_service = TadbirAPIService()
+        counts = api_service.get_total_counts()
+        
+        return jsonify({
+            'success': True,
+            'counts': counts
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در دریافت تعداد کل: {str(e)}'
+        }), 500
+
+@app.route('/api/accounting/scheduler/start', methods=['POST'])
+@login_required
+def api_accounting_scheduler_start():
+    """شروع سرویس زمان‌بندی"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from tadbir_scheduler_service import get_scheduler
+        
+        scheduler = get_scheduler()
+        scheduler.start_scheduler()
+        
+        status = scheduler.get_scheduler_status()
+        
+        return jsonify({
+            'success': True,
+            'message': 'سرویس زمان‌بندی با موفقیت شروع شد',
+            'status': status
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در شروع سرویس زمان‌بندی: {str(e)}'
+        }), 500
+
+@app.route('/api/accounting/scheduler/stop', methods=['POST'])
+@login_required
+def api_accounting_scheduler_stop():
+    """توقف سرویس زمان‌بندی"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from tadbir_scheduler_service import get_scheduler
+        
+        scheduler = get_scheduler()
+        scheduler.stop_scheduler()
+        
+        status = scheduler.get_scheduler_status()
+        
+        return jsonify({
+            'success': True,
+            'message': 'سرویس زمان‌بندی با موفقیت متوقف شد',
+            'status': status
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در توقف سرویس زمان‌بندی: {str(e)}'
+        }), 500
+
+@app.route('/api/accounting/scheduler/status', methods=['GET'])
+@login_required
+def api_accounting_scheduler_status():
+    """دریافت وضعیت سرویس زمان‌بندی"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from tadbir_scheduler_service import get_scheduler
+        
+        scheduler = get_scheduler()
+        status = scheduler.get_scheduler_status()
+        
+        return jsonify({
+            'success': True,
+            'status': status
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در دریافت وضعیت سرویس زمان‌بندی: {str(e)}'
+        }), 500
+
+@app.route('/api/accounting/sync/prices-to-products', methods=['POST'])
+@login_required
+def api_accounting_sync_prices_to_products():
+    """همگام‌سازی قیمت‌های تدبیر با محصولات محلی"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        from tadbir_sync_service import TadbirSyncService
+        
+        sync_service = TadbirSyncService()
+        result = sync_service.sync_prices_to_products()
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': f'همگام‌سازی قیمت‌ها با موفقیت انجام شد. {result["updated_count"]} محصول بروزرسانی شد.',
+                'result': result
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'خطا در همگام‌سازی قیمت‌ها: {result.get("error", "خطای نامشخص")}'
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در همگام‌سازی قیمت‌ها: {str(e)}'
+        }), 500
+
+@app.route('/api/accounting/validate-decimal', methods=['POST'])
+@login_required
+def api_accounting_validate_decimal():
+    """اعتبارسنجی اعداد اعشاری"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        data = request.get_json()
+        value = data.get('value', '')
+        
+        # Validate decimal input
+        try:
+            float_value = float(value)
+            is_valid = 0 <= float_value <= 100
+            formatted_value = f"{float_value:.2f}"
+            
+            return jsonify({
+                'success': True,
+                'is_valid': is_valid,
+                'value': float_value,
+                'formatted_value': formatted_value,
+                'message': 'عدد معتبر است' if is_valid else 'عدد باید بین 0 تا 100 باشد'
+            })
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'is_valid': False,
+                'message': 'لطفاً عدد معتبر وارد کنید'
+            })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطا در اعتبارسنجی: {str(e)}'
+        }), 500
+
+
+# ==================== POINTS SYSTEM ROUTES ====================
+
+@app.route('/points')
+@login_required
+def user_points():
+    """صفحه امتیازات کاربر"""
+    from points_service import PointsService
+    
+    points_service = PointsService()
+    user_points_data = points_service.get_user_points(current_user.id)
+    user_transactions = points_service.get_user_transactions(current_user.id)
+    available_rewards = points_service.get_available_rewards(current_user.id)
+    
+    return render_template('points/user_points.html',
+                         user_points=user_points_data,
+                         transactions=user_transactions,
+                         available_rewards=available_rewards)
+
+@app.route('/api/points/user')
+@login_required
+def api_get_user_points():
+    """API دریافت امتیازات کاربر"""
+    from points_service import PointsService
+    
+    points_service = PointsService()
+    user_points_data = points_service.get_user_points(current_user.id)
+    
+    return jsonify({
+        'success': True,
+        'data': user_points_data
+    })
+
+@app.route('/api/points/transactions')
+@login_required
+def api_get_user_transactions():
+    """API دریافت تاریخچه تراکنش‌های امتیازی"""
+    from points_service import PointsService
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    points_service = PointsService()
+    transactions = points_service.get_user_transactions(current_user.id, page, per_page)
+    
+    transactions_data = []
+    for transaction in transactions.items:
+        transactions_data.append({
+            'id': transaction.id,
+            'points_amount': transaction.points_amount,
+            'transaction_type': transaction.transaction_type,
+            'source_type': transaction.source_type,
+            'description': transaction.description,
+            'created_at': transaction.created_at.isoformat() if transaction.created_at else None,
+            'expires_at': transaction.expires_at.isoformat() if transaction.expires_at else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'data': transactions_data,
+        'pagination': {
+            'page': transactions.page,
+            'pages': transactions.pages,
+            'per_page': transactions.per_page,
+            'total': transactions.total
+        }
+    })
+
+@app.route('/api/points/level')
+@login_required
+def api_get_user_level():
+    """API دریافت سطح کاربر"""
+    from points_service import PointsService
+    
+    points_service = PointsService()
+    user_level = points_service.get_user_level(current_user.id)
+    
+    return jsonify({
+        'success': True,
+        'data': user_level
+    })
+
+@app.route('/api/rewards')
+@login_required
+def api_get_available_rewards():
+    """API دریافت جوایز قابل استفاده"""
+    from points_service import PointsService
+    
+    points_service = PointsService()
+    rewards = points_service.get_available_rewards(current_user.id)
+    
+    rewards_data = []
+    for reward in rewards:
+        rewards_data.append({
+            'id': reward.id,
+            'name': reward.name,
+            'name_fa': reward.name_fa,
+            'description': reward.description,
+            'description_fa': reward.description_fa,
+            'points_required': reward.points_required,
+            'discount_percentage': reward.discount_percentage,
+            'discount_amount': reward.discount_amount,
+            'reward_type': reward.reward_type
+        })
+    
+    return jsonify({
+        'success': True,
+        'data': rewards_data
+    })
+
+@app.route('/api/rewards/redeem', methods=['POST'])
+@login_required
+def api_redeem_reward():
+    """API استفاده از جایزه"""
+    from points_service import PointsService
+    
+    data = request.get_json()
+    reward_id = data.get('reward_id')
+    invoice_id = data.get('invoice_id')
+    
+    if not reward_id:
+        return jsonify({
+            'success': False,
+            'message': 'شناسه جایزه الزامی است'
+        }), 400
+    
+    points_service = PointsService()
+    result = points_service.redeem_reward(current_user.id, reward_id, invoice_id)
+    
+    if result['success']:
+        return jsonify(result)
+    else:
+        return jsonify(result), 400
+
+@app.route('/api/rewards/history')
+@login_required
+def api_get_rewards_history():
+    """API تاریخچه استفاده از جوایز"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    redemptions = RewardRedemption.query.filter_by(user_id=current_user.id)\
+        .order_by(RewardRedemption.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    redemptions_data = []
+    for redemption in redemptions.items:
+        redemptions_data.append({
+            'id': redemption.id,
+            'reward_name': redemption.reward.name_fa,
+            'points_spent': redemption.points_spent,
+            'status': redemption.status,
+            'used_at': redemption.used_at.isoformat() if redemption.used_at else None,
+            'created_at': redemption.created_at.isoformat() if redemption.created_at else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'data': redemptions_data,
+        'pagination': {
+            'page': redemptions.page,
+            'pages': redemptions.pages,
+            'per_page': redemptions.per_page,
+            'total': redemptions.total
+        }
+    })
+
+# ==================== ADMIN POINTS SYSTEM ROUTES ====================
+
+@app.route('/admin/points')
+@login_required
+def admin_points_dashboard():
+    """داشبورد مدیریت امتیازات"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    from points_service import PointsService, PointsAnalytics
+    
+    points_service = PointsService()
+    analytics = PointsAnalytics()
+    
+    # آمار کلی
+    statistics = analytics.get_points_statistics()
+    top_users = analytics.get_top_users_by_points(10)
+    points_trend = analytics.get_points_trend(30)
+    
+    return render_template('admin/points/dashboard.html',
+                         statistics=statistics,
+                         top_users=top_users,
+                         points_trend=points_trend)
+
+@app.route('/admin/points/users')
+@login_required
+def admin_points_users():
+    """مدیریت امتیازات کاربران"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # فیلترها
+    search = request.args.get('search', '')
+    min_points = request.args.get('min_points', type=int)
+    max_points = request.args.get('max_points', type=int)
+    
+    # ساخت کوئری
+    query = db.session.query(UserPoints, User).join(User)
+    
+    if search:
+        query = query.filter(
+            models.db.or_(
+                User.username.contains(search),
+                User.full_name.contains(search),
+                User.company_name.contains(search)
+            )
+        )
+    
+    if min_points is not None:
+        query = query.filter(UserPoints.current_points >= min_points)
+    
+    if max_points is not None:
+        query = query.filter(UserPoints.current_points <= max_points)
+    
+    users = query.order_by(UserPoints.current_points.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('admin/points/users.html', users=users)
+
+@app.route('/admin/points/adjust', methods=['POST'])
+@login_required
+def admin_adjust_user_points():
+    """تنظیم دستی امتیازات کاربر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    user_id = request.form.get('user_id', type=int)
+    points_amount = request.form.get('points_amount', type=int)
+    description = request.form.get('description', '')
+    
+    if not user_id or points_amount is None:
+        flash('تمام فیلدها الزامی است.', 'error')
+        return redirect(url_for('admin_points_users'))
+    
+    from points_service import PointsService
+    points_service = PointsService()
+    
+    result = points_service.adjust_user_points(
+        user_id, points_amount, description, current_user.id
+    )
+    
+    if result['success']:
+        flash(result['message'], 'success')
+    else:
+        flash(result['message'], 'error')
+    
+    return redirect(url_for('admin_points_users'))
+
+@app.route('/admin/rewards')
+@login_required
+def admin_rewards():
+    """مدیریت جوایز"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    rewards = Reward.query.order_by(Reward.created_at.desc()).all()
+    return render_template('admin/points/rewards.html', rewards=rewards)
+
+@app.route('/admin/rewards/add', methods=['POST'])
+@login_required
+def admin_add_reward():
+    """اضافه کردن جایزه جدید"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        name = request.form.get('name', '').strip()
+        name_fa = request.form.get('name_fa', '').strip()
+        description = request.form.get('description', '').strip()
+        description_fa = request.form.get('description_fa', '').strip()
+        points_required = request.form.get('points_required', type=int)
+        reward_type = request.form.get('reward_type', '')
+        discount_percentage = request.form.get('discount_percentage', type=float)
+        discount_amount = request.form.get('discount_amount', type=float)
+        max_redemptions = request.form.get('max_redemptions', type=int)
+        valid_from = request.form.get('valid_from', '')
+        valid_until = request.form.get('valid_until', '')
+        is_active = request.form.get('is_active') == 'on'
+        
+        # اعتبارسنجی
+        if not name or not name_fa or not points_required:
+            flash('نام، نام فارسی و امتیاز مورد نیاز الزامی است.', 'error')
+            return redirect(url_for('admin_rewards'))
+        
+        # تبدیل تاریخ‌ها
+        valid_from_date = None
+        valid_until_date = None
+        
+        if valid_from:
+            try:
+                valid_from_date = datetime.strptime(valid_from, '%Y-%m-%d')
+            except ValueError:
+                flash('فرمت تاریخ شروع صحیح نیست.', 'error')
+                return redirect(url_for('admin_rewards'))
+        
+        if valid_until:
+            try:
+                valid_until_date = datetime.strptime(valid_until, '%Y-%m-%d')
+            except ValueError:
+                flash('فرمت تاریخ پایان صحیح نیست.', 'error')
+                return redirect(url_for('admin_rewards'))
+        
+        # ایجاد جایزه
+        reward = Reward(
+            name=name,
+            name_fa=name_fa,
+            description=description,
+            description_fa=description_fa,
+            points_required=points_required,
+            reward_type=reward_type,
+            discount_percentage=discount_percentage,
+            discount_amount=discount_amount,
+            max_redemptions=max_redemptions,
+            valid_from=valid_from_date,
+            valid_until=valid_until_date,
+            is_active=is_active
+        )
+        
+        models.db.session.add(reward)
+        models.db.session.commit()
+        
+        flash(f'جایزه "{name_fa}" با موفقیت اضافه شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در افزودن جایزه. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_rewards'))
+
+@app.route('/admin/rewards/edit/<int:reward_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_reward(reward_id):
+    """ویرایش جایزه"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    reward = Reward.query.get_or_404(reward_id)
+    
+    if request.method == 'POST':
+        try:
+            reward.name = request.form.get('name', '').strip()
+            reward.name_fa = request.form.get('name_fa', '').strip()
+            reward.description = request.form.get('description', '').strip()
+            reward.description_fa = request.form.get('description_fa', '').strip()
+            reward.points_required = request.form.get('points_required', type=int)
+            reward.reward_type = request.form.get('reward_type', '')
+            reward.discount_percentage = request.form.get('discount_percentage', type=float)
+            reward.discount_amount = request.form.get('discount_amount', type=float)
+            reward.max_redemptions = request.form.get('max_redemptions', type=int)
+            reward.is_active = request.form.get('is_active') == 'on'
+            
+            # تبدیل تاریخ‌ها
+            valid_from = request.form.get('valid_from', '')
+            valid_until = request.form.get('valid_until', '')
+            
+            if valid_from:
+                try:
+                    reward.valid_from = datetime.strptime(valid_from, '%Y-%m-%d')
+                except ValueError:
+                    reward.valid_from = None
+            else:
+                reward.valid_from = None
+            
+            if valid_until:
+                try:
+                    reward.valid_until = datetime.strptime(valid_until, '%Y-%m-%d')
+                except ValueError:
+                    reward.valid_until = None
+            else:
+                reward.valid_until = None
+            
+            models.db.session.commit()
+            
+            flash(f'جایزه "{reward.name_fa}" با موفقیت به‌روزرسانی شد.', 'success')
+            return redirect(url_for('admin_rewards'))
+            
+        except Exception as e:
+            models.db.session.rollback()
+            flash('خطا در به‌روزرسانی جایزه. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return render_template('admin/points/edit_reward.html', reward=reward)
+
+@app.route('/admin/rewards/delete/<int:reward_id>', methods=['POST'])
+@login_required
+def admin_delete_reward(reward_id):
+    """حذف جایزه"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    reward = Reward.query.get_or_404(reward_id)
+    reward_name = reward.name_fa
+    
+    try:
+        # بررسی استفاده از جایزه
+        if reward.redemptions:
+            flash(f'نمی‌توان جایزه "{reward_name}" را حذف کرد زیرا استفاده شده است.', 'error')
+            return redirect(url_for('admin_rewards'))
+        
+        models.db.session.delete(reward)
+        models.db.session.commit()
+        
+        flash(f'جایزه "{reward_name}" با موفقیت حذف شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در حذف جایزه. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_rewards'))
+
+@app.route('/admin/points/rules')
+@login_required
+def admin_points_rules():
+    """مدیریت قوانین امتیازدهی"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    rules = PointsRule.query.order_by(PointsRule.created_at.desc()).all()
+    return render_template('admin/points/rules.html', rules=rules)
+
+@app.route('/admin/points/rules/add', methods=['POST'])
+@login_required
+def admin_add_points_rule():
+    """اضافه کردن قانون امتیازدهی جدید"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        rule_name = request.form.get('rule_name', '').strip()
+        rule_name_fa = request.form.get('rule_name_fa', '').strip()
+        points_per_100k_rials = request.form.get('points_per_100k_rials', type=int)
+        bonus_points_per_product = request.form.get('bonus_points_per_product', type=int)
+        max_bonus_points = request.form.get('max_bonus_points', type=int)
+        is_active = request.form.get('is_active') == 'on'
+        
+        # اعتبارسنجی
+        if not rule_name or not rule_name_fa or not points_per_100k_rials:
+            flash('نام قانون، نام فارسی و امتیاز به ازای هر 100 هزار ریال الزامی است.', 'error')
+            return redirect(url_for('admin_points_rules'))
+        
+        # ایجاد قانون
+        rule = PointsRule(
+            rule_name=rule_name,
+            rule_name_fa=rule_name_fa,
+            points_per_100k_rials=points_per_100k_rials,
+            bonus_points_per_product=bonus_points_per_product,
+            max_bonus_points=max_bonus_points,
+            is_active=is_active
+        )
+        
+        models.db.session.add(rule)
+        models.db.session.commit()
+        
+        flash(f'قانون "{rule_name_fa}" با موفقیت اضافه شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در افزودن قانون. لطفاً دوباره تلاش کنید.', 'error')
+    
+    return redirect(url_for('admin_points_rules'))
+
+@app.route('/admin/points/analytics')
+@login_required
+def admin_points_analytics():
+    """آمار و تحلیل سیستم امتیازدهی"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    from points_service import PointsAnalytics
+    
+    analytics = PointsAnalytics()
+    statistics = analytics.get_points_statistics()
+    top_users = analytics.get_top_users_by_points(20)
+    points_trend = analytics.get_points_trend(90)
+    
+    return render_template('admin/points/analytics.html',
+                         statistics=statistics,
+                         top_users=top_users,
+                         points_trend=points_trend)
+
+@app.route('/admin/points/expire', methods=['POST'])
+@login_required
+def admin_expire_points():
+    """انقضای امتیازات قدیمی"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    from points_service import PointsService
+    
+    points_service = PointsService()
+    result = points_service.expire_old_points()
+    
+    if result['success']:
+        flash(result['message'], 'success')
+    else:
+        flash(result['message'], 'error')
+    
+    return redirect(url_for('admin_points_dashboard'))
+
+# ==================== STATIC FILES ====================
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    """Serve uploaded files"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# ==================== ERROR HANDLERS ====================
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('errors/404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('errors/500.html'), 500
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    return render_template('errors/403.html'), 403

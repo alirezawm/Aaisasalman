@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+
+{% block title %}{{ brand.name_fa }} - محصولات - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">خانه</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('brands') }}">برندها</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('brand_models', brand_id=brand.id) }}">{{ brand.name_fa }}</a></li>
+            <li class="breadcrumb-item active">محصولات</li>
+        </ol>
+    </nav>
+
+    <!-- Brand Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card brand-header-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            {% if brand.logo_url %}
+                                <img src="{{ brand.logo_url }}" alt="{{ brand.name }}" 
+                                     class="img-fluid brand-logo-large">
+                            {% else %}
+                                <div class="brand-logo-placeholder">
+                                    <i class="fas fa-car fa-4x text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <h1 class="display-6 fw-bold text-danger mb-2">
+                                محصولات {{ brand.name_fa }}
+                            </h1>
+                            <h2 class="h4 text-muted mb-3">{{ brand.name }}</h2>
+                            {% if brand.description %}
+                                <p class="lead">{{ brand.description }}</p>
+                            {% endif %}
+                            <div class="brand-info">
+                                <span class="badge bg-secondary me-2">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    {{ brand.country_of_origin or 'کشور نامشخص' }}
+                                </span>
+                                <span class="badge bg-info">
+                                    <i class="fas fa-box me-1"></i>
+                                    {{ products.total }} محصول موجود
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <a href="{{ url_for('brand_models', brand_id=brand.id) }}" class="btn btn-outline-danger">
+                                <i class="fas fa-arrow-right me-2"></i>بازگشت
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-12">
+            <!-- Search and Filters -->
+            <div class="filter-section">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label filter-title">جستجو</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="جستجو در کد کالا، نام محصول..." value="{{ current_filters.search or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label filter-title">دسته‌بندی</label>
+                        <select class="form-select" name="category_id">
+                            <option value="">همه دسته‌ها</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {% if current_filters.category_id == category.id %}selected{% endif %}>
+                                {{ category.category_name_fa }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label filter-title">فیلتر</label>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-filter me-1"></i>اعمال
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label class="form-label filter-title">پاک کردن</label>
+                        <div class="d-grid">
+                            <a href="{{ url_for('brand_products', brand_id=brand.id) }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>پاک کردن
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="in_stock_only" value="1" 
+                                   {% if current_filters.in_stock_only %}checked{% endif %}>
+                            <label class="form-check-label">
+                                <i class="fas fa-check-circle me-2 text-success"></i>فقط محصولات موجود در انبار
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Multi-select Controls -->
+            <div class="multi-select-controls mb-3">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="selectAll">
+                            <label class="form-check-label" for="selectAll">
+                                <i class="fas fa-check-square me-2"></i>انتخاب همه
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <span class="selected-count badge bg-primary fs-6">0 محصول انتخاب شده</span>
+                        <button class="btn btn-success ms-2" id="addSelectedToCart" disabled>
+                            <i class="fas fa-cart-plus me-1"></i>افزودن انتخاب شده‌ها
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-boxes me-2"></i>فهرست محصولات {{ brand.name_fa }}
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th width="5%">
+                                        <input type="checkbox" id="selectAllHeader" class="form-check-input">
+                                    </th>
+                                    <th width="20%">وضعیت موجودی</th>
+                                    <th width="15%">کد کالا</th>
+                                    <th width="25%">نام کالا</th>
+                                    <th width="15%">قیمت</th>
+                                    <th width="10%">مدت تسویه</th>
+                                    <th width="10%">تعداد</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products.items %}
+                                <tr>
+                                    <td>
+                                        <div class="form-check">
+                                            <input class="form-check-input product-checkbox" type="checkbox" 
+                                                   id="product_{{ product.id }}" data-product-id="{{ product.id }}">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if product.stock_quantity > 0 %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>موجود
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times me-1"></i>ناموجود
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <code>{{ product.code or product.sku }}</code>
+                                    </td>
+                                    <td>
+                                        <strong>{{ product.name }}</strong>
+                                        {% if product.description %}
+                                            <small class="d-block text-muted">{{ product.description[:50] }}...</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="price-selection">
+                                            {% if current_user.is_bulk_buyer %}
+                                            <div class="price-selection-container mb-2">
+                                                <div class="btn-group btn-group-xs w-100" role="group" aria-label="انتخاب نوع قیمت">
+                                                    <input type="radio" class="btn-check price-type-radio" 
+                                                           name="price_type_{{ product.id }}" id="cash_{{ product.id }}" 
+                                                           value="cash" data-product-id="{{ product.id }}"
+                                                           data-bulk-cash-price="{{ product.bulk_price_cash }}"
+                                                           data-bulk-check-price="{{ product.bulk_price_check }}"
+                                                           data-retail-cash-price="{{ product.retail_price_cash }}"
+                                                           data-retail-check-price="{{ product.retail_price_check }}"
+                                                           data-bulk-buyer="{{ current_user.is_bulk_buyer|lower }}"
+                                                           checked>
+                                                    <label class="btn btn-outline-success btn-xs" for="cash_{{ product.id }}">
+                                                        <i class="fas fa-money-bill-wave"></i>
+                                                        <div class="d-block">
+                                                            <span>نقدی</span>
+                                                            <small class="d-block">{{ "{:,.0f}".format(product.bulk_price_cash) }} هزار ریال</small>
+                                                        </div>
+                                                    </label>
+                                                    
+                                                    <input type="radio" class="btn-check price-type-radio" 
+                                                           name="price_type_{{ product.id }}" id="check_{{ product.id }}" 
+                                                           value="check" data-product-id="{{ product.id }}"
+                                                           data-bulk-cash-price="{{ product.bulk_price_cash }}"
+                                                           data-bulk-check-price="{{ product.bulk_price_check }}"
+                                                           data-retail-cash-price="{{ product.retail_price_cash }}"
+                                                           data-retail-check-price="{{ product.retail_price_check }}"
+                                                           data-bulk-buyer="{{ current_user.is_bulk_buyer|lower }}">
+                                                    <label class="btn btn-outline-warning btn-xs" for="check_{{ product.id }}">
+                                                        <i class="fas fa-file-invoice"></i>
+                                                        <div class="d-block">
+                                                            <span>چکی</span>
+                                                            <small class="d-block">{{ "{:,.0f}".format(product.bulk_price_check) }} هزار ریال</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <!-- خریدار تکی فقط قیمت چکی دارد -->
+                                            <div class="price-selection-container mb-2">
+                                                <div class="btn-group btn-group-xs w-100" role="group" aria-label="قیمت چکی">
+                                                    <input type="radio" class="btn-check price-type-radio" 
+                                                           name="price_type_{{ product.id }}" id="check_{{ product.id }}" 
+                                                           value="check" data-product-id="{{ product.id }}"
+                                                           data-bulk-cash-price="{{ product.bulk_price_cash }}"
+                                                           data-bulk-check-price="{{ product.bulk_price_check }}"
+                                                           data-retail-cash-price="{{ product.retail_price_check }}"
+                                                           data-retail-check-price="{{ product.retail_price_check }}"
+                                                           data-bulk-buyer="false"
+                                                           checked>
+                                                    <label class="btn btn-outline-warning btn-xs w-100" for="check_{{ product.id }}">
+                                                        <i class="fas fa-file-invoice"></i>
+                                                        <div class="d-block">
+                                                            <span>قیمت چکی</span>
+                                                            <small class="d-block">{{ "{:,.0f}".format(product.retail_price_check) }} هزار ریال</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            {% if current_user.is_bulk_buyer %}
+                                            <div class="price-savings text-success" style="font-size: 0.7rem; text-align: center; margin-top: 5px;">
+                                                <i class="fas fa-percentage"></i>
+                                                صرفه‌جویی چکی: {{ "{:,.0f}".format(product.retail_price_check - product.bulk_price_check) }} هزار ریال
+                                            </div>
+                                            {% endif %}
+                                            {% if product.cash_discount_percentage > 0 %}
+                                                <small class="text-success" style="font-size: 0.7rem; text-align: center; display: block; margin-top: 3px;">
+                                                    <i class="fas fa-percentage"></i>
+                                                    {{ product.cash_discount_percentage }}% تخفیف
+                                                </small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if product.settlement_period > 0 %}
+                                            {{ product.settlement_period }} روز
+                                        {% else %}
+                                            فوری
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="input-group input-group-sm">
+                                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="-1">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <input type="number" class="form-control text-center" 
+                                                   id="quantity_{{ product.id }}" value="1" min="1">
+                                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="1">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            
+            <!-- Pagination -->
+            {% if products.pages > 1 %}
+            <nav aria-label="صفحه‌بندی محصولات" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if products.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('brand_products', brand_id=brand.id, page=products.prev_num, **current_filters) }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in products.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != products.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('brand_products', brand_id=brand.id, page=page_num, **current_filters) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if products.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('brand_products', brand_id=brand.id, page=products.next_num, **current_filters) }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.brand-header-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.brand-logo-large {
+    max-height: 120px;
+    transition: transform 0.3s ease;
+}
+
+.brand-logo-large:hover {
+    transform: scale(1.1);
+}
+
+.brand-logo-placeholder {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filter-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
+}
+
+.filter-title {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.multi-select-controls {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-group-xs > .btn, .btn-xs {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+
+.price-selection-container .btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.price-selection-container .btn {
+    padding: 5px 8px;
+    font-size: 0.7rem;
+    text-align: center;
+}
+
+.price-selection-container .btn i {
+    font-size: 0.8rem;
+}
+
+.price-selection-container .btn small {
+    font-size: 0.6rem;
+    line-height: 1.2;
+}
+
+.quantity-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quantity-btn i {
+    font-size: 0.7rem;
+}
+
+.form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.pagination .page-link {
+    color: #dc3545;
+    border-color: #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.pagination .page-link:hover {
+    color: #fff;
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize quantity controls
+    $('.quantity-btn').on('click', function() {
+        var input = $(this).siblings('input');
+        var currentValue = parseInt(input.val()) || 1;
+        var change = $(this).data('change');
+        var newValue = currentValue + change;
+        
+        if (newValue >= 1) {
+            input.val(newValue);
+        }
+    });
+    
+    // Price calculation
+    $('.price-type-radio').on('change', function() {
+        var productId = $(this).data('product-id');
+        var priceType = $(this).val();
+        var isBulkBuyer = $(this).data('bulk-buyer') === 'true';
+        
+        var priceElement = $('#price_' + productId);
+        var price = 0;
+        
+        if (isBulkBuyer && priceType === 'cash') {
+            price = $(this).data('bulk-cash-price');
+        } else if (isBulkBuyer && priceType === 'check') {
+            price = $(this).data('bulk-check-price');
+        }
+        
+        priceElement.text(price.toLocaleString('fa-IR') + ' هزار ریال');
+    });
+    
+    // Multi-select functionality
+    $('#selectAll, #selectAllHeader').on('change', function() {
+        var isChecked = $(this).is(':checked');
+        $('.product-checkbox').prop('checked', isChecked);
+        updateSelectedCount();
+    });
+    
+    $('.product-checkbox').on('change', function() {
+        updateSelectedCount();
+        updateSelectAllState();
+    });
+    
+    function updateSelectedCount() {
+        var selectedCount = $('.product-checkbox:checked').length;
+        $('.selected-count').text(selectedCount + ' محصول انتخاب شده');
+        $('#addSelectedToCart').prop('disabled', selectedCount === 0);
+    }
+    
+    function updateSelectAllState() {
+        var totalCheckboxes = $('.product-checkbox').length;
+        var checkedCheckboxes = $('.product-checkbox:checked').length;
+        
+        if (checkedCheckboxes === 0) {
+            $('#selectAll, #selectAllHeader').prop('indeterminate', false).prop('checked', false);
+        } else if (checkedCheckboxes === totalCheckboxes) {
+            $('#selectAll, #selectAllHeader').prop('indeterminate', false).prop('checked', true);
+        } else {
+            $('#selectAll, #selectAllHeader').prop('indeterminate', true);
+        }
+    }
+    
+    // Add selected to cart
+    $('#addSelectedToCart').on('click', function() {
+        var selectedProducts = [];
+        
+        $('.product-checkbox:checked').each(function() {
+            var productId = $(this).data('product-id');
+            var quantity = $('#quantity_' + productId).val() || 1;
+            var priceType = $('input[name="price_type_' + productId + '"]:checked').val() || 'cash';
+            
+            selectedProducts.push({
+                product_id: productId,
+                quantity: parseInt(quantity),
+                price_type: priceType
+            });
+        });
+        
+        if (selectedProducts.length > 0) {
+            // Send AJAX request to add multiple products to cart
+            $.ajax({
+                url: '/api/cart/add-multiple',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ products: selectedProducts }),
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        // Clear selections
+                        $('.product-checkbox').prop('checked', false);
+                        updateSelectedCount();
+                        updateSelectAllState();
+                    } else {
+                        alert('خطا: ' + response.message);
+                    }
+                },
+                error: function() {
+                    alert('خطا در افزودن محصولات به سبد خرید');
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

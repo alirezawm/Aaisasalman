@@ -1,0 +1,285 @@
+{
+  "system_prompt": "You are an AI assistant helping to implement a real-time price display system for a Persian automotive parts e-commerce platform. When users switch between cash and check payment types, prices should update instantly with smooth animations and proper validation.",
+  
+  "context": {
+    "platform": "Flask-based automotive parts e-commerce system",
+    "language": "Persian (Farsi)",
+    "currency": "Toman (prices stored in billions, displayed in millions)",
+    "user_types": {
+      "bulk_buyer": "خریدار عمده - has access to wholesale prices",
+      "regular_user": "کاربر عادی - retail prices only"
+    },
+    "payment_types": {
+      "cash": "نقدی - immediate payment with discount",
+      "check": "چکی - deferred payment, usually higher price"
+    },
+    "price_structure": {
+      "bulk_price_cash": "Wholesale price for cash payments (lowest)",
+      "bulk_price_check": "Wholesale price for check payments (higher than cash)",
+      "retail_price_cash": "Retail price for cash payments",
+      "retail_price_check": "Retail price for check payments (highest)"
+    }
+  },
+  
+  "requirements": {
+    "real_time_price_display": {
+      "instant_updates": [
+        {
+          "trigger": "User clicks cash/check radio button",
+          "action": "Immediately update price display",
+          "animation": "Smooth fade transition",
+          "validation": "Ensure price is valid and greater than 0"
+        }
+      ],
+      "price_calculation_logic": [
+        {
+          "user_type": "bulk_buyer",
+          "payment_cash": "Show bulk_price_cash",
+          "payment_check": "Show bulk_price_check",
+          "fallback": "If price is 0 or invalid, show 'قیمت نامشخص'"
+        },
+        {
+          "user_type": "regular_user", 
+          "payment_cash": "Show retail_price_cash",
+          "payment_check": "Show retail_price_check",
+          "fallback": "If price is 0 or invalid, show 'قیمت نامشخص'"
+        }
+      ],
+      "ui_enhancements": [
+        {
+          "element": "Price display container",
+          "animation": "Fade out old price, fade in new price",
+          "duration": "300ms transition",
+          "easing": "ease-in-out"
+        },
+        {
+          "element": "Payment type buttons",
+          "state": "Active button highlighted, inactive button muted",
+          "feedback": "Visual indication of current selection"
+        }
+      ]
+    }
+  },
+  
+  "implementation_guide": {
+    "step_1_html_template_updates": {
+      "description": "Update HTML templates to include all price data attributes",
+      "templates_to_update": [
+        {
+          "file": "templates/shop.html",
+          "section": "Price type radio buttons (lines 198-218)",
+          "required_attributes": [
+            "data-bulk-cash-price",
+            "data-bulk-check-price", 
+            "data-retail-cash-price",
+            "data-retail-check-price",
+            "data-bulk-buyer"
+          ]
+        },
+        {
+          "file": "templates/category_products.html",
+          "section": "Price type radio buttons (lines 189-209)",
+          "required_attributes": [
+            "data-bulk-cash-price",
+            "data-bulk-check-price",
+            "data-retail-cash-price", 
+            "data-retail-check-price",
+            "data-bulk-buyer"
+          ]
+        }
+      ]
+    },
+    
+    "step_2_javascript_enhancements": {
+      "description": "Enhance JavaScript for real-time price updates",
+      "file": "static/js/main.js",
+      "functions_to_implement": [
+        {
+          "name": "updatePriceDisplay",
+          "purpose": "Update price with animation and validation",
+          "parameters": ["productId", "price", "priceElement"]
+        },
+        {
+          "name": "validatePrice",
+          "purpose": "Validate price data and return formatted value",
+          "parameters": ["price"]
+        },
+        {
+          "name": "animatePriceChange", 
+          "purpose": "Smooth animation for price transitions",
+          "parameters": ["element", "newPrice"]
+        }
+      ]
+    },
+    
+    "step_3_css_animations": {
+      "description": "Add CSS for smooth price transitions",
+      "file": "static/css/style.css",
+      "classes_to_add": [
+        {
+          "name": ".price-transition",
+          "properties": "transition: opacity 0.3s ease-in-out"
+        },
+        {
+          "name": ".price-fade-out",
+          "properties": "opacity: 0"
+        },
+        {
+          "name": ".price-fade-in", 
+          "properties": "opacity: 1"
+        }
+      ]
+    }
+  },
+  
+  "code_examples": {
+    "enhanced_javascript": {
+      "description": "Improved JavaScript for real-time price updates",
+      "code": "// Enhanced price calculation with animations\n$('.price-type-radio').on('change', function() {\n    var productId = $(this).data('product-id');\n    var priceType = $(this).val();\n    var isBulkBuyer = $(this).data('bulk-buyer') === 'true';\n    \n    var priceElement = $('#price-' + productId);\n    \n    // Get all price data attributes with validation\n    var bulkCashPrice = parseFloat($(this).data('bulk-cash-price')) || 0;\n    var bulkCheckPrice = parseFloat($(this).data('bulk-check-price')) || 0;\n    var retailCashPrice = parseFloat($(this).data('retail-cash-price')) || 0;\n    var retailCheckPrice = parseFloat($(this).data('retail-check-price')) || 0;\n    \n    // Determine price based on user type and payment method\n    var price = 0;\n    if (isBulkBuyer) {\n        price = priceType === 'cash' ? bulkCashPrice : bulkCheckPrice;\n    } else {\n        price = priceType === 'cash' ? retailCashPrice : retailCheckPrice;\n    }\n    \n    // Update price with animation\n    updatePriceDisplay(productId, price, priceElement);\n    \n    // Update cart total\n    updateCartTotal();\n});\n\nfunction updatePriceDisplay(productId, price, priceElement) {\n    // Validate price\n    var displayPrice = validatePrice(price);\n    \n    // Animate price change\n    animatePriceChange(priceElement, displayPrice);\n}\n\nfunction validatePrice(price) {\n    if (price > 0) {\n        return formatPrice(price);\n    } else {\n        return 'قیمت نامشخص';\n    }\n}\n\nfunction animatePriceChange(element, newPrice) {\n    // Fade out\n    element.addClass('price-fade-out');\n    \n    setTimeout(function() {\n        // Update content\n        element.text(newPrice);\n        \n        // Fade in\n        element.removeClass('price-fade-out').addClass('price-fade-in');\n        \n        // Clean up classes\n        setTimeout(function() {\n            element.removeClass('price-fade-in');\n        }, 300);\n    }, 150);\n}"
+    },
+    
+    "html_template_example": {
+      "description": "Complete HTML template with all required data attributes",
+      "html": "{% if current_user.is_bulk_buyer %}\n<div class=\"btn-group btn-group-sm mb-2\" role=\"group\">\n    <input type=\"radio\" class=\"btn-check price-type-radio\" \n           name=\"price_type_{{ product.id }}\" id=\"cash_{{ product.id }}\" \n           value=\"cash\" data-product-id=\"{{ product.id }}\"\n           data-bulk-cash-price=\"{{ product.bulk_price_cash }}\"\n           data-bulk-check-price=\"{{ product.bulk_price_check }}\"\n           data-retail-cash-price=\"{{ product.retail_price_cash }}\"\n           data-retail-check-price=\"{{ product.retail_price_check }}\"\n           data-bulk-buyer=\"{{ current_user.is_bulk_buyer|lower }}\"\n           checked>\n    <label class=\"btn btn-outline-success\" for=\"cash_{{ product.id }}\">\n        نقدی\n    </label>\n    \n    <input type=\"radio\" class=\"btn-check price-type-radio\" \n           name=\"price_type_{{ product.id }}\" id=\"check_{{ product.id }}\" \n           value=\"check\" data-product-id=\"{{ product.id }}\"\n           data-bulk-cash-price=\"{{ product.bulk_price_cash }}\"\n           data-bulk-check-price=\"{{ product.bulk_price_check }}\"\n           data-retail-cash-price=\"{{ product.retail_price_cash }}\"\n           data-retail-check-price=\"{{ product.retail_price_check }}\"\n           data-bulk-buyer=\"{{ current_user.is_bulk_buyer|lower }}\">\n    <label class=\"btn btn-outline-warning\" for=\"check_{{ product.id }}\">\n        چکی\n    </label>\n</div>\n{% endif %}\n<div class=\"product-price price-transition\" id=\"price_{{ product.id }}\">\n    {% if current_user.is_bulk_buyer %}\n        {{ \"{:,.0f}\".format(product.bulk_price_cash * 1000000) }} تومان\n    {% else %}\n        {{ \"{:,.0f}\".format(product.retail_price_cash * 1000000) }} تومان\n    {% endif %}\n</div>"
+    },
+    
+    "css_animations": {
+      "description": "CSS for smooth price transitions",
+      "css": "/* Price transition animations */\n.product-price {\n    transition: opacity 0.3s ease-in-out;\n    min-height: 1.5em; /* Prevent layout shift */\n}\n\n.price-fade-out {\n    opacity: 0;\n}\n\n.price-fade-in {\n    opacity: 1;\n}\n\n/* Payment type button states */\n.price-type-radio:checked + label {\n    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);\n    border-color: #198754;\n}\n\n.price-type-radio:not(:checked) + label {\n    opacity: 0.7;\n}\n\n/* Loading state for price updates */\n.price-loading {\n    position: relative;\n}\n\n.price-loading::after {\n    content: '';\n    position: absolute;\n    top: 50%;\n    left: 50%;\n    width: 16px;\n    height: 16px;\n    margin: -8px 0 0 -8px;\n    border: 2px solid #f3f3f3;\n    border-top: 2px solid #198754;\n    border-radius: 50%;\n    animation: spin 1s linear infinite;\n}\n\n@keyframes spin {\n    0% { transform: rotate(0deg); }\n    100% { transform: rotate(360deg); }\n}"
+    }
+  },
+  
+  "testing_scenarios": {
+    "scenario_1_bulk_buyer_price_switch": {
+      "description": "Bulk buyer switches between cash and check prices",
+      "steps": [
+        "1. Login as bulk buyer",
+        "2. Navigate to product page",
+        "3. Verify cash price is displayed (bulk_price_cash)",
+        "4. Click check payment type",
+        "5. Verify price updates to bulk_price_check",
+        "6. Click cash payment type again",
+        "7. Verify price returns to bulk_price_cash"
+      ],
+      "expected_results": [
+        "Price updates instantly without page reload",
+        "Smooth fade animation between price changes",
+        "Check price is higher than cash price",
+        "No '0' or invalid prices displayed"
+      ]
+    },
+    
+    "scenario_2_regular_user_price_switch": {
+      "description": "Regular user switches between cash and check prices",
+      "steps": [
+        "1. Login as regular user",
+        "2. Navigate to product page", 
+        "3. Verify cash price is displayed (retail_price_cash)",
+        "4. Click check payment type",
+        "5. Verify price updates to retail_price_check"
+      ],
+      "expected_results": [
+        "Price updates instantly",
+        "Check price is higher than cash price",
+        "No bulk buyer price options shown"
+      ]
+    },
+    
+    "scenario_3_invalid_price_handling": {
+      "description": "System handles invalid or missing price data",
+      "steps": [
+        "1. Set product bulk_price_check to 0",
+        "2. Login as bulk buyer",
+        "3. Select check payment type",
+        "4. Verify 'قیمت نامشخص' is displayed"
+      ],
+      "expected_results": [
+        "System shows 'قیمت نامشخص' instead of 0",
+        "No JavaScript errors occur",
+        "UI remains functional"
+      ]
+    }
+  },
+  
+  "validation_rules": {
+    "price_validation": [
+      "All price values must be greater than 0",
+      "Check prices must be higher than cash prices for same user type",
+      "Bulk prices must be lower than retail prices for same payment type",
+      "Invalid prices should display 'قیمت نامشخص'"
+    ],
+    "ui_validation": [
+      "Price updates must occur within 100ms of user interaction",
+      "Animations must be smooth and not cause layout shifts",
+      "Payment type buttons must clearly show active state",
+      "Price display must maintain consistent formatting"
+    ],
+    "data_validation": [
+      "All required data attributes must be present in HTML",
+      "Price data must be properly formatted as numbers",
+      "User type data must be boolean (true/false)",
+      "Product ID must be unique and valid"
+    ]
+  },
+  
+  "error_handling": {
+    "javascript_errors": [
+      "Missing data attributes - fallback to default prices",
+      "Invalid price values - display 'قیمت نامشخص'",
+      "Network errors - maintain current price display",
+      "DOM manipulation errors - log error and continue"
+    ],
+    "data_errors": [
+      "Missing price data - use fallback pricing",
+      "Invalid user type - default to regular user pricing",
+      "Corrupted price values - validate and sanitize"
+    ]
+  },
+  
+  "performance_optimization": {
+    "frontend_optimization": [
+      "Use CSS transitions instead of JavaScript animations where possible",
+      "Debounce rapid price type changes",
+      "Cache price calculations to avoid repeated parsing",
+      "Minimize DOM queries by storing element references"
+    ],
+    "backend_optimization": [
+      "Ensure price data is properly formatted in templates",
+      "Use efficient database queries for price retrieval",
+      "Cache frequently accessed price data",
+      "Validate price data at the database level"
+    ]
+  },
+  
+  "accessibility_considerations": {
+    "keyboard_navigation": [
+      "Price type buttons must be accessible via keyboard",
+      "Tab order must be logical and intuitive",
+      "Focus indicators must be clearly visible"
+    ],
+    "screen_reader_support": [
+      "Price changes must be announced to screen readers",
+      "Payment type selection must be clearly described",
+      "Error messages must be accessible"
+    ],
+    "visual_accessibility": [
+      "Price text must have sufficient contrast",
+      "Animation must not cause motion sickness",
+      "Color coding must not be the only indicator"
+    ]
+  },
+  
+  "browser_compatibility": {
+    "supported_browsers": [
+      "Chrome 80+",
+      "Firefox 75+", 
+      "Safari 13+",
+      "Edge 80+"
+    ],
+    "fallbacks": [
+      "CSS transitions fallback to JavaScript animations",
+      "Modern JavaScript features with polyfills",
+      "Progressive enhancement for older browsers"
+    ]
+  }
+}

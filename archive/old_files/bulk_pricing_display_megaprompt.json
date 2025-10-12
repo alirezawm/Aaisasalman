@@ -1,0 +1,257 @@
+{
+  "system_prompt": "شما یک دستیار هوش مصنوعی هستید که برای پیاده‌سازی سیستم نمایش قیمت‌های عمده برای کاربران عمده در پلتفرم تجارت الکترونیک قطعات خودرو فارسی کمک می‌کنید. وقتی کاربری نقش 'کاربر_عمده' دارد، باید گزینه‌های انتخاب قیمت نقدی و چکی عمده نمایش داده شود.",
+  
+  "context": {
+    "platform": "سیستم تجارت الکترونیک قطعات خودرو مبتنی بر Flask",
+    "language": "فارسی (Farsi)",
+    "currency": "تومان (قیمت‌ها در میلیارد ذخیره می‌شوند، در میلیون نمایش داده می‌شوند)",
+    "user_roles": {
+      "کاربر_عمده": "خریدار عمده - دسترسی به قیمت‌های عمده",
+      "کاربر_عادی": "کاربر عادی - فقط قیمت‌های خرده‌فروشی",
+      "ادمین_سایت": "مدیر سایت - دسترسی کامل"
+    },
+    "pricing_structure": {
+      "bulk_price_cash": "قیمت عمده برای پرداخت نقدی (کمترین قیمت)",
+      "bulk_price_check": "قیمت عمده برای پرداخت چکی (بالاتر از نقدی)",
+      "retail_price_cash": "قیمت خرده‌فروشی برای پرداخت نقدی",
+      "retail_price_check": "قیمت خرده‌فروشی برای پرداخت چکی (بالاترین قیمت)"
+    }
+  },
+  
+  "requirements": {
+    "bulk_pricing_display": {
+      "ui_components": [
+        {
+          "component": "قابلیت انتخاب نوع قیمت",
+          "description": "نمایش دکمه‌های رادیویی برای انتخاب بین قیمت نقدی و چکی",
+          "implementation": "استفاده از Bootstrap btn-group با دکمه‌های رادیویی",
+          "visibility": "فقط برای کاربران عمده (current_user.is_bulk_buyer == True)"
+        },
+        {
+          "component": "نمایش قیمت پویا",
+          "description": "به‌روزرسانی فوری قیمت هنگام تغییر نوع پرداخت",
+          "implementation": "JavaScript برای محاسبه و نمایش قیمت جدید",
+          "animation": "انیمیشن نرم برای تغییر قیمت"
+        },
+        {
+          "component": "محاسبه سبد خرید",
+          "description": "به‌روزرسانی مجموع سبد خرید بر اساس نوع قیمت انتخاب شده",
+          "implementation": "محاسبه مجدد مجموع در JavaScript",
+          "scope": "تمام محصولات موجود در سبد خرید"
+        }
+      ],
+      "price_calculation_logic": {
+        "bulk_buyer_cash": "استفاده از bulk_price_cash",
+        "bulk_buyer_check": "استفاده از bulk_price_check", 
+        "regular_user_cash": "استفاده از retail_price_cash",
+        "regular_user_check": "استفاده از retail_price_check"
+      }
+    }
+  },
+  
+  "implementation_guide": {
+    "step_1_html_template": {
+      "description": "پیاده‌سازی قالب HTML برای نمایش گزینه‌های قیمت",
+      "templates_to_update": [
+        {
+          "file": "templates/shop.html",
+          "section": "نمایش محصولات (خطوط 195-230)",
+          "current_implementation": "دکمه‌های انتخاب نوع قیمت برای کاربران عمده",
+          "enhancement": "بهبود استایل و عملکرد دکمه‌ها"
+        },
+        {
+          "file": "templates/category_products.html",
+          "section": "نمایش محصولات دسته‌بندی (خطوط 187-221)",
+          "current_implementation": "دکمه‌های انتخاب نوع قیمت",
+          "enhancement": "یکسان‌سازی با صفحه فروشگاه"
+        }
+      ],
+      "html_code": "{% if current_user.is_bulk_buyer %}\n<div class=\"btn-group btn-group-sm mb-2\" role=\"group\" aria-label=\"انتخاب نوع قیمت\">\n    <input type=\"radio\" class=\"btn-check price-type-radio\" \n           name=\"price_type_{{ product.id }}\" id=\"cash_{{ product.id }}\" \n           value=\"cash\" data-product-id=\"{{ product.id }}\"\n           data-bulk-cash-price=\"{{ product.bulk_price_cash }}\"\n           data-bulk-check-price=\"{{ product.bulk_price_check }}\"\n           data-retail-cash-price=\"{{ product.retail_price_cash }}\"\n           data-retail-check-price=\"{{ product.retail_price_check }}\"\n           data-bulk-buyer=\"{{ current_user.is_bulk_buyer|lower }}\"\n           checked>\n    <label class=\"btn btn-outline-success\" for=\"cash_{{ product.id }}\">\n        <i class=\"fas fa-money-bill-wave me-1\"></i>نقدی\n    </label>\n    \n    <input type=\"radio\" class=\"btn-check price-type-radio\" \n           name=\"price_type_{{ product.id }}\" id=\"check_{{ product.id }}\" \n           value=\"check\" data-product-id=\"{{ product.id }}\"\n           data-bulk-cash-price=\"{{ product.bulk_price_cash }}\"\n           data-bulk-check-price=\"{{ product.bulk_price_check }}\"\n           data-retail-cash-price=\"{{ product.retail_price_cash }}\"\n           data-retail-check-price=\"{{ product.retail_price_check }}\"\n           data-bulk-buyer=\"{{ current_user.is_bulk_buyer|lower }}\">\n    <label class=\"btn btn-outline-warning\" for=\"check_{{ product.id }}\">\n        <i class=\"fas fa-file-invoice me-1\"></i>چکی\n    </label>\n</div>\n{% endif %}\n<div class=\"product-price fw-bold text-danger\" id=\"price_{{ product.id }}\">\n    {% if current_user.is_bulk_buyer %}\n        {{ \"{:,.0f}\".format(product.bulk_price_cash * 1000000) }} تومان\n    {% else %}\n        {{ \"{:,.0f}\".format(product.retail_price_cash * 1000000) }} تومان\n    {% endif %}\n</div>"
+    },
+    
+    "step_2_javascript_enhancement": {
+      "description": "بهبود JavaScript برای محاسبه قیمت و انیمیشن",
+      "file": "static/js/main.js",
+      "function": "محاسبه قیمت (خطوط 318-353)",
+      "enhancement": "اضافه کردن انیمیشن و بهبود عملکرد",
+      "code": "$('.price-type-radio').on('change', function() {\n    var productId = $(this).data('product-id');\n    var priceType = $(this).val();\n    var isBulkBuyer = $(this).data('bulk-buyer') === 'true';\n    \n    var priceElement = $('#price-' + productId);\n    var price = 0;\n    \n    // دریافت تمام داده‌های قیمت\n    var bulkCashPrice = parseFloat($(this).data('bulk-cash-price')) || 0;\n    var bulkCheckPrice = parseFloat($(this).data('bulk-check-price')) || 0;\n    var retailCashPrice = parseFloat($(this).data('retail-cash-price')) || 0;\n    var retailCheckPrice = parseFloat($(this).data('retail-check-price')) || 0;\n    \n    // تعیین قیمت بر اساس نوع کاربر و روش پرداخت\n    if (isBulkBuyer) {\n        if (priceType === 'cash') {\n            price = bulkCashPrice;\n        } else if (priceType === 'check') {\n            price = bulkCheckPrice;\n        }\n    } else {\n        if (priceType === 'cash') {\n            price = retailCashPrice;\n        } else if (priceType === 'check') {\n            price = retailCheckPrice;\n        }\n    }\n    \n    // به‌روزرسانی قیمت با انیمیشن\n    updatePriceDisplay(productId, price, priceElement);\n    \n    // به‌روزرسانی مجموع سبد خرید\n    updateCartTotal();\n});\n\nfunction updatePriceDisplay(productId, price, priceElement) {\n    // انیمیشن fade out\n    priceElement.fadeOut(200, function() {\n        // به‌روزرسانی قیمت\n        var formattedPrice = formatPrice(price * 1000000);\n        priceElement.text(formattedPrice + ' تومان');\n        \n        // انیمیشن fade in\n        priceElement.fadeIn(200);\n    });\n}\n\nfunction formatPrice(price) {\n    return new Intl.NumberFormat('fa-IR').format(Math.round(price));\n}"
+    },
+    
+    "step_3_cart_integration": {
+      "description": "ادغام با سیستم سبد خرید",
+      "file": "routes.py",
+      "function": "add_to_cart",
+      "enhancement": "ذخیره نوع قیمت انتخاب شده در سبد خرید",
+      "code": "@app.route('/add_to_cart', methods=['POST'])\n@login_required\ndef add_to_cart():\n    product_id = request.form.get('product_id')\n    quantity = int(request.form.get('quantity', 1))\n    price_type = request.form.get('price_type', 'cash')  # نوع قیمت جدید\n    \n    product = Product.query.get_or_404(product_id)\n    \n    # بررسی موجودی\n    if product.stock_quantity < quantity:\n        flash('موجودی کافی نیست', 'error')\n        return redirect(url_for('shop'))\n    \n    # محاسبه قیمت بر اساس نوع کاربر و روش پرداخت\n    if current_user.is_bulk_buyer:\n        if price_type == 'cash':\n            unit_price = product.bulk_price_cash\n        else:\n            unit_price = product.bulk_price_check\n    else:\n        if price_type == 'cash':\n            unit_price = product.retail_price_cash\n        else:\n            unit_price = product.retail_price_check\n    \n    # بررسی وجود محصول در سبد خرید\n    existing_item = CartItem.query.filter_by(\n        user_id=current_user.id,\n        product_id=product_id,\n        price_type=price_type\n    ).first()\n    \n    if existing_item:\n        existing_item.quantity += quantity\n    else:\n        new_item = CartItem(\n            user_id=current_user.id,\n            product_id=product_id,\n            quantity=quantity,\n            unit_price=unit_price,\n            price_type=price_type\n        )\n        db.session.add(new_item)\n    \n    db.session.commit()\n    flash('محصول به سبد خرید اضافه شد', 'success')\n    return redirect(url_for('shop'))"
+    },
+    
+    "step_4_invoice_creation": {
+      "description": "به‌روزرسانی ایجاد فاکتور",
+      "file": "routes.py", 
+      "function": "create_invoice",
+      "enhancement": "استفاده از نوع قیمت انتخاب شده در فاکتور",
+      "code": "@app.route('/create_invoice', methods=['POST'])\n@login_required\ndef create_invoice():\n    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()\n    \n    if not cart_items:\n        flash('سبد خرید خالی است', 'error')\n        return redirect(url_for('cart'))\n    \n    # محاسبه مجموع بر اساس نوع قیمت هر محصول\n    total_amount = 0\n    for item in cart_items:\n        total_amount += item.unit_price * item.quantity\n    \n    # ایجاد فاکتور\n    invoice = Invoice(\n        user_id=current_user.id,\n        total_amount=total_amount,\n        status='pending',\n        payment_method='mixed'  # یا بر اساس انتخاب کاربر\n    )\n    db.session.add(invoice)\n    db.session.flush()  # برای دریافت invoice.id\n    \n    # ایجاد آیتم‌های فاکتور\n    for item in cart_items:\n        invoice_item = InvoiceItem(\n            invoice_id=invoice.id,\n            product_id=item.product_id,\n            quantity=item.quantity,\n            unit_price=item.unit_price,\n            price_type=item.price_type  # ذخیره نوع قیمت\n        )\n        db.session.add(invoice_item)\n    \n    # حذف آیتم‌های سبد خرید\n    for item in cart_items:\n        db.session.delete(item)\n    \n    db.session.commit()\n    flash('فاکتور با موفقیت ایجاد شد', 'success')\n    return redirect(url_for('invoice_detail', invoice_id=invoice.id))"
+    }
+  },
+  
+  "code_examples": {
+    "enhanced_price_display": {
+      "description": "کد بهبود یافته برای نمایش قیمت با انیمیشن",
+      "html": "{% if current_user.is_bulk_buyer %}\n<div class=\"price-selection-container mb-3\">\n    <div class=\"btn-group btn-group-sm w-100\" role=\"group\" aria-label=\"انتخاب نوع قیمت\">\n        <input type=\"radio\" class=\"btn-check price-type-radio\" \n               name=\"price_type_{{ product.id }}\" id=\"cash_{{ product.id }}\" \n               value=\"cash\" data-product-id=\"{{ product.id }}\"\n               data-bulk-cash-price=\"{{ product.bulk_price_cash }}\"\n               data-bulk-check-price=\"{{ product.bulk_price_check }}\"\n               data-retail-cash-price=\"{{ product.retail_price_cash }}\"\n               data-retail-check-price=\"{{ product.retail_price_check }}\"\n               data-bulk-buyer=\"{{ current_user.is_bulk_buyer|lower }}\"\n               checked>\n        <label class=\"btn btn-outline-success\" for=\"cash_{{ product.id }}\">\n            <i class=\"fas fa-money-bill-wave me-1\"></i>\n            <span class=\"d-block\">نقدی</span>\n            <small class=\"text-muted\">{{ \"{:,.0f}\".format(product.bulk_price_cash * 1000000) }} تومان</small>\n        </label>\n        \n        <input type=\"radio\" class=\"btn-check price-type-radio\" \n               name=\"price_type_{{ product.id }}\" id=\"check_{{ product.id }}\" \n               value=\"check\" data-product-id=\"{{ product.id }}\"\n               data-bulk-cash-price=\"{{ product.bulk_price_cash }}\"\n               data-bulk-check-price=\"{{ product.bulk_price_check }}\"\n               data-retail-cash-price=\"{{ product.retail_price_cash }}\"\n               data-retail-check-price=\"{{ product.retail_price_check }}\"\n               data-bulk-buyer=\"{{ current_user.is_bulk_buyer|lower }}\">\n        <label class=\"btn btn-outline-warning\" for=\"check_{{ product.id }}\">\n            <i class=\"fas fa-file-invoice me-1\"></i>\n            <span class=\"d-block\">چکی</span>\n            <small class=\"text-muted\">{{ \"{:,.0f}\".format(product.bulk_price_check * 1000000) }} تومان</small>\n        </label>\n    </div>\n</div>\n{% endif %}\n<div class=\"product-price-container\">\n    <div class=\"product-price fw-bold text-danger fs-4\" id=\"price_{{ product.id }}\">\n        {% if current_user.is_bulk_buyer %}\n            {{ \"{:,.0f}\".format(product.bulk_price_cash * 1000000) }} تومان\n        {% else %}\n            {{ \"{:,.0f}\".format(product.retail_price_cash * 1000000) }} تومان\n        {% endif %}\n    </div>\n    {% if current_user.is_bulk_buyer %}\n    <div class=\"price-savings text-success small mt-1\">\n        <i class=\"fas fa-tag me-1\"></i>\n        صرفه‌جویی: {{ \"{:,.0f}\".format((product.retail_price_cash - product.bulk_price_cash) * 1000000) }} تومان\n    </div>\n    {% endif %}\n</div>"
+    },
+    
+    "advanced_javascript": {
+      "description": "JavaScript پیشرفته با انیمیشن و اعتبارسنجی",
+      "code": "$(document).ready(function() {\n    // مدیریت تغییر نوع قیمت\n    $('.price-type-radio').on('change', function() {\n        var $this = $(this);\n        var productId = $this.data('product-id');\n        var priceType = $this.val();\n        var isBulkBuyer = $this.data('bulk-buyer') === 'true';\n        \n        var $priceElement = $('#price-' + productId);\n        var $savingsElement = $priceElement.siblings('.price-savings');\n        \n        // دریافت قیمت‌ها\n        var prices = {\n            bulkCash: parseFloat($this.data('bulk-cash-price')) || 0,\n            bulkCheck: parseFloat($this.data('bulk-check-price')) || 0,\n            retailCash: parseFloat($this.data('retail-cash-price')) || 0,\n            retailCheck: parseFloat($this.data('retail-check-price')) || 0\n        };\n        \n        var selectedPrice = 0;\n        var savings = 0;\n        \n        // محاسبه قیمت انتخاب شده\n        if (isBulkBuyer) {\n            selectedPrice = priceType === 'cash' ? prices.bulkCash : prices.bulkCheck;\n            var retailPrice = priceType === 'cash' ? prices.retailCash : prices.retailCheck;\n            savings = retailPrice - selectedPrice;\n        } else {\n            selectedPrice = priceType === 'cash' ? prices.retailCash : prices.retailCheck;\n        }\n        \n        // انیمیشن تغییر قیمت\n        animatePriceChange($priceElement, selectedPrice);\n        \n        // به‌روزرسانی صرفه‌جویی\n        if (isBulkBuyer && savings > 0) {\n            $savingsElement.html('<i class=\"fas fa-tag me-1\"></i>صرفه‌جویی: ' + formatPrice(savings * 1000000) + ' تومان');\n        }\n        \n        // به‌روزرسانی سبد خرید\n        updateCartTotal();\n        \n        // ذخیره انتخاب در localStorage\n        localStorage.setItem('price_type_' + productId, priceType);\n    });\n    \n    // بازیابی انتخاب‌های قبلی\n    $('.price-type-radio').each(function() {\n        var productId = $(this).data('product-id');\n        var savedType = localStorage.getItem('price_type_' + productId);\n        if (savedType) {\n            $(this).filter('[value=\"' + savedType + '\"]').prop('checked', true);\n        }\n    });\n    \n    // اعمال تغییرات اولیه\n    $('.price-type-radio:checked').trigger('change');\n});\n\nfunction animatePriceChange($element, newPrice) {\n    $element.addClass('price-changing');\n    \n    $element.fadeOut(150, function() {\n        var formattedPrice = formatPrice(newPrice * 1000000);\n        $element.text(formattedPrice + ' تومان');\n        \n        $element.fadeIn(150, function() {\n            $element.removeClass('price-changing');\n        });\n    });\n}\n\nfunction formatPrice(price) {\n    return new Intl.NumberFormat('fa-IR').format(Math.round(price));\n}\n\nfunction updateCartTotal() {\n    var total = 0;\n    $('.cart-item').each(function() {\n        var quantity = parseInt($(this).find('.quantity').val()) || 1;\n        var price = parseFloat($(this).data('unit-price')) || 0;\n        total += quantity * price;\n    });\n    \n    $('.cart-total').text(formatPrice(total * 1000000) + ' تومان');\n}"
+    },
+    
+    "css_enhancements": {
+      "description": "استایل‌های CSS برای بهبود ظاهر",
+      "code": "/* استایل‌های انتخاب نوع قیمت */\n.price-selection-container {\n    border: 1px solid #e9ecef;\n    border-radius: 8px;\n    padding: 10px;\n    background: #f8f9fa;\n}\n\n.price-type-radio:checked + label {\n    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);\n}\n\n.price-type-radio:checked + label.btn-outline-success {\n    background-color: #198754;\n    border-color: #198754;\n    color: white;\n}\n\n.price-type-radio:checked + label.btn-outline-warning {\n    background-color: #fd7e14;\n    border-color: #fd7e14;\n    color: white;\n}\n\n/* انیمیشن تغییر قیمت */\n.price-changing {\n    opacity: 0.7;\n    transform: scale(0.95);\n    transition: all 0.15s ease-in-out;\n}\n\n.product-price-container {\n    text-align: center;\n    padding: 15px;\n    border-radius: 8px;\n    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);\n    border: 1px solid #e9ecef;\n}\n\n.price-savings {\n    font-weight: 500;\n    animation: pulse 2s infinite;\n}\n\n@keyframes pulse {\n    0% { opacity: 1; }\n    50% { opacity: 0.7; }\n    100% { opacity: 1; }\n}\n\n/* بهبود دکمه‌های انتخاب */\n.btn-group .btn {\n    position: relative;\n    overflow: hidden;\n}\n\n.btn-group .btn::before {\n    content: '';\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);\n    transition: left 0.5s;\n}\n\n.btn-group .btn:hover::before {\n    left: 100%;\n}"
+    }
+  },
+  
+  "testing_scenarios": {
+    "scenario_1_bulk_buyer_pricing": {
+      "description": "کاربر عمده انتخاب نوع قیمت",
+      "steps": [
+        "1. کاربر عمده وارد سیستم می‌شود",
+        "2. به صفحه محصولات می‌رود",
+        "3. دکمه‌های انتخاب نوع قیمت (نقدی/چکی) را می‌بیند",
+        "4. بین قیمت نقدی و چکی جابه‌جا می‌شود",
+        "5. قیمت به‌صورت پویا تغییر می‌کند",
+        "6. محصول را به سبد خرید اضافه می‌کند"
+      ],
+      "expected_results": [
+        "دکمه‌های انتخاب نوع قیمت نمایش داده می‌شوند",
+        "قیمت نقدی کمتر از قیمت چکی است",
+        "انیمیشن نرم برای تغییر قیمت اجرا می‌شود",
+        "صرفه‌جویی محاسبه و نمایش داده می‌شود",
+        "نوع قیمت انتخاب شده در سبد خرید ذخیره می‌شود"
+      ]
+    },
+    
+    "scenario_2_regular_user": {
+      "description": "کاربر عادی بدون دسترسی به قیمت‌های عمده",
+      "steps": [
+        "1. کاربر عادی وارد سیستم می‌شود",
+        "2. به صفحه محصولات می‌رود",
+        "3. فقط قیمت خرده‌فروشی را می‌بیند",
+        "4. دکمه‌های انتخاب نوع قیمت نمایش داده نمی‌شوند"
+      ],
+      "expected_results": [
+        "فقط قیمت خرده‌فروشی نمایش داده می‌شود",
+        "دکمه‌های انتخاب نوع قیمت نمایش داده نمی‌شوند",
+        "هیچ صرفه‌جویی نمایش داده نمی‌شود"
+      ]
+    },
+    
+    "scenario_3_cart_integration": {
+      "description": "ادغام با سیستم سبد خرید",
+      "steps": [
+        "1. کاربر عمده محصولات مختلف را با انواع قیمت مختلف به سبد اضافه می‌کند",
+        "2. به سبد خرید می‌رود",
+        "3. مجموع سبد خرید را بررسی می‌کند",
+        "4. فاکتور ایجاد می‌کند"
+      ],
+      "expected_results": [
+        "هر محصول با نوع قیمت صحیح در سبد نمایش داده می‌شود",
+        "مجموع سبد خرید به‌درستی محاسبه می‌شود",
+        "فاکتور با قیمت‌های صحیح ایجاد می‌شود",
+        "نوع قیمت هر محصول در فاکتور ذخیره می‌شود"
+      ]
+    }
+  },
+  
+  "validation_rules": {
+    "price_display": [
+      "قیمت‌های عمده باید همیشه کمتر از قیمت‌های خرده‌فروشی باشند",
+      "قیمت نقدی باید کمتر از قیمت چکی برای همان نوع کاربر باشد",
+      "فرمت قیمت باید میلیون تومان نمایش داده شود (ضرب در 1,000,000)",
+      "دکمه‌های انتخاب نوع قیمت فقط برای کاربران عمده نمایش داده شوند"
+    ],
+    "user_permissions": [
+      "فقط کاربران با نقش 'کاربر_عمده' دسترسی به قیمت‌های عمده دارند",
+      "کاربران عادی نباید قیمت‌های عمده را ببینند",
+      "اعتبارسنجی دسترسی باید در سمت سرور انجام شود"
+    ],
+    "data_consistency": [
+      "نوع قیمت انتخاب شده باید در سبد خرید ذخیره شود",
+      "محاسبه مجموع سبد خرید باید بر اساس نوع قیمت صحیح باشد",
+      "فاکتور باید نوع قیمت هر محصول را حفظ کند"
+    ]
+  },
+  
+  "error_handling": {
+    "frontend_errors": [
+      "خطای JavaScript - نمایش قیمت پیش‌فرض",
+      "داده‌های قیمت نامعتبر - استفاده از قیمت خرده‌فروشی",
+      "خطای انیمیشن - نمایش فوری قیمت جدید"
+    ],
+    "backend_errors": [
+      "کاربر بدون دسترسی - بازگشت 403",
+      "محصول یافت نشد - بازگشت 404",
+      "خطای محاسبه قیمت - استفاده از قیمت پیش‌فرض"
+    ],
+    "database_errors": [
+      "خطای ذخیره سبد خرید - نمایش پیام خطا",
+      "خطای ایجاد فاکتور - بازگشت به سبد خرید",
+      "خطای به‌روزرسانی موجودی - بررسی مجدد"
+    ]
+  },
+  
+  "performance_optimization": {
+    "frontend": [
+      "کش کردن داده‌های قیمت در JavaScript",
+      "استفاده از event delegation برای دکمه‌ها",
+      "بهینه‌سازی انیمیشن‌ها",
+      "کاهش تعداد درخواست‌های DOM"
+    ],
+    "backend": [
+      "کش کردن نقش کاربر در session",
+      "بهینه‌سازی کوئری‌های محاسبه قیمت",
+      "استفاده از index برای جستجوی محصولات"
+    ],
+    "database": [
+      "ایجاد index برای فیلدهای قیمت",
+      "بهینه‌سازی کوئری‌های سبد خرید",
+      "استفاده از connection pooling"
+    ]
+  },
+  
+  "security_considerations": {
+    "access_control": [
+      "اعتبارسنجی دسترسی کاربر در سمت سرور",
+      "عدم نمایش قیمت‌های عمده به کاربران غیرمجاز",
+      "محافظت از API endpoints قیمت‌گذاری"
+    ],
+    "data_protection": [
+      "رمزنگاری داده‌های حساس قیمت",
+      "اعتبارسنجی ورودی‌های کاربر",
+      "محافظت در برابر SQL injection"
+    ],
+    "audit_trail": [
+      "ثبت تمام تغییرات قیمت",
+      "لاگ دسترسی‌های کاربران عمده",
+      "ردیابی تغییرات سبد خرید"
+    ]
+  },
+  
+  "accessibility_features": {
+    "screen_readers": [
+      "برچسب‌های aria-label برای دکمه‌ها",
+      "توضیحات مناسب برای تغییرات قیمت",
+      "ساختار معنایی HTML"
+    ],
+    "keyboard_navigation": [
+      "پشتیبانی از کلیدهای جهت‌دار",
+      "Tab navigation برای دکمه‌ها",
+      "کلیدهای میانبر برای تغییر نوع قیمت"
+    ],
+    "visual_indicators": [
+      "کنتراست مناسب رنگ‌ها",
+      "اندازه مناسب دکمه‌ها",
+      "انیمیشن‌های قابل تنظیم"
+    ]
+  }
+}

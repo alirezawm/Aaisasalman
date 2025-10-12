@@ -1,0 +1,491 @@
+{
+  "title": "سیستم امتیازدهی پیشرفته برای فروشگاه آنلاین",
+  "description": "مگاپرامپت جامع برای پیاده‌سازی سیستم امتیازدهی مبتنی بر قیمت خرید و تعداد محصولات با مدیریت جوایز و پنل مدیریت",
+  "version": "1.0.0",
+  "created_at": "2024-01-01",
+  "author": "AI Assistant",
+  "language": "persian",
+  
+  "system_overview": {
+    "name": "سیستم امتیازدهی هوشمند",
+    "purpose": "ایجاد سیستم امتیازدهی برای تشویق خریدهای بیشتر و وفاداری مشتریان",
+    "key_features": [
+      "محاسبه امتیاز بر اساس قیمت خرید (هر 100,000 ریال = 500 امتیاز)",
+      "افزایش امتیاز با افزایش تعداد محصولات خریداری شده",
+      "سیستم جوایز قابل تنظیم توسط مدیریت",
+      "پنل مدیریت کامل برای کنترل امتیازات و جوایز",
+      "تاریخچه کامل امتیازات و تراکنش‌ها",
+      "سیستم سطح‌بندی کاربران بر اساس امتیازات",
+      "اعمال تخفیف‌های خودکار بر اساس امتیازات"
+    ]
+  },
+
+  "database_models": {
+    "UserPoints": {
+      "description": "جدول امتیازات کاربران",
+      "fields": {
+        "id": "شناسه یکتا",
+        "user_id": "شناسه کاربر (Foreign Key)",
+        "current_points": "امتیاز فعلی کاربر",
+        "total_earned_points": "مجموع امتیازات کسب شده",
+        "total_spent_points": "مجموع امتیازات خرج شده",
+        "last_updated": "تاریخ آخرین به‌روزرسانی",
+        "created_at": "تاریخ ایجاد"
+      }
+    },
+    "PointsTransaction": {
+      "description": "جدول تراکنش‌های امتیازی",
+      "fields": {
+        "id": "شناسه یکتا",
+        "user_id": "شناسه کاربر",
+        "points_amount": "مقدار امتیاز (مثبت برای کسب، منفی برای خرج)",
+        "transaction_type": "نوع تراکنش (earn, spend, expire, bonus)",
+        "source_type": "منبع امتیاز (purchase, bonus, admin_adjustment, reward_redemption)",
+        "source_id": "شناسه منبع (invoice_id, reward_id, etc.)",
+        "description": "توضیحات تراکنش",
+        "expires_at": "تاریخ انقضا امتیاز (اختیاری)",
+        "created_at": "تاریخ ایجاد"
+      }
+    },
+    "Reward": {
+      "description": "جدول جوایز",
+      "fields": {
+        "id": "شناسه یکتا",
+        "name": "نام جایزه",
+        "name_fa": "نام فارسی جایزه",
+        "description": "توضیحات جایزه",
+        "description_fa": "توضیحات فارسی جایزه",
+        "points_required": "امتیاز مورد نیاز",
+        "discount_percentage": "درصد تخفیف (اختیاری)",
+        "discount_amount": "مقدار تخفیف ثابت (اختیاری)",
+        "reward_type": "نوع جایزه (discount_percentage, discount_amount, free_shipping, product)",
+        "is_active": "وضعیت فعال بودن",
+        "max_redemptions": "حداکثر تعداد استفاده (اختیاری)",
+        "current_redemptions": "تعداد استفاده فعلی",
+        "valid_from": "تاریخ شروع اعتبار",
+        "valid_until": "تاریخ پایان اعتبار",
+        "created_at": "تاریخ ایجاد",
+        "updated_at": "تاریخ به‌روزرسانی"
+      }
+    },
+    "RewardRedemption": {
+      "description": "جدول استفاده از جوایز",
+      "fields": {
+        "id": "شناسه یکتا",
+        "user_id": "شناسه کاربر",
+        "reward_id": "شناسه جایزه",
+        "points_spent": "امتیاز خرج شده",
+        "invoice_id": "شناسه فاکتور مرتبط (اختیاری)",
+        "used_at": "تاریخ استفاده",
+        "status": "وضعیت (pending, used, expired, cancelled)",
+        "created_at": "تاریخ ایجاد"
+      }
+    },
+    "UserLevel": {
+      "description": "جدول سطح‌بندی کاربران",
+      "fields": {
+        "id": "شناسه یکتا",
+        "level_name": "نام سطح",
+        "level_name_fa": "نام فارسی سطح",
+        "min_points": "حداقل امتیاز مورد نیاز",
+        "max_points": "حداکثر امتیاز سطح",
+        "discount_percentage": "درصد تخفیف ویژه سطح",
+        "is_active": "وضعیت فعال بودن",
+        "created_at": "تاریخ ایجاد"
+      }
+    },
+    "PointsRule": {
+      "description": "جدول قوانین امتیازدهی",
+      "fields": {
+        "id": "شناسه یکتا",
+        "rule_name": "نام قانون",
+        "rule_name_fa": "نام فارسی قانون",
+        "points_per_100k_rials": "امتیاز به ازای هر 100 هزار ریال",
+        "bonus_points_per_product": "امتیاز اضافی به ازای هر محصول",
+        "max_bonus_points": "حداکثر امتیاز اضافی",
+        "is_active": "وضعیت فعال بودن",
+        "valid_from": "تاریخ شروع اعتبار",
+        "valid_until": Apocalypse: "تاریخ پایان اعتبار",
+        "created_at": "تاریخ ایجاد"
+      }
+    }
+  },
+
+  "business_rules": {
+    "points_calculation": {
+      "base_points": "هر 100,000 ریال خرید = 500 امتیاز",
+      "product_bonus": "هر محصول اضافی در فاکتور = امتیاز اضافی",
+      "bonus_formula": "امتیاز اضافی = (تعداد محصولات - 1) × ضریب امتیاز",
+      "max_bonus": "حداکثر امتیاز اضافی قابل کسب در هر خرید",
+      "expiration": "امتیازات پس از 12 ماه منقضی می‌شوند"
+    },
+    "user_levels": {
+      "bronze": "0-999 امتیاز - بدون تخفیف",
+      "silver": "1000-4999 امتیاز - 5% تخفیف",
+      "gold": "5000-9999 امتیاز - 10% تخفیف",
+      "platinum": "10000+ امتیاز - 15% تخفیف"
+    },
+    "reward_types": {
+      "discount_percentage": "تخفیف درصدی",
+      "discount_amount": "تخفیف مبلغی",
+      "free_shipping": "ارسال رایگان",
+      "product": "محصول رایگان"
+    }
+  },
+
+  "api_endpoints": {
+    "user_points": {
+      "GET /api/points/user": "دریافت امتیازات کاربر",
+      "GET /api/points/transactions": "دریافت تاریخچه تراکنش‌های امتیازی",
+      "GET /api/points/level": "دریافت سطح کاربر"
+    },
+    "rewards": {
+      "GET /api/rewards": "دریافت لیست جوایز قابل استفاده",
+      "POST /api/rewards/redeem": "استفاده از جایزه",
+      "GET /api/rewards/history": "تاریخچه استفاده از جوایز"
+    },
+    "admin": {
+      "GET /api/admin/points/users": "لیست کاربران و امتیازات",
+      "POST /api/admin/points/adjust": "تنظیم دستی امتیازات",
+      "GET /api/admin/rewards": "مدیریت جوایز",
+      "POST /api/admin/rewards": "ایجاد جایزه جدید",
+      "PUT /api/admin/rewards/{id}": "ویرایش جایزه",
+      "DELETE /api/admin/rewards/{id}": "حذف جایزه",
+      "GET /api/admin/points/rules": "مدیریت قوانین امتیازدهی",
+      "POST /api/admin/points/rules": "ایجاد قانون جدید",
+      "GET /api/admin/points/analytics": "آمار و تحلیل امتیازات"
+    }
+  },
+
+  "frontend_components": {
+    "user_dashboard": {
+      "points_display": "نمایش امتیاز فعلی و سطح کاربر",
+      "points_history": "تاریخچه تراکنش‌های امتیازی",
+      "available_rewards": "لیست جوایز قابل استفاده",
+      "level_progress": "نمودار پیشرفت به سطح بعدی"
+    },
+    "admin_panel": {
+      "points_management": "مدیریت امتیازات کاربران",
+      "rewards_management": "مدیریت جوایز",
+      "rules_management": "مدیریت قوانین امتیازدهی",
+      "analytics_dashboard": "داشبورد تحلیل و آمار",
+      "user_levels_management": "مدیریت سطح‌بندی کاربران"
+    }
+  },
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "title": "ایجاد مدل‌های دیتابیس",
+      "description": "تعریف جداول UserPoints, PointsTransaction, Reward, RewardRedemption, UserLevel, PointsRule",
+      "files": ["models.py"],
+      "priority": "high"
+    },
+    {
+      "step": 2,
+      "title": "پیاده‌سازی سرویس محاسبه امتیازات",
+      "description": "ایجاد کلاس PointsService برای محاسبه امتیازات بر اساس قوانین",
+      "files": ["points_service.py"],
+      "priority": "high"
+    },
+    {
+      "step": 3,
+      "title": "ایجاد API های کاربری",
+      "description": "پیاده‌سازی endpoint های مربوط به امتیازات کاربران",
+      "files": ["routes.py"],
+      "priority": "medium"
+    },
+    {
+      "step": 4,
+      "title": "ایجاد API های مدیریتی",
+      "description": "پیاده‌سازی endpoint های پنل مدیریت",
+      "files": ["routes.py"],
+      "priority": "medium"
+    },
+    {
+      "step": 5,
+      "title": "طراحی رابط کاربری",
+      "description": "ایجاد قالب‌های HTML برای نمایش امتیازات و مدیریت",
+      "files": ["templates/points/", "templates/admin/points/"],
+      "priority": "medium"
+    },
+    {
+      "step": 6,
+      "title": "پیاده‌سازی JavaScript",
+      "description": "ایجاد اسکریپت‌های تعاملی برای مدیریت امتیازات",
+      "files": ["static/js/points.js"],
+      "priority": "low"
+    },
+    {
+      "step": 7,
+      "title": "تست و بهینه‌سازی",
+      "description": "تست کامل سیستم و بهینه‌سازی عملکرد",
+      "files": ["tests/test_points_system.py"],
+      "priority": "low"
+    }
+  ],
+
+  "code_examples": {
+    "points_calculation": {
+      "description": "محاسبه امتیازات بر اساس قیمت و تعداد محصولات",
+      "python_code": """
+def calculate_points(invoice_total, product_count, points_rule):
+    # امتیاز پایه بر اساس قیمت
+    base_points = (invoice_total / 100000) * points_rule.points_per_100k_rials
+    
+    # امتیاز اضافی بر اساس تعداد محصولات
+    if product_count > 1:
+        bonus_points = min(
+            (product_count - 1) * points_rule.bonus_points_per_product,
+            points_rule.max_bonus_points
+        )
+    else:
+        bonus_points = 0
+    
+    total_points = base_points + bonus_points
+    return int(total_points)
+      """
+    },
+    "user_level_detection": {
+      "description": "تشخیص سطح کاربر بر اساس امتیازات",
+      "python_code": """
+def get_user_level(user_points):
+    levels = UserLevel.query.filter(
+        UserLevel.is_active == True,
+        UserLevel.min_points <= user_points
+    ).order_by(UserLevel.min_points.desc()).first()
+    
+    return levels if levels else None
+      """
+    },
+    "reward_redemption": {
+      "description": "استفاده از جایزه",
+      "python_code": """
+def redeem_reward(user_id, reward_id, invoice_id=None):
+    user_points = UserPoints.query.filter_by(user_id=user_id).first()
+    reward = Reward.query.filter_by(id=reward_id, is_active=True).first()
+    
+    if not user_points or not reward:
+        return False, "جایزه یا کاربر یافت نشد"
+    
+    if user_points.current_points < reward.points_required:
+        return False, "امتیاز کافی ندارید"
+    
+    # ایجاد تراکنش خرج امتیاز
+    transaction = PointsTransaction(
+        user_id=user_id,
+        points_amount=-reward.points_required,
+        transaction_type='spend',
+        source_type='reward_redemption',
+        source_id=reward_id,
+        description=f"استفاده از جایزه: {reward.name_fa}"
+    )
+    
+    # به‌روزرسانی امتیاز کاربر
+    user_points.current_points -= reward.points_required
+    user_points.total_spent_points += reward.points_required
+    
+    # ثبت استفاده از جایزه
+    redemption = RewardRedemption(
+        user_id=user_id,
+        reward_id=reward_id,
+        points_spent=reward.points_required,
+        invoice_id=invoice_id,
+        status='used'
+    )
+    
+    db.session.add(transaction)
+    db.session.add(redemption)
+    db.session.commit()
+    
+    return True, "جایزه با موفقیت استفاده شد"
+      """
+    }
+  },
+
+  "database_migrations": {
+    "create_points_tables": {
+      "description": "ایجاد جداول سیستم امتیازدهی",
+      "sql": """
+-- جدول امتیازات کاربران
+CREATE TABLE user_points (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    current_points INTEGER DEFAULT 0,
+    total_earned_points INTEGER DEFAULT 0,
+    total_spent_points INTEGER DEFAULT 0,
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES user (id),
+    UNIQUE(user_id)
+);
+
+-- جدول تراکنش‌های امتیازی
+CREATE TABLE points_transaction (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    points_amount INTEGER NOT NULL,
+    transaction_type VARCHAR(20) NOT NULL,
+    source_type VARCHAR(30) NOT NULL,
+    source_id INTEGER,
+    description TEXT,
+    expires_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES user (id)
+);
+
+-- جدول جوایز
+CREATE TABLE reward (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(200) NOT NULL,
+    name_fa VARCHAR(200) NOT NULL,
+    description TEXT,
+    description_fa TEXT,
+    points_required INTEGER NOT NULL,
+    discount_percentage DECIMAL(5,2),
+    discount_amount DECIMAL(10,2),
+    reward_type VARCHAR(30) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    max_redemptions INTEGER,
+    current_redemptions INTEGER DEFAULT 0,
+    valid_from DATETIME,
+    valid_until DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- جدول استفاده از جوایز
+CREATE TABLE reward_redemption (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    reward_id INTEGER NOT NULL,
+    points_spent INTEGER NOT NULL,
+    invoice_id INTEGER,
+    used_at DATETIME,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES user (id),
+    FOREIGN KEY (reward_id) REFERENCES reward (id),
+    FOREIGN KEY (invoice_id) REFERENCES invoice (id)
+);
+
+-- جدول سطح‌بندی کاربران
+CREATE TABLE user_level (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    level_name VARCHAR(50) NOT NULL,
+    level_name_fa VARCHAR(50) NOT NULL,
+    min_points INTEGER NOT NULL,
+    max_points INTEGER,
+    discount_percentage DECIMAL(5,2) DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- جدول قوانین امتیازدهی
+CREATE TABLE points_rule (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_name VARCHAR(100) NOT NULL,
+    rule_name_fa VARCHAR(100) NOT NULL,
+    points_per_100k_rials INTEGER DEFAULT 500,
+    bonus_points_per_product INTEGER DEFAULT 50,
+    max_bonus_points INTEGER DEFAULT 1000,
+    is_active BOOLEAN DEFAULT TRUE,
+    valid_from DATETIME,
+    valid_until DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ایندکس‌ها برای بهینه‌سازی عملکرد
+CREATE INDEX idx_user_points_user_id ON user_points(user_id);
+CREATE INDEX idx_points_transaction_user_id ON points_transaction(user_id);
+CREATE INDEX idx_points_transaction_type ON points_transaction(transaction_type);
+CREATE INDEX idx_reward_active ON reward(is_active);
+CREATE INDEX idx_reward_redemption_user_id ON reward_redemption(user_id);
+CREATE INDEX idx_user_level_points ON user_level(min_points, max_points);
+      """
+    }
+  },
+
+  "configuration": {
+    "default_points_rule": {
+      "points_per_100k_rials": 500,
+      "bonus_points_per_product": 50,
+      "max_bonus_points": 1000
+    },
+    "default_user_levels": [
+      {"name": "Bronze", "name_fa": "برنزی", "min_points": 0, "max_points": 999, "discount_percentage": 0},
+      {"name": "Silver", "name_fa": "نقره‌ای", "min_points": 1000, "max_points": 4999, "discount_percentage": 5},
+      {"name": "Gold", "name_fa": "طلایی", "min_points": 5000, "max_points": 9999, "discount_percentage": 10},
+      {"name": "Platinum", "name_fa": "پلاتینیوم", "min_points": 10000, "max_points": null, "discount_percentage": 15}
+    ],
+    "points_expiration": {
+      "enabled": true,
+      "months": 12
+    }
+  },
+
+  "testing_scenarios": [
+    {
+      "scenario": "خرید اولیه کاربر",
+      "description": "کاربر جدید اولین خرید خود را انجام می‌دهد",
+      "expected_points": "500 امتیاز برای هر 100 هزار ریال + امتیاز اضافی برای محصولات اضافی"
+    },
+    {
+      "scenario": "ارتقاء سطح کاربر",
+      "description": "کاربر به سطح نقره‌ای می‌رسد",
+      "expected_behavior": "اعمال تخفیف 5% در خریدهای بعدی"
+    },
+    {
+      "scenario": "استفاده از جایزه",
+      "description": "کاربر از جایزه تخفیف استفاده می‌کند",
+      "expected_behavior": "کسر امتیاز و اعمال تخفیف"
+    },
+    {
+      "scenario": "انقضای امتیازات",
+      "description": "امتیازات قدیمی منقضی می‌شوند",
+      "expected_behavior": "حذف امتیازات منقضی شده"
+    }
+  ],
+
+  "security_considerations": [
+    "اعتبارسنجی دسترسی کاربران به امتیازات خود",
+    "محافظت از API های مدیریتی با احراز هویت",
+    "اعتبارسنجی ورودی‌های کاربر",
+    "رمزنگاری اطلاعات حساس",
+    "لاگ‌گیری از تمام تراکنش‌های امتیازی"
+  ],
+
+  "performance_optimizations": [
+    "ایجاد ایندکس‌های مناسب در جداول",
+    "کش کردن امتیازات کاربران",
+    "بهینه‌سازی کوئری‌های دیتابیس",
+    "استفاده از pagination برای لیست‌های طولانی",
+    "بهینه‌سازی محاسبات امتیازات"
+  ],
+
+  "monitoring_and_analytics": {
+    "key_metrics": [
+      "تعداد کاربران فعال در سیستم امتیازدهی",
+      "میانگین امتیازات کاربران",
+      "نرخ استفاده از جوایز",
+      "توزیع سطح‌بندی کاربران",
+      "درآمد حاصل از فروش‌های تشویقی"
+    ],
+    "reports": [
+      "گزارش ماهانه امتیازات",
+      "گزارش استفاده از جوایز",
+      "گزارش تحلیل رفتار کاربران",
+      "گزارش عملکرد سیستم امتیازدهی"
+    ]
+  },
+
+  "future_enhancements": [
+    "سیستم امتیازدهی برای معرفی دوستان",
+    "امتیازدهی بر اساس نظرات و امتیازات محصولات",
+    "برنامه‌های وفاداری فصلی",
+    "ادغام با شبکه‌های اجتماعی",
+    "سیستم امتیازدهی برای مشارکت در محتوا"
+  ]
+}
+
+
