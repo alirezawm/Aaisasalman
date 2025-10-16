@@ -21,9 +21,9 @@ $(document).ready(function() {
         return new bootstrap.Popover(popoverTriggerEl);
     });
 
-    // Auto-hide alerts after 5 seconds
+    // Auto-hide only alerts marked as auto-dismiss
     setTimeout(function() {
-        $('.alert').fadeOut('slow');
+        $('.alert.auto-dismiss').fadeOut('slow');
     }, 5000);
     
     // Initialize cart count on page load
@@ -391,7 +391,7 @@ function animatePriceChange($element, newPrice) {
     
     $element.fadeOut(150, function() {
         var formattedPrice = formatPrice(newPrice);
-        $element.text(formattedPrice + ' هزار ریال');
+        $element.text(formattedPrice);
         
         $element.fadeIn(150, function() {
             $element.removeClass('price-changing');
@@ -415,12 +415,12 @@ function updateCartTotal() {
         total += quantity * price;
     });
     
-    $('.cart-total').text(formatPrice(total) + ' هزار ریال');
+    $('.cart-total').text(formatPrice(total));
 }
 
 // Update cart totals dynamically
 function updateCartTotals() {
-    $.get('/api/cart-totals', function(data) {
+    $.get('/api/cart/totals', function(data) {
         // Update cash total
         if (data.cash_total > 0) {
             $('.cart-total-cash').html(
@@ -429,7 +429,7 @@ function updateCartTotals() {
                 '<i class="fas fa-money-bill-wave text-success me-2"></i>' +
                 'مجموع نقدی:' +
                 '</span>' +
-                '<span class="fw-bold text-success">' + formatPrice(data.cash_total) + ' هزار ریال</span>' +
+                '<span class="fw-bold text-success">' + formatPrice(data.cash_total) + '</span>' +
                 '</div>'
             ).show();
         } else {
@@ -444,7 +444,7 @@ function updateCartTotals() {
                 '<i class="fas fa-file-invoice text-warning me-2"></i>' +
                 'مجموع چکی:' +
                 '</span>' +
-                '<span class="fw-bold text-warning">' + formatPrice(data.check_total) + ' هزار ریال</span>' +
+                '<span class="fw-bold text-warning">' + formatPrice(data.check_total) + '</span>' +
                 '</div>'
             ).show();
         } else {
@@ -460,7 +460,7 @@ function updateCartTotals() {
                 '<i class="fas fa-calculator text-danger me-2"></i>' +
                 'مجموع کل:' +
                 '</span>' +
-                '<span class="fw-bold text-danger">' + formatPrice(data.total) + ' هزار ریال</span>' +
+                '<span class="fw-bold text-danger">' + formatPrice(data.grand_total) + '</span>' +
                 '</div>'
             ).show();
         } else {
@@ -474,7 +474,7 @@ function updateCartTotals() {
 // Utility functions
 function showAlert(message, type) {
     var alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
-    var alertHtml = '<div class="alert ' + alertClass + ' alert-dismissible fade show" role="alert">' +
+    var alertHtml = '<div class="alert auto-dismiss ' + alertClass + ' alert-dismissible fade show" role="alert">' +
                    message +
                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
                    '</div>';
@@ -482,7 +482,7 @@ function showAlert(message, type) {
     $('.container').first().prepend(alertHtml);
     
     setTimeout(function() {
-        $('.alert').fadeOut('slow');
+        $('.alert.auto-dismiss').fadeOut('slow');
     }, 5000);
 }
 

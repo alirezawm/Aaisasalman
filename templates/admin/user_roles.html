@@ -197,22 +197,146 @@ function loadUserRoles() {
         document.getElementById('userInfo').style.display = 'block';
     }
     
-    // For now, show a simple message about roles
-    document.getElementById('currentRoles').innerHTML = '<p class="text-muted">نقش‌های کاربر در حال بارگذاری...</p>';
+    const currentRolesEl = document.getElementById('currentRoles');
+    currentRolesEl.innerHTML = '<p class="text-muted">نقش‌های کاربر در حال بارگذاری...</p>';
+
+    fetch(`/api/v1/users/${userId}/roles`, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (!data) return;
+        currentUserRoles = data.roles || [];
+        const roles = currentUserRoles.filter(r => !scope || r.scope === scope);
+        if (roles.length === 0) {
+            currentRolesEl.innerHTML = '<p class="text-muted">نقشی اختصاص داده نشده است</p>';
+            return;
+        }
+        const tableHtml = `
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>نقش</th>
+                        <th>دامنه</th>
+                        <th>وضعیت</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${roles.map(r => `
+                        <tr>
+                            <td>${r.role_name} <span class="text-muted small">(${r.role_slug})</span></td>
+                            <td><span class="badge bg-secondary">${r.scope}</span></td>
+                            <td><span class="badge ${r.is_active ? 'bg-success' : 'bg-secondary'}">${r.is_active ? 'فعال' : 'غیرفعال'}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" onclick="openRevoke('${r.role_slug}')">لغو</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        currentRolesEl.innerHTML = tableHtml;
+    })
+    .catch(() => {
+        currentRolesEl.innerHTML = '<p class="text-danger">خطا در دریافت نقش‌های کاربر</p>';
+    });
 }
 
 function assignRole() {
     const roleSlug = document.getElementById('roleSelect').value;
     const auditReason = document.getElementById('auditReason').value;
+    const userId = document.getElementById('userSelect').value;
     
     if (!roleSlug || !auditReason) {
         showAlert('لطفاً همه فیلدهای اجباری را پر کنید', 'error');
         return;
     }
-    
-    // For now, just show a success message
-    showAlert('نقش با موفقیت اختصاص داده شد (در حال توسعه)', 'success');
-    document.getElementById('assignRoleForm').reset();
+    if (!userId) {
+        showAlert('ابتدا یک کاربر انتخاب کنید', 'error');
+        return;
+    }
+
+    fetch(`/api/v1/users/${userId}/roles`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role_slug: roleSlug, scope: 'site', audit_reason: auditReason })
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.error) {
+            showAlert('خطا در اختصاص نقش: ' + data.error, 'error');
+        } else {
+            showAlert('نقش با موفقیت اختصاص داده شد', 'success');
+            document.getElementById('assignRoleForm').reset();
+            loadUserRoles();
+        }
+    })
+    .catch(() => {
+        showAlert('خطا در اختصاص نقش', 'error');
+    });
+}
+
+function openRevoke(roleSlug) {
+    const userSel = document.getElementById('userSelect');
+    const userName = userSel.options[userSel.selectedIndex].text;
+    const role = (currentUserRoles || []).find(r => r.role_slug === roleSlug) || { role_name: roleSlug };
+    document.getElementById('revokeRoleName').textContent = role.role_name || roleSlug;
+    document.getElementById('revokeUserName').textContent = userName;
+    const modal = new bootstrap.Modal(document.getElementById('revokeRoleModal'));
+    document.getElementById('revokeRoleModal').dataset.roleSlug = roleSlug;
+    modal.show();
+}
+
+function confirmRevokeRole() {
+    const roleSlug = document.getElementById('revokeRoleModal').dataset.roleSlug;
+    const auditReason = document.getElementById('revokeAuditReason').value;
+    const userId = document.getElementById('userSelect').value;
+    if (!auditReason) {
+        showAlert('دلیل لغو نقش الزامی است', 'error');
+        return;
+    }
+    fetch(`/api/v1/users/${userId}/roles/${roleSlug}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'site', audit_reason: auditReason })
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.error) {
+            showAlert('خطا در لغو نقش: ' + data.error, 'error');
+        } else {
+            showAlert('نقش با موفقیت لغو شد', 'success');
+            document.getElementById('revokeAuditReason').value = '';
+            bootstrap.Modal.getInstance(document.getElementById('revokeRoleModal')).hide();
+            loadUserRoles();
+        }
+    })
+    .catch(() => {
+        showAlert('خطا در لغو نقش', 'error');
+    });
 }
 
 function refreshUserRoles() {

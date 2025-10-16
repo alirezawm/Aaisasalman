@@ -23,26 +23,39 @@ class BrandVehicleDetector:
         try:
             # بارگذاری برندها
             brands = Brand.query.filter_by(is_active=True).all()
+            # نقشه معادل‌های برند (alias)
+            brand_aliases = {
+                'ایساکو': {'ایساکو','ایساكو','ايساكو','ای سا کو','ایسا کو','isaco','ایساکُ','ايسا كو'},
+                'تویوتا': {'تویوتا','تويوتا','toyota'},
+                'پژو': {'پژو','peugeot'},
+            }
             for brand in brands:
-                # نام انگلیسی
-                self.brands_cache[brand.name.lower()] = {
+                # نام‌ها را نرمال می‌کنیم
+                en = self.normalize_text(brand.name)
+                fa = self.normalize_text(brand.name_fa)
+                base = {
                     'id': brand.id,
                     'name': brand.name,
                     'name_fa': brand.name_fa,
                     'confidence': 'high'
                 }
-                # نام فارسی
-                self.brands_cache[brand.name_fa] = {
-                    'id': brand.id,
-                    'name': brand.name,
-                    'name_fa': brand.name_fa,
-                    'confidence': 'high'
-                }
+                if en:
+                    self.brands_cache[en] = base
+                if fa:
+                    self.brands_cache[fa] = base
+                # ثبت alias ها اگر موجود باشد
+                canon = brand.name_fa or brand.name
+                canon = self.normalize_text(canon)
+                if canon in {self.normalize_text('ایساکو'), self.normalize_text('isaco')}:
+                    for a in brand_aliases.get('ایساکو', set()):
+                        key = self.normalize_text(a)
+                        if key:
+                            self.brands_cache[key] = base
             
             # بارگذاری انواع خودرو
             vehicle_types = VehicleType.query.all()
             for vt in vehicle_types:
-                self.vehicle_types_cache[vt.name.lower()] = {
+                self.vehicle_types_cache[self.normalize_text(vt.name)] = {
                     'id': vt.id,
                     'name': vt.name,
                     'confidence': 'high'
@@ -74,17 +87,21 @@ class BrandVehicleDetector:
             print(f"خطا در بارگذاری کش: {e}")
     
     def normalize_text(self, text: str) -> str:
-        """نرمال‌سازی متن"""
+        """نرمال‌سازی متن: یکسان‌سازی ی/ک عربی، حذف اعراب/کشد، اعداد فارسی و علائم."""
         if not text:
             return ""
-        
-        # حذف فاصله‌های اضافی و تبدیل به حروف کوچک
-        text = re.sub(r'\s+', ' ', text.strip().lower())
-        
-        # حذف کاراکترهای خاص
-        text = re.sub(r'[^\w\s\u0600-\u06FF]', ' ', text)
-        
-        return text
+        ARABIC_MAP = str.maketrans({
+            'ي':'ی','ى':'ی','ئ':'ی','ك':'ک','ۀ':'ه','ة':'ه','ؤ':'و','إ':'ا','أ':'ا','ٱ':'ا',
+            '۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9',
+            'ـ':' ', '‌':' ', '‏':' '
+        })
+        # حذف اعراب
+        text = re.sub(r'[\u064B-\u065F\u0610-\u061A\u06D6-\u06ED]', '', text)
+        t = text.strip().lower().translate(ARABIC_MAP)
+        # فقط حروف/عدد فارسی-انگلیسی و فاصله
+        t = re.sub(r'[^\w\s\u0600-\u06FF]', ' ', t)
+        t = re.sub(r'\s+', ' ', t)
+        return t
     
     def detect_brand(self, product_name: str) -> Optional[Dict]:
         """تشخیص برند از نام محصول"""

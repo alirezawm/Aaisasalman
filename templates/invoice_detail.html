@@ -125,6 +125,40 @@
                     </div>
                 </div>
                 
+                <!-- Static Payment Instructions -->
+                <div class="mb-4">
+                    <h6 class="text-danger mb-3">راهنمای پرداخت</h6>
+                    {% if invoice.payment_type == 'cash' %}
+                    <div class="alert alert-info">
+                        <div class="mb-2 fw-bold">پرداخت نقدی (کارت به کارت)</div>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <div class="p-3 bg-light rounded h-100">
+                                    <div class="fw-bold">بانک رفاه - آسیا سلمان</div>
+                                    <div>شبا: <code>IR240130100000000377665423</code></div>
+                                    <div>کارت: <code>5894 6370 0029 0152</code></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <div class="p-3 bg-light rounded h-100">
+                                    <div class="fw-bold">بانک سینا - آسیا سلمان</div>
+                                    <div>شبا: <code>IR180590017900447040300001</code></div>
+                                    <div>کارت: <code>6393 4670 0010 4540</code></div>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">پس از واریز، رسید پرداخت را از همین صفحه بارگذاری کنید.</small>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <div class="mb-2 fw-bold">پرداخت چکی</div>
+                        <div>شماره ملی جهت ثبت چک: <code>14013123782</code></div>
+                        <div>نام حقوقی: <strong>شرکت بازرگانی قطعات خودرو آسیا سلمان</strong></div>
+                        <small class="text-muted d-block mt-2">لطفاً تصویر چک ثبت‌شده را بارگذاری کنید.</small>
+                    </div>
+                    {% endif %}
+                </div>
+
                 <!-- Payment Documents -->
                 {% if invoice.documents %}
                 <div class="mb-4">

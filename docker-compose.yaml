@@ -5,7 +5,7 @@ services:
     build: .
     container_name: python_web_app
     ports:
-      - "8000:8000"
+      - "8081:5000"
     # environment:
     #   DB_HOST: db
     #   DB_USER: myuser

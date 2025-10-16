@@ -443,6 +443,29 @@
                     {% endif %}
                 </div>
                 <div class="col-md-6">
+                    {% if invoice.payment_type == 'cash' %}
+                    <div class="mb-3 p-3 bg-white rounded">
+                        <div class="fw-bold text-primary mb-2">کارت به کارت</div>
+                        <div class="row">
+                            <div class="col-12 mb-2">
+                                <div><strong>بانک رفاه - آسیا سلمان</strong></div>
+                                <div>شبا: <code>IR240130100000000377665423</code></div>
+                                <div>کارت: <code>5894 6370 0029 0152</code></div>
+                            </div>
+                            <div class="col-12">
+                                <div><strong>بانک سینا - آسیا سلمان</strong></div>
+                                <div>شبا: <code>IR180590017900447040300001</code></div>
+                                <div>کارت: <code>6393 4670 0010 4540</code></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="mb-3 p-3 bg-white rounded">
+                        <div class="fw-bold text-warning mb-2">اطلاعات چک</div>
+                        <div>شماره ملی حقوقی: <code>14013123782</code></div>
+                        <div>نام: <strong>شرکت بازرگانی قطعات خودرو آسیا سلمان</strong></div>
+                    </div>
+                    {% endif %}
                     <p><strong>شماره فاکتور:</strong> {{ invoice.invoice_number }}</p>
                     <p><strong>تاریخ صدور:</strong> {{ invoice.created_at | persian_date }}</p>
                     <p><strong>وضعیت:</strong> 

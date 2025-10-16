@@ -1173,9 +1173,8 @@ def admin_update_company_info():
 @app.route('/admin/invoices')
 @login_required
 def admin_invoices():
-    """Admin invoices management"""
-    if not current_user.is_admin:
-        abort(403)
+    # Disabled per request: hide customer invoices section entirely
+    abort(404)
     
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -1248,13 +1247,103 @@ def admin_invoices():
 @app.route('/admin/invoice/<int:invoice_id>')
 @login_required
 def admin_invoice_detail(invoice_id):
-    """Admin invoice detail page"""
-    if not current_user.is_admin:
+    # Disabled per request: hide customer invoices section entirely
+    abort(404)
+
+# ==== Invoice approval actions (for admins and order managers) ====
+@app.route('/admin/invoice/<int:invoice_id>/approve', methods=['POST'])
+@login_required
+def admin_approve_invoice(invoice_id):
+    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
         abort(403)
-    
     invoice = Invoice.query.get_or_404(invoice_id)
-    
-    return render_template('admin/invoice_detail.html', invoice=invoice)
+    try:
+        invoice.approval_status = 'approved'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        invoice.rejection_reason = None
+        models.db.session.commit()
+        flash(f'فاکتور {invoice.invoice_number} تایید شد.', 'success')
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در تایید فاکتور.', 'error')
+    return redirect(url_for('admin_invoice_detail', invoice_id=invoice_id))
+
+@app.route('/admin/invoice/<int:invoice_id>/reject', methods=['POST'])
+@login_required
+def admin_reject_invoice(invoice_id):
+    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+        abort(403)
+    invoice = Invoice.query.get_or_404(invoice_id)
+    rejection_reason = request.form.get('rejection_reason', '').strip()
+    try:
+        invoice.approval_status = 'rejected'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        invoice.rejection_reason = rejection_reason or 'بدون دلیل'
+        models.db.session.commit()
+        flash(f'فاکتور {invoice.invoice_number} رد شد.', 'success')
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در رد فاکتور.', 'error')
+    return redirect(url_for('admin_invoice_detail', invoice_id=invoice_id))
+
+@app.route('/admin/document/<int:document_id>/approve', methods=['POST'])
+@login_required
+def admin_approve_document(document_id):
+    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+        abort(403)
+    document = InvoiceDocument.query.get_or_404(document_id)
+    try:
+        document.is_approved = True
+        document.approval_date = datetime.utcnow()
+        document.approved_by = current_user.id
+        document.rejection_reason = None
+        models.db.session.commit()
+        flash('سند پرداخت تایید شد.', 'success')
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در تایید سند.', 'error')
+    return redirect(url_for('admin_invoice_detail', invoice_id=document.invoice_id))
+
+@app.route('/admin/document/<int:document_id>/reject', methods=['POST'])
+@login_required
+def admin_reject_document(document_id):
+    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+        abort(403)
+    document = InvoiceDocument.query.get_or_404(document_id)
+    rejection_reason = request.form.get('rejection_reason', '').strip()
+    try:
+        document.is_approved = False
+        document.approval_date = datetime.utcnow()
+        document.approved_by = current_user.id
+        document.rejection_reason = rejection_reason or 'بدون دلیل'
+        models.db.session.commit()
+        flash('سند پرداخت رد شد.', 'success')
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در رد سند.', 'error')
+    return redirect(url_for('admin_invoice_detail', invoice_id=document.invoice_id))
+
+@app.route('/admin/invoice/<int:invoice_id>/set-review', methods=['POST'])
+@login_required
+def admin_set_review_invoice(invoice_id):
+    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+        abort(403)
+    invoice = Invoice.query.get_or_404(invoice_id)
+    admin_notes = request.form.get('admin_notes', '').strip()
+    try:
+        invoice.approval_status = 'under_review'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        if admin_notes:
+            invoice.admin_notes = admin_notes
+        models.db.session.commit()
+        flash('فاکتور به حالت بررسی تنظیم شد.', 'success')
+    except Exception:
+        models.db.session.rollback()
+        flash('خطا در تنظیم وضعیت فاکتور.', 'error')
+    return redirect(url_for('admin_invoice_detail', invoice_id=invoice_id))
 
 @app.route('/admin/roles')
 @login_required
@@ -1542,11 +1631,18 @@ def api_search():
     return jsonify(results)
 
 @app.route('/api/cart-count')
-@login_required
 def api_cart_count():
-    """Get cart items count"""
-    count = Cart.query.filter_by(user_id=current_user.id).count()
+    """Get cart items count (returns 0 for anonymous users)"""
+    if current_user.is_authenticated:
+        count = Cart.query.filter_by(user_id=current_user.id).count()
+    else:
+        count = 0
     return jsonify({'count': count})
+
+# Alias for legacy frontend path
+@app.route('/api/cart/count')
+def api_cart_count_alias():
+    return api_cart_count()
 
 @app.route('/api/cart/add-multiple', methods=['POST'])
 @login_required
@@ -1777,6 +1873,26 @@ def admin_brand_detection():
     stats = detector.get_detection_stats()
     
     return render_template('admin/brand_detection.html', stats=stats)
+
+# Aliases expected by frontend
+@app.route('/admin/detection-status')
+@login_required
+def admin_detection_status_alias():
+    # Reuse detection stats API and return JSON
+    try:
+        # call existing function
+        return api_detection_stats()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/run-batch-detection', methods=['POST'])
+@login_required
+def admin_run_batch_detection_alias():
+    # Reuse batch detection API
+    try:
+        return api_batch_detect_products()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/detect-brand-vehicle', methods=['POST'])
 @login_required
@@ -3069,6 +3185,369 @@ def admin_expire_points():
 def uploaded_file(filename):
     """Serve uploaded files"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# ==================== ROLE MANAGEMENT API ROUTES ====================
+
+@app.route('/api/v1/roles', methods=['GET'])
+@login_required
+def api_get_roles():
+    """Get all roles"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        roles = Role.query.all()
+        roles_data = []
+        for role in roles:
+            roles_data.append({
+                'id': role.id,
+                'slug': role.slug,
+                'name': role.name,
+                'description': role.description,
+                'permissions': role.get_permissions(),
+                'scope': role.scope,
+                'is_active': role.is_active,
+                'is_immutable': role.is_immutable,
+                'created_at': role.created_at.isoformat() if role.created_at else None,
+                'updated_at': role.updated_at.isoformat() if role.updated_at else None
+            })
+        
+        return jsonify({'roles': roles_data}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v1/roles', methods=['POST'])
+@login_required
+def api_create_role():
+    """Create a new role"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        role_data = data.get('role', {})
+        audit_reason = data.get('audit_reason', 'Creating new role')
+        
+        # Validate required fields
+        required_fields = ['slug', 'name']
+        for field in required_fields:
+            if not role_data.get(field):
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Check if role with same slug already exists
+        existing_role = Role.query.filter_by(slug=role_data['slug']).first()
+        if existing_role:
+            return jsonify({'error': 'Role with this slug already exists'}), 400
+        
+        # Create new role
+        new_role = Role(
+            slug=role_data['slug'],
+            name=role_data['name'],
+            description=role_data.get('description', ''),
+            scope=role_data.get('scope', 'site'),
+            is_active=role_data.get('is_active', True),
+            is_immutable=role_data.get('is_immutable', False)
+        )
+        
+        # Set permissions
+        permissions = role_data.get('permissions', [])
+        new_role.set_permissions(permissions)
+        
+        db.session.add(new_role)
+        db.session.commit()
+        
+        # Log the action
+        try:
+            audit_log = AuditLog(
+                user_id=current_user.id,
+                action='role.create',
+                resource_type='role',
+                resource_id=new_role.id,
+                details={
+                    'role_slug': new_role.slug,
+                    'role_name': new_role.name,
+                    'permissions': permissions,
+                    'scope': new_role.scope
+                },
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', ''),
+                request_id=request.headers.get('X-Request-ID', ''),
+                reason=audit_reason
+            )
+            db.session.add(audit_log)
+            db.session.commit()
+        except Exception as e:
+            # Don't fail the role creation if audit logging fails
+            print(f"Audit logging failed: {e}")
+        
+        return jsonify({
+            'message': 'Role created successfully',
+            'role': {
+                'id': new_role.id,
+                'slug': new_role.slug,
+                'name': new_role.name,
+                'description': new_role.description,
+                'permissions': new_role.get_permissions(),
+                'scope': new_role.scope,
+                'is_active': new_role.is_active,
+                'is_immutable': new_role.is_immutable
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v1/roles/<int:role_id>', methods=['PUT'])
+@login_required
+def api_update_role(role_id):
+    """Update a role"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        role = Role.query.get_or_404(role_id)
+        
+        # Check if role is immutable
+        if role.is_immutable:
+            return jsonify({'error': 'Cannot modify immutable role'}), 400
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        role_data = data.get('role', {})
+        audit_reason = data.get('audit_reason', 'Updating role')
+        
+        # Update fields
+        if 'name' in role_data:
+            role.name = role_data['name']
+        if 'description' in role_data:
+            role.description = role_data['description']
+        if 'scope' in role_data:
+            role.scope = role_data['scope']
+        if 'is_active' in role_data:
+            role.is_active = role_data['is_active']
+        if 'permissions' in role_data:
+            role.set_permissions(role_data['permissions'])
+        
+        role.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Log the action
+        try:
+            audit_log = AuditLog(
+                user_id=current_user.id,
+                action='role.update',
+                resource_type='role',
+                resource_id=role.id,
+                details={
+                    'role_slug': role.slug,
+                    'role_name': role.name,
+                    'permissions': role.get_permissions(),
+                    'scope': role.scope
+                },
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', ''),
+                request_id=request.headers.get('X-Request-ID', ''),
+                reason=audit_reason
+            )
+            db.session.add(audit_log)
+            db.session.commit()
+        except Exception as e:
+            print(f"Audit logging failed: {e}")
+        
+        return jsonify({
+            'message': 'Role updated successfully',
+            'role': {
+                'id': role.id,
+                'slug': role.slug,
+                'name': role.name,
+                'description': role.description,
+                'permissions': role.get_permissions(),
+                'scope': role.scope,
+                'is_active': role.is_active,
+                'is_immutable': role.is_immutable
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v1/roles/<int:role_id>', methods=['DELETE'])
+@login_required
+def api_delete_role(role_id):
+    """Delete a role"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        role = Role.query.get_or_404(role_id)
+        
+        # Check if role is immutable
+        if role.is_immutable:
+            return jsonify({'error': 'Cannot delete immutable role'}), 400
+        
+        # Check if role is assigned to any users
+        if role.user_roles:
+            return jsonify({'error': 'Cannot delete role that is assigned to users'}), 400
+        
+        audit_reason = request.json.get('audit_reason', 'Deleting role') if request.json else 'Deleting role'
+        
+        # Log the action before deletion
+        try:
+            audit_log = AuditLog(
+                user_id=current_user.id,
+                action='role.delete',
+                resource_type='role',
+                resource_id=role.id,
+                details={
+                    'role_slug': role.slug,
+                    'role_name': role.name
+                },
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', ''),
+                request_id=request.headers.get('X-Request-ID', ''),
+                reason=audit_reason
+            )
+            db.session.add(audit_log)
+        except Exception as e:
+            print(f"Audit logging failed: {e}")
+        
+        db.session.delete(role)
+        db.session.commit()
+        
+        return jsonify({'message': 'Role deleted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== USER ROLE MANAGEMENT API ROUTES ====================
+
+@app.route('/api/v1/users/<int:user_id>/roles', methods=['GET'])
+@login_required
+def api_get_user_roles(user_id):
+    """Get roles assigned to a user"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        user = User.query.get_or_404(user_id)
+        roles = [
+            {
+                'role_slug': ur.role.slug,
+                'role_name': ur.role.name,
+                'scope': ur.scope,
+                'is_active': ur.is_active,
+                'assigned_at': ur.assigned_at.isoformat() if ur.assigned_at else None,
+            }
+            for ur in user.user_roles
+        ]
+        return jsonify({'user_id': user.id, 'roles': roles}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/v1/users/<int:user_id>/roles', methods=['POST'])
+@login_required
+def api_assign_role(user_id):
+    """Assign a role to a user"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        payload = request.get_json() or {}
+        role_slug = payload.get('role_slug')
+        scope = payload.get('scope', 'site')
+        audit_reason = payload.get('audit_reason', 'Assign role')
+
+        if not role_slug:
+            return jsonify({'error': 'role_slug is required'}), 400
+
+        user = User.query.get_or_404(user_id)
+        role = Role.query.filter_by(slug=role_slug).first()
+        if not role:
+            return jsonify({'error': 'Role not found'}), 404
+
+        user.assign_role(role=role, assigned_by=current_user.id, scope=scope)
+        db.session.commit()
+
+        # Audit log
+        try:
+            audit_log = AuditLog(
+                user_id=current_user.id,
+                action='role.assign',
+                resource_type='user_role',
+                resource_id=user.id,
+                details={
+                    'assigned_to_user_id': user.id,
+                    'role_slug': role.slug,
+                    'scope': scope
+                },
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', ''),
+                request_id=request.headers.get('X-Request-ID', ''),
+                reason=audit_reason
+            )
+            db.session.add(audit_log)
+            db.session.commit()
+        except Exception:
+            pass
+
+        return jsonify({'message': 'Role assigned successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/v1/users/<int:user_id>/roles/<role_slug>', methods=['DELETE'])
+@login_required
+def api_revoke_role(user_id, role_slug):
+    """Revoke a role from a user"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        payload = request.get_json() or {}
+        scope = payload.get('scope', 'site')
+        audit_reason = payload.get('audit_reason', 'Revoke role')
+
+        user = User.query.get_or_404(user_id)
+        user.revoke_role(role_slug=role_slug, scope=scope)
+        db.session.commit()
+
+        # Audit log
+        try:
+            audit_log = AuditLog(
+                user_id=current_user.id,
+                action='role.revoke',
+                resource_type='user_role',
+                resource_id=user.id,
+                details={
+                    'revoked_from_user_id': user.id,
+                    'role_slug': role_slug,
+                    'scope': scope
+                },
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', ''),
+                request_id=request.headers.get('X-Request-ID', ''),
+                reason=audit_reason
+            )
+            db.session.add(audit_log)
+            db.session.commit()
+        except Exception:
+            pass
+
+        return jsonify({'message': 'Role revoked successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 
 # ==================== ERROR HANDLERS ====================
 

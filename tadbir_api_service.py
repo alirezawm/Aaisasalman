@@ -31,10 +31,15 @@ class TadbirAPIService:
         
         # Price categories configuration
         # Note: خریدار تکی فقط قیمت چکی دارد، خریدار عمده هر دو نقدی و چکی دارد
+        # اضافه‌شدن دسته‌های قیمتی ایساکو برای انبار 15: 61 (نقدی)، 62 (یک‌ماهه)، 63 (دوماهه)، 60 (سه‌ماهه)
         self.price_categories = {
-            'retail_check': {'price_list_key': 13, 'markup_percentage': 10},  # لیست قیمت چکی خرده (تکی)
-            'bulk_cash': {'price_list_key': 14, 'markup_percentage': 10},   # لیست قیمت نقدی عمده
-            'bulk_check': {'price_list_key': 13, 'markup_percentage': 10}    # لیست قیمت چکی عمده
+            'retail_check': {'price_list_key': 13, 'markup_percentage': 10},
+            'bulk_cash': {'price_list_key': 14, 'markup_percentage': 10},
+            'bulk_check': {'price_list_key': 13, 'markup_percentage': 10},
+            'isaco_cash': {'price_list_key': 61, 'markup_percentage': 0},
+            'isaco_1m': {'price_list_key': 62, 'markup_percentage': 0},
+            'isaco_2m': {'price_list_key': 63, 'markup_percentage': 0},
+            'isaco_3m': {'price_list_key': 60, 'markup_percentage': 0}
         }
         
         # Stock code for inventory

@@ -16,9 +16,7 @@
                         <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
                             <i class="fas fa-tachometer-alt me-2"></i>داشبورد
                         </a>
-                        <a class="nav-link active" href="{{ url_for('admin_invoices') }}">
-                            <i class="fas fa-file-invoice-dollar me-2"></i>فاکتورهای مشتریان
-                        </a>
+                        
                         <a class="nav-link" href="{{ url_for('admin_products') }}">
                             <i class="fas fa-boxes me-2"></i>محصولات
                         </a>
@@ -66,9 +64,7 @@
                         <div class="page-subtitle">{{ invoice.invoice_number }}</div>
                     </div>
                     <div>
-                        <a href="{{ url_for('admin_invoices') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-right"></i> بازگشت به لیست
-                        </a>
+                        
                     </div>
                 </div>
             </div>

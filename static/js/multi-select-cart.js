@@ -295,7 +295,7 @@ class MultiSelectCartSystem {
                             <i class="fas fa-money-bill-wave text-success me-2"></i>
                             مجموع نقدی:
                         </span>
-                        <span class="fw-bold text-success">${totals.formatted_cash_total}</span>
+                        <span class="fw-bold text-success">${this.formatPrice(totals.cash_total)}</span>
                     </div>
                 ` : ''}
                 ${totals.check_total > 0 ? `
@@ -304,7 +304,7 @@ class MultiSelectCartSystem {
                             <i class="fas fa-file-invoice text-warning me-2"></i>
                             مجموع چکی:
                         </span>
-                        <span class="fw-bold text-warning">${totals.formatted_check_total}</span>
+                        <span class="fw-bold text-warning">${this.formatPrice(totals.check_total)}</span>
                     </div>
                 ` : ''}
                 ${totals.cash_total > 0 && totals.check_total > 0 ? `
@@ -314,7 +314,7 @@ class MultiSelectCartSystem {
                             <i class="fas fa-calculator text-danger me-2"></i>
                             مجموع کل:
                         </span>
-                        <span class="fw-bold text-danger fs-5">${totals.formatted_grand_total}</span>
+                        <span class="fw-bold text-danger fs-5">${this.formatPrice(totals.grand_total)}</span>
                     </div>
                 ` : ''}
             </div>
@@ -619,9 +619,10 @@ class MultiSelectCartSystem {
     // Utility methods
     formatPrice(price) {
         if (price === null || price === undefined) {
-            return "0 هزار ریال";
+            return "0 ریال";
         }
-        return `${Math.round(price).toLocaleString('fa-IR')} هزار ریال`;
+        const full = Math.round(Number(price) * 1000);
+        return `${full.toLocaleString('fa-IR')} ریال`;
     }
 
     async handleCheckout(e) {

@@ -245,7 +245,8 @@ let rolesData = [
         "description": "{{ role.description or '' }}",
         "scope": "{{ role.scope }}",
         "is_immutable": {{ role.is_immutable|lower }},
-        "permissions": {{ role.permissions|tojson if role.permissions else '[]' }},
+        "is_active": {{ role.is_active|lower }},
+        "permissions": {{ role.get_permissions()|tojson if role.get_permissions else '[]' }},
         "created_at": "{{ role.created_at }}"
     }{% if not loop.last %},{% endif %}
     {% endfor %}
@@ -275,6 +276,13 @@ const availablePermissions = [
 document.addEventListener('DOMContentLoaded', function() {
     loadPermissions();
     
+    // Check if we have server-side roles data, if not load from API
+    if (rolesData && rolesData.length > 0) {
+        displayRoles();
+    } else {
+        loadRoles();
+    }
+    
     // Search functionality
     document.getElementById('searchRoles').addEventListener('input', function() {
         filterRoles();
@@ -297,6 +305,76 @@ document.addEventListener('DOMContentLoaded', function() {
         updateRole();
     });
 });
+
+function loadRoles() {
+    fetch('/api/v1/roles', {
+        method: 'GET',
+        credentials: 'same-origin', // Include cookies for authentication
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            // User is not authenticated, redirect to login
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.error) {
+            showAlert('خطا در بارگذاری نقش‌ها: ' + data.error, 'danger');
+        } else if (data && data.roles) {
+            rolesData = data.roles;
+            displayRoles();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading roles:', error);
+        showAlert('خطا در بارگذاری نقش‌ها: ' + error.message, 'danger');
+    });
+}
+
+function displayRoles() {
+    const rolesTableBody = document.getElementById('rolesTableBody');
+    if (!rolesTableBody) return;
+    
+    if (rolesData.length === 0) {
+        rolesTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">هیچ نقشی یافت نشد</td></tr>';
+        return;
+    }
+    
+    const rolesHtml = rolesData.map(role => `
+        <tr data-scope="${role.scope}">
+            <td><code>${role.slug}</code></td>
+            <td>${role.name}</td>
+            <td>${role.description || '-'}</td>
+            <td><span class="badge bg-info">${role.permissions.length}</span></td>
+            <td><span class="badge bg-secondary">${role.scope}</span></td>
+            <td>
+                <span class="badge ${role.is_immutable ? 'bg-warning' : 'bg-success'}">
+                    ${role.is_immutable ? 'ثابت' : (role.is_active ? 'فعال' : 'غیرفعال')}
+                </span>
+            </td>
+            <td>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="viewRoleDetails('${role.slug}')" title="مشاهده جزئیات">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="editRole('${role.slug}')" title="ویرایش" ${role.is_immutable ? 'disabled' : ''}>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRole(${role.id})" title="حذف" ${role.is_immutable ? 'disabled' : ''}>
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    rolesTableBody.innerHTML = rolesHtml;
+}
 
 function loadPermissions() {
     const permissionsList = document.getElementById('permissionsList');
@@ -388,10 +466,63 @@ function createRole() {
     const selectedPermissions = Array.from(document.querySelectorAll('#permissionsList .permission-checkbox:checked'))
         .map(cb => cb.value);
     
-    // For now, just show a success message
-    showAlert('نقش با موفقیت ایجاد شد (در حال توسعه)', 'success');
-    bootstrap.Modal.getInstance(document.getElementById('createRoleModal')).hide();
-    document.getElementById('createRoleForm').reset();
+    // Prepare role data
+    const roleData = {
+        role: {
+            slug: formData.get('slug'),
+            name: formData.get('name'),
+            description: formData.get('description') || '',
+            scope: formData.get('scope') || 'site',
+            permissions: selectedPermissions,
+            is_active: true,
+            is_immutable: false
+        },
+        audit_reason: 'Creating new role via admin panel'
+    };
+    
+    // Show loading state
+    const submitBtn = document.querySelector('#createRoleForm button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'در حال ایجاد...';
+    submitBtn.disabled = true;
+    
+    // Make API call
+    fetch('/api/v1/roles', {
+        method: 'POST',
+        credentials: 'same-origin', // Include cookies for authentication
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(roleData)
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            // User is not authenticated, redirect to login
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.error) {
+            showAlert('خطا در ایجاد نقش: ' + data.error, 'danger');
+        } else if (data && data.message) {
+            showAlert('نقش با موفقیت ایجاد شد', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createRoleModal')).hide();
+            document.getElementById('createRoleForm').reset();
+            // Refresh the roles list
+            loadRoles();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('خطا در ایجاد نقش: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        // Restore button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    });
 }
 
 function editRole(roleSlug) {
@@ -491,33 +622,69 @@ function filterRoles() {
     });
 }
 
+function deleteRole(roleId) {
+    if (!confirm('آیا مطمئن هستید که می‌خواهید این نقش را حذف کنید؟')) {
+        return;
+    }
+    
+    fetch(`/api/v1/roles/${roleId}`, {
+        method: 'DELETE',
+        credentials: 'same-origin', // Include cookies for authentication
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            audit_reason: 'Deleting role via admin panel'
+        })
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            // User is not authenticated, redirect to login
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.error) {
+            showAlert('خطا در حذف نقش: ' + data.error, 'danger');
+        } else if (data && data.message) {
+            showAlert('نقش با موفقیت حذف شد', 'success');
+            loadRoles(); // Refresh the roles list
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('خطا در حذف نقش: ' + error.message, 'danger');
+    });
+}
+
 function refreshRoles() {
     // Reload the page to refresh data
     window.location.reload();
 }
 
 function showAlert(message, type) {
-    const alertClass = type === 'error' ? 'alert-danger' : 
-                      type === 'success' ? 'alert-success' : 
-                      type === 'info' ? 'alert-info' : 'alert-warning';
-    
+    // Create alert element
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
     alertDiv.innerHTML = `
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
-    // Insert at the top of the card body
-    const cardBody = document.querySelector('.card-body');
-    cardBody.insertBefore(alertDiv, cardBody.firstChild);
-    
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
+    // Insert at the top of the main content
+    const mainContent = document.querySelector('.container-fluid');
+    if (mainContent) {
+        mainContent.insertBefore(alertDiv, mainContent.firstChild);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
 }
 </script>
 {% endblock %}

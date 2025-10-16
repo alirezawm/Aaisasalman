@@ -28,9 +28,6 @@
                         <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
                             <i class="fas fa-car me-2"></i>انواع خودرو
                         </a>
-                        <a class="nav-link" href="{{ url_for('admin_brand_detection') }}">
-                            <i class="fas fa-search me-2"></i>تشخیص برند و نوع خودرو
-                        </a>
                         <a class="nav-link" href="{{ url_for('admin_announcements') }}">
                             <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
                         </a>
@@ -121,6 +118,66 @@
                 </div>
             </div>
             
+            <!-- Brand and Vehicle Detection -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-robot me-2"></i>تشخیص خودکار برند و نوع خودرو
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">
+                                برای تشخیص خودکار برند و نوع خودرو برای همه محصولات، دکمه زیر را کلیک کنید.
+                            </p>
+                            
+                            <!-- آمار تشخیص -->
+                            <div id="detectionStats" class="mb-3">
+                                <small class="text-muted">در حال بارگذاری آمار...</small>
+                            </div>
+                            
+                            <!-- دکمه اجرا -->
+                            <button id="runBatchDetection" class="btn btn-primary btn-block">
+                                <i class="fas fa-play"></i> اجرای تشخیص دسته‌ای
+                            </button>
+                            
+                            <!-- نتیجه -->
+                            <div id="detectionResult" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-search me-2"></i>تشخیص سریع
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="quick-detection-form">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="quick-product-name" 
+                                           placeholder="نام محصول را وارد کنید..." required>
+                                    <button class="btn btn-success" type="submit">
+                                        <i class="fas fa-search"></i>
+                                        تشخیص
+                                    </button>
+                                </div>
+                            </form>
+                            
+                            <div id="quick-detection-result" style="display: none;">
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-info-circle"></i> نتیجه تشخیص:</h6>
+                                    <div id="quick-detection-details"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Tadbir Accounting System -->
             <div class="row g-4 mb-4">
                 <div class="col-12">
@@ -162,104 +219,6 @@
                                         <i class="fas fa-calculator me-2"></i>
                                         ورود به سیستم تدبیر
                                     </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-search me-2"></i>تشخیص سریع برند و نوع خودرو
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="quick-detection-form">
-                                <div class="input-group mb-3">
-                                    <input type="text" class="form-control" id="quick-product-name" 
-                                           placeholder="نام محصول را وارد کنید..." required>
-                                    <button class="btn btn-primary" type="submit">
-                                        <i class="fas fa-search"></i>
-                                        تشخیص
-                                    </button>
-                                </div>
-                            </form>
-                            
-                            <div id="quick-detection-result" style="display: none;">
-                                <div class="alert alert-info">
-                                    <h6><i class="fas fa-info-circle"></i> نتیجه تشخیص:</h6>
-                                    <div id="quick-detection-details"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-3">
-                                <a href="{{ url_for('admin_brand_detection') }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-cogs me-2"></i>
-                                    ابزارهای پیشرفته تشخیص
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-chart-bar me-2"></i>آمار تشخیص
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <h4 class="text-success" id="detection-brand-coverage">-</h4>
-                                    <p class="text-muted">پوشش برند</p>
-                                </div>
-                                <div class="col-6">
-                                    <h4 class="text-info" id="detection-vehicle-coverage">-</h4>
-                                    <p class="text-muted">پوشش نوع خودرو</p>
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <button class="btn btn-outline-success" onclick="refreshDetectionStats()">
-                                    <i class="fas fa-sync me-2"></i>
-                                    به‌روزرسانی آمار
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Debug Tools -->
-            <div class="row g-4 mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header bg-warning text-dark">
-                            <h5 class="mb-0">
-                                <i class="fas fa-tools me-2"></i>ابزارهای دیباگ فیلتر فروشگاه
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>بررسی روابط نوع خودرو</h6>
-                                    <p class="text-muted">بررسی محصولات و روابط نوع خودرو در دیتابیس</p>
-                                    <button class="btn btn-outline-primary" onclick="loadDebugData('vehicle_types')">
-                                        <i class="fas fa-bug me-2"></i>بارگذاری اطلاعات
-                                    </button>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>تست فیلترهای فروشگاه</h6>
-                                    <p class="text-muted">تست منطق فیلترهای برند و نوع خودرو</p>
-                                    <button class="btn btn-outline-success" onclick="loadDebugData('shop_filters')">
-                                        <i class="fas fa-filter me-2"></i>تست فیلترها
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -372,8 +331,10 @@
 
 {% block extra_js %}
 <script>
-// تشخیص سریع برند و نوع خودرو
 $(document).ready(function() {
+    // بارگذاری آمار تشخیص
+    loadDetectionStats();
+    
     // تشخیص سریع
     $('#quick-detection-form').on('submit', function(e) {
         e.preventDefault();
@@ -413,9 +374,69 @@ $(document).ready(function() {
             }
         });
     });
+});
+
+// بارگذاری آمار تشخیص
+function loadDetectionStats() {
+    fetch('/admin/detection-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const stats = data.stats;
+                document.getElementById('detectionStats').innerHTML = `
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <small class="text-muted">کل محصولات</small><br>
+                            <strong>${stats.total_products || 0}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">تشخیص شده</small><br>
+                            <strong>${stats.detected_products || 0}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">درصد</small><br>
+                            <strong>${Math.round((stats.detected_products || 0) / (stats.total_products || 1) * 100)}%</strong>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById('detectionStats').innerHTML = 
+                '<small class="text-danger">خطا در بارگذاری آمار</small>';
+        });
+}
+
+// اجرای تشخیص دسته‌ای
+document.getElementById('runBatchDetection').addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال اجرا...';
     
-    // بارگذاری آمار تشخیص در ابتدا
-    refreshDetectionStats();
+    fetch('/admin/run-batch-detection', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const alertClass = data.success ? 'alert-success' : 'alert-danger';
+        document.getElementById('detectionResult').innerHTML = 
+            `<div class="alert ${alertClass}">${data.message}</div>`;
+        
+        // بارگذاری مجدد آمار
+        if (data.success) {
+            setTimeout(loadDetectionStats, 1000);
+        }
+    })
+    .catch(error => {
+        document.getElementById('detectionResult').innerHTML = 
+            '<div class="alert alert-danger">خطا در اجرای تشخیص</div>';
+    })
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fas fa-play"></i> اجرای تشخیص دسته‌ای';
+    });
 });
 
 // نمایش نتیجه تشخیص سریع
@@ -452,25 +473,6 @@ function displayQuickDetectionResult(data) {
     $('#quick-detection-result').show();
 }
 
-// به‌روزرسانی آمار تشخیص
-function refreshDetectionStats() {
-    $.ajax({
-        url: '/api/detection-stats',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const stats = response.data;
-                $('#detection-brand-coverage').text((stats.brand_coverage || 0) + '%');
-                $('#detection-vehicle-coverage').text((stats.vehicle_type_coverage || 0) + '%');
-            }
-        },
-        error: function() {
-            $('#detection-brand-coverage').text('-');
-            $('#detection-vehicle-coverage').text('-');
-        }
-    });
-}
-
 // نمایش پیام
 function showAlert(message, type) {
     const alertClass = type === 'error' ? 'alert-danger' : 
@@ -493,24 +495,5 @@ function showAlert(message, type) {
         $('.alert').fadeOut();
     }, 5000);
 }
-
-function loadDebugData(type) {
-    const url = type === 'vehicle_types' ? '/admin/debug_vehicle_types' : '/admin/test_shop_filters';
-    const output = document.getElementById('debug-output');
-    const results = document.getElementById('debug-results');
-    
-    output.textContent = 'در حال بارگذاری...';
-    results.style.display = 'block';
-    
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            output.textContent = JSON.stringify(data, null, 2);
-        })
-        .catch(error => {
-            output.textContent = 'خطا: ' + error.message;
-        });
-}
-
 </script>
 {% endblock %}

@@ -447,12 +447,22 @@ class TadbirSyncService:
         """Get price type from price list key"""
         # لیست 13 = چکی (برای تکی و عمده)
         # لیست 14 = نقدی (فقط برای عمده)
+        # لیست‌های ایساکو برای انبار 15:
+        # 60 = سه‌ماهه، 61 = نقدی، 62 = یک‌ماهه، 63 = دوماهه
         if price_list_key == 14:
-            return 'bulk_cash'  # لیست قیمت نقدی عمده
+            return 'bulk_cash'
         elif price_list_key == 13:
             # لیست 13 برای هر دو retail_check و bulk_check استفاده می‌شود
             # در اینجا به صورت پیش‌فرض retail_check برمی‌گردانیم
-            return 'retail_check'  # لیست قیمت چکی
+            return 'retail_check'
+        elif price_list_key == 61:
+            return 'isaco_cash'
+        elif price_list_key == 62:
+            return 'isaco_1m'
+        elif price_list_key == 63:
+            return 'isaco_2m'
+        elif price_list_key == 60:
+            return 'isaco_3m'
         else:
             return 'bulk_cash'  # Default fallback
     

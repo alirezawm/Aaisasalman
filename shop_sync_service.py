@@ -209,12 +209,80 @@ class ShopSyncService:
         try:
             logger.info("Starting shop product sync from Tadbir cache")
             
-            # Get all products from shop
-            products = Product.query.all()
-            
+            # مرحله 1: ایجاد خودکار محصولات جدید بر اساس TadbirProductCache
+            tadbir_products = TadbirProductCache.query.all()
             records_processed = 0
             records_successful = 0
             records_failed = 0
+            
+            for t_product in tadbir_products:
+                try:
+                    records_processed += 1
+                    sku = t_product.item_code
+                    if not sku:
+                        records_failed += 1
+                        continue
+                    
+                    existing = Product.query.filter_by(sku=sku).first()
+                    if existing:
+                        continue
+                    
+                    # Build minimal viable product
+                    name_source = t_product.description or sku
+                    new_product = Product(
+                        sku=sku,
+                        name=name_source,
+                        name_fa=name_source,
+                        description_fa=t_product.description,
+                        is_active=bool(t_product.is_active),
+                        # قیمت‌ها به هزار ریال هستند؛ در نبود قیمت، صفر تنظیم می‌شود
+                        bulk_price_cash=0.0,
+                        retail_price_cash=0.0,
+                        bulk_price_check=0.0,
+                        retail_price_check=0.0,
+                        stock_quantity=0,
+                    )
+                    
+                    # تلاش برای مقداردهی قیمت‌ها از کش قیمت تدبیر
+                    latest_cash = TadbirPriceCache.query.filter_by(
+                        item_code=sku, price_list_key=14
+                    ).order_by(TadbirPriceCache.last_update.desc()).first()
+                    latest_check = TadbirPriceCache.query.filter_by(
+                        item_code=sku, price_list_key=13
+                    ).order_by(TadbirPriceCache.last_update.desc()).first()
+                    
+                    if latest_cash and latest_cash.final_price is not None:
+                        new_product.bulk_price_cash = float(latest_cash.final_price)
+                    if latest_check and latest_check.final_price is not None:
+                        check_price = float(latest_check.final_price)
+                        new_product.retail_price_check = check_price
+                        new_product.retail_price_cash = check_price  # برای سازگاری
+                        new_product.bulk_price_check = check_price
+                        # اگر قیمت نقدی عمده نداریم، از چکی استفاده شود
+                        if new_product.bulk_price_cash == 0.0:
+                            new_product.bulk_price_cash = check_price
+                    
+                    # تلاش برای مقداردهی موجودی از کش موجودی تدبیر
+                    inv = TadbirInventoryCache.query.filter_by(
+                        item_code=sku, stock_code=self.default_stock_code
+                    ).first()
+                    if inv and inv.available_quantity is not None:
+                        try:
+                            new_product.stock_quantity = int(inv.available_quantity)
+                        except Exception:
+                            new_product.stock_quantity = 0
+                    
+                    db.session.add(new_product)
+                    records_successful += 1
+                
+                except Exception as e:
+                    logger.error(f"Error creating product from Tadbir cache for {t_product.item_code}: {str(e)}")
+                    records_failed += 1
+                    continue
+            
+            # مرحله 2: بروزرسانی اطلاعات محصولات موجود بر اساس TadbirProductCache
+            products = Product.query.all()
+            
             
             for product in products:
                 try:

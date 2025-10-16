@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
+from sqlalchemy import event, text
 from datetime import datetime, timedelta
 import json
 
@@ -1170,3 +1171,44 @@ class PointsRule(db.Model):
     
     def __repr__(self):
         return f'<PointsRule {self.rule_name_fa} - {self.points_per_100k_rials} points/100k>'
+
+# ==================== DATA INTEGRITY EVENTS ====================
+
+@event.listens_for(VehicleType, 'before_delete')
+def move_products_to_misc_before_vehicle_type_delete(mapper, connection, target):
+    """Automatically reassign all product links from the deleting VehicleType to the
+    'misc' VehicleType, creating it if it doesn't exist, then remove old links.
+
+    This ensures that deleting a VehicleType never fails due to existing product
+    associations and that products remain categorized under a fallback type.
+    """
+    # Ensure 'misc' VehicleType exists and get its id
+    misc_id_row = connection.execute(text(
+        "SELECT id FROM vehicle_type WHERE name = :name LIMIT 1"
+    ), {"name": "misc"}).fetchone()
+
+    if misc_id_row is None:
+        connection.execute(text(
+            "INSERT INTO vehicle_type (name, created_at) VALUES (:name, CURRENT_TIMESTAMP)"
+        ), {"name": "misc"})
+        misc_id_row = connection.execute(text(
+            "SELECT id FROM vehicle_type WHERE name = :name LIMIT 1"
+        ), {"name": "misc"}).fetchone()
+
+    misc_id = misc_id_row[0]
+
+    # Move links from the deleting type to 'misc' (avoid duplicates)
+    # SQLite supports INSERT OR IGNORE to skip duplicates on the composite PK
+    connection.execute(text(
+        """
+        INSERT OR IGNORE INTO product_vehicle_types (product_id, vehicle_type_id)
+        SELECT product_id, :misc_id
+        FROM product_vehicle_types
+        WHERE vehicle_type_id = :old_id
+        """
+    ), {"misc_id": misc_id, "old_id": target.id})
+
+    # Remove old links to the deleting type
+    connection.execute(text(
+        "DELETE FROM product_vehicle_types WHERE vehicle_type_id = :old_id"
+    ), {"old_id": target.id})
