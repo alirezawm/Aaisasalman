@@ -2054,3 +2054,95 @@ h3 {
         display: none !important;
     }
 }
+
+/* ISACO Price Display Styling */
+.isaco-price-btn {
+    min-height: 70px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 6px 4px !important;
+    border-width: 2px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+}
+
+.isaco-price-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+.isaco-price-amount {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    color: #000 !important;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8) !important;
+    margin-top: 4px !important;
+    line-height: 1.3 !important;
+    text-align: center !important;
+    word-break: break-word !important;
+}
+
+/* Specific color improvements for better contrast */
+.btn-outline-success.isaco-price-btn .isaco-price-amount {
+    color: #0d5016 !important;
+}
+
+.btn-outline-danger.isaco-price-btn .isaco-price-amount {
+    color: #721c24 !important;
+}
+
+.btn-outline-primary.isaco-price-btn .isaco-price-amount {
+    color: #0c5460 !important;
+}
+
+.btn-outline-warning.isaco-price-btn .isaco-price-amount {
+    color: #856404 !important;
+}
+
+/* Selected state styling */
+.btn-check:checked + .isaco-price-btn {
+    background-color: var(--bs-btn-active-bg) !important;
+    border-color: var(--bs-btn-active-border-color) !important;
+    color: var(--bs-btn-active-color) !important;
+}
+
+.btn-check:checked + .isaco-price-btn .isaco-price-amount {
+    color: #fff !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+/* Quantity control improvements */
+.quantity-btn {
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 4px !important;
+}
+
+.quantity-btn:hover {
+    background-color: #dc3545 !important;
+    color: white !important;
+    transform: scale(1.05) !important;
+}
+
+input[id^="quantity_"] {
+    width: 60px !important;
+    text-align: center !important;
+    font-weight: 600 !important;
+    border: 2px solid #dee2e6 !important;
+    background-color: #fff !important;
+}
+
+input[id^="quantity_"]:focus {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+    outline: none !important;
+}
+
+input[id^="quantity_"]:hover {
+    border-color: #dc3545 !important;
+}

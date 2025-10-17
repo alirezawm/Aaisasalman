@@ -38,6 +38,9 @@ class MultiSelectCartSystem {
         // Quantity controls
         $(document).on('click', '.quantity-btn', this.handleQuantityButton.bind(this));
         
+        // ISACO price plan selection
+        $(document).on('change', 'input[name^="price_plan_"]', this.handlePricePlanChange.bind(this));
+        
         // Keyboard shortcuts
         $(document).on('keydown', this.handleKeyboardShortcuts.bind(this));
         
@@ -85,12 +88,86 @@ class MultiSelectCartSystem {
         }
         
         this.updateSelectedCount();
+        this.updateIsacoInstructions();
     }
 
     updateSelectedCount() {
         const count = this.selectedProducts.size;
         $('.selected-count').text(`${count} محصول انتخاب شده`);
-        $('#addSelectedToCart').prop('disabled', count === 0);
+        
+        // Check if all selected ISACO products have payment plans selected
+        const canAddToCart = this.canAddSelectedToCart();
+        const button = $('#addSelectedToCart');
+        
+        if (count === 0) {
+            button.prop('disabled', true);
+            button.attr('title', 'ابتدا محصولات را انتخاب کنید');
+        } else if (!canAddToCart) {
+            button.prop('disabled', true);
+            button.attr('title', 'برای محصولات ایساکو گزینه پرداخت را انتخاب کنید');
+        } else {
+            button.prop('disabled', false);
+            button.attr('title', 'افزودن محصولات انتخاب شده به سبد خرید');
+        }
+    }
+
+    updateIsacoInstructions() {
+        const hasSelectedIsacoProducts = Array.from(this.selectedProducts).some(productId => {
+            return $(`input[name="price_plan_${productId}"]`).length > 0;
+        });
+        
+        if (hasSelectedIsacoProducts) {
+            $('#isacoInstructions').show();
+        } else {
+            $('#isacoInstructions').hide();
+        }
+    }
+
+    canAddSelectedToCart() {
+        if (this.selectedProducts.size === 0) {
+            return false;
+        }
+        
+        // Check if all selected ISACO products have payment plans selected
+        for (const productId of this.selectedProducts) {
+            const hasIsacoOptions = $(`input[name="price_plan_${productId}"]`).length > 0;
+            if (hasIsacoOptions) {
+                const selectedPlan = $(`input[name="price_plan_${productId}"]:checked`).val();
+                if (!selectedPlan) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    validateSelectedProducts() {
+        const errors = [];
+        
+        $('.product-checkbox:checked').each((index, checkbox) => {
+            const productId = $(checkbox).data('product-id');
+            const row = $(checkbox).closest('tr');
+            const productName = row.find('td:nth-child(4) strong').text();
+            const productCode = row.find('td:nth-child(5)').text().trim();
+            
+            // Check if this is an ISACO product (has price_plan radio buttons)
+            const hasIsacoOptions = $(`input[name="price_plan_${productId}"]`).length > 0;
+            
+            if (hasIsacoOptions) {
+                const selectedPlan = $(`input[name="price_plan_${productId}"]:checked`).val();
+                if (!selectedPlan) {
+                    // Highlight the product row to draw attention
+                    row.addClass('table-warning');
+                    errors.push(`کالا ${productCode}: انتخاب یکی از گزینه‌های ایساکو الزامی است`);
+                } else {
+                    // Remove highlight if plan is selected
+                    row.removeClass('table-warning');
+                }
+            }
+        });
+        
+        return errors;
     }
 
     async handleAddSelectedToCart(e) {
@@ -98,6 +175,13 @@ class MultiSelectCartSystem {
         
         if (this.selectedProducts.size === 0) {
             this.showNotification('لطفاً حداقل یک محصول انتخاب کنید', 'warning');
+            return;
+        }
+        
+        // Validate that all selected products have required payment options
+        const validationErrors = this.validateSelectedProducts();
+        if (validationErrors.length > 0) {
+            this.showNotification(validationErrors.join(' '), 'error');
             return;
         }
         
@@ -111,12 +195,18 @@ class MultiSelectCartSystem {
             const productId = $(checkbox).data('product-id');
             const quantity = parseInt($(`#quantity_${productId}`).val()) || 1;
             const priceType = $(`input[name="price_type_${productId}"]:checked`).val() || 'cash';
+            const pricePlan = $(`input[name="price_plan_${productId}"]:checked`).val() || null;
             
-            products.push({
+            
+            const payload = {
                 product_id: productId,
                 quantity: quantity,
                 price_type: priceType
-            });
+            };
+            if (pricePlan) {
+                payload.price_plan = pricePlan;
+            }
+            products.push(payload);
         });
         
         this.showLoading($('#addSelectedToCart'));
@@ -216,8 +306,14 @@ class MultiSelectCartSystem {
             const row = $(checkbox).closest('tr');
             const productName = row.find('td:nth-child(4) strong').text();
             const quantity = parseInt($(`#quantity_${productId}`).val()) || 1;
-            const priceType = $(`input[name="price_type_${productId}"]:checked`).val() || 'cash';
-            const priceTypeText = priceType === 'cash' ? 'نقدی' : 'چکی';
+            const pricePlan = $(`input[name="price_plan_${productId}"]:checked`).val() || null;
+            const priceType = $(`input[name="price_type_${productId}"]:checked`).length ? $(`input[name="price_type_${productId}"]:checked`).val() : null;
+            const priceTypeText = pricePlan ? (
+                pricePlan === 'isaco_cash' ? 'ایساکو نقدی' :
+                pricePlan === 'isaco_1m' ? 'ایساکو ۱ماهه' :
+                pricePlan === 'isaco_2m' ? 'ایساکو ۲ماهه' :
+                pricePlan === 'isaco_3m' ? 'ایساکو ۳ماهه' : 'ایساکو'
+            ) : (priceType === 'cash' ? 'نقدی' : 'چکی');
             
             html += `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -355,7 +451,8 @@ class MultiSelectCartSystem {
     }
 
     renderCartItem(item) {
-        const priceDisplay = this.formatPrice(item.total_price);
+        const isIsaco = item.price_plan && item.price_plan.startsWith('isaco');
+        const priceDisplay = this.formatPrice(item.total_price, isIsaco);
         const priceIcon = item.price_type === 'cash' ? 'fa-money-bill-wave text-success' : 'fa-file-invoice text-warning';
         
         return `
@@ -553,6 +650,18 @@ class MultiSelectCartSystem {
         }
     }
 
+    handlePricePlanChange(e) {
+        const radio = $(e.currentTarget);
+        const productId = radio.attr('name').replace('price_plan_', '');
+        const row = $(`input[data-product-id="${productId}"]`).closest('tr');
+        
+        // Remove warning highlight when a plan is selected
+        row.removeClass('table-warning');
+        
+        // Update button state
+        this.updateSelectedCount();
+    }
+
     handleKeyboardShortcuts(e) {
         // Ctrl/Cmd + K to open cart
         if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -617,12 +726,19 @@ class MultiSelectCartSystem {
     }
 
     // Utility methods
-    formatPrice(price) {
+    formatPrice(price, isIsaco = false) {
         if (price === null || price === undefined) {
             return "0 ریال";
         }
-        const full = Math.round(Number(price) * 1000);
-        return `${full.toLocaleString('fa-IR')} ریال`;
+        // Price is already in full Rials; display as full Rials
+        let priceValue = Math.round(Number(price));
+        
+        // Add 10% markup for ISACO products (applied on full Rial unit)
+        if (isIsaco) {
+            priceValue = Math.round(priceValue * 1.10);
+        }
+        
+        return `${priceValue.toLocaleString('fa-IR')} ریال`;
     }
 
     async handleCheckout(e) {

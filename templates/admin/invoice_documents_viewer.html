@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}مستندات فاکتور {{ invoice.invoice_number }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/invoice-management.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_invoice_management') }}">
+                            <i class="fas fa-file-invoice me-2"></i>مدیریت فاکتورها
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <div class="row">
+                <div class="col-12">
+                    <!-- Header -->
+                    <div class="page-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="page-title">
+                                    <i class="fas fa-file-alt"></i>
+                                    مستندات فاکتور
+                                </h2>
+                                <div class="page-subtitle">{{ invoice.invoice_number }}</div>
+                            </div>
+                            <div>
+                                <a href="{{ url_for('admin_invoice_management') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-right"></i> بازگشت به لیست فاکتورها
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Info -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-info-circle"></i> اطلاعات فاکتور</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>شماره فاکتور:</strong></td>
+                                            <td>{{ invoice.invoice_number }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>مشتری:</strong></td>
+                                            <td>{{ invoice.user.full_name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>مبلغ کل:</strong></td>
+                                            <td class="text-primary font-weight-bold">{{ format_price(invoice.total_amount) }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>نوع پرداخت:</strong></td>
+                                            <td>
+                                                <span class="badge {% if invoice.payment_type == 'cash' %}bg-success{% else %}bg-warning{% endif %}">
+                                                    {% if invoice.payment_type == 'cash' %}نقدی{% else %}چکی{% endif %}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>وضعیت:</strong></td>
+                                            <td>
+                                                {% if invoice.approval_status == 'pending' %}
+                                                    <span class="badge bg-warning">در انتظار تایید</span>
+                                                {% elif invoice.approval_status == 'approved' %}
+                                                    <span class="badge bg-success">تایید شده</span>
+                                                {% elif invoice.approval_status == 'rejected' %}
+                                                    <span class="badge bg-danger">رد شده</span>
+                                                {% elif invoice.approval_status == 'under_review' %}
+                                                    <span class="badge bg-info">در حال بررسی</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>تاریخ ایجاد:</strong></td>
+                                            <td>{{ invoice.created_at | persian_datetime }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documents -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-file-alt"></i> مستندات فاکتور</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if invoice.documents %}
+                                <div class="row">
+                                    {% for document in invoice.documents %}
+                                    <div class="col-lg-6 col-md-12 mb-4">
+                                        <div class="document-card">
+                                            <div class="document-header">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 class="mb-1">
+                                                            <i class="fas fa-file-image me-2"></i>
+                                                            {{ 'چک' if document.document_type == 'check' else 'رسید' }}
+                                                        </h6>
+                                                        <small class="text-muted">
+                                                            بارگذاری شده در {{ document.uploaded_at | persian_datetime }}
+                                                        </small>
+                                                    </div>
+                                                    <div>
+                                                        {% if document.is_approved %}
+                                                            <span class="badge bg-success">تایید شده</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">در انتظار تایید</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="document-preview">
+                                                <img src="{{ url_for('uploaded_file', filename=document.file_path) }}" 
+                                                     alt="مستند فاکتور" 
+                                                     class="img-fluid rounded"
+                                                     onclick="showImageModal('{{ url_for('uploaded_file', filename=document.file_path) }}')"
+                                                     style="cursor: pointer; max-height: 300px; width: 100%; object-fit: contain;">
+                                            </div>
+                                            
+                                            <div class="document-actions mt-3">
+                                                <div class="btn-group w-100" role="group">
+                                                    <button type="button" 
+                                                            class="btn btn-outline-primary btn-sm"
+                                                            onclick="showImageModal('{{ url_for('uploaded_file', filename=document.file_path) }}')">
+                                                        <i class="fas fa-expand"></i> مشاهده کامل
+                                                    </button>
+                                                    
+                                                    {% if not document.is_approved and invoice.approval_status == 'pending' %}
+                                                    <form method="POST" action="{{ url_for('admin_approve_document', invoice_id=invoice.id, document_id=document.id) }}" class="d-inline">
+                                                        <button type="submit" 
+                                                                class="btn btn-success btn-sm"
+                                                                onclick="return confirm('آیا از تایید این مستند اطمینان دارید؟')">
+                                                            <i class="fas fa-check"></i> تایید
+                                                        </button>
+                                                    </form>
+                                                    
+                                                    <button type="button" 
+                                                            class="btn btn-danger btn-sm"
+                                                            onclick="showRejectDocumentModal({{ document.id }}, '{{ document.document_type }}')">
+                                                        <i class="fas fa-times"></i> رد
+                                                    </button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            {% if document.admin_notes %}
+                                            <div class="document-notes mt-2">
+                                                <small class="text-muted">
+                                                    <strong>یادداشت ادمین:</strong> {{ document.admin_notes }}
+                                                </small>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if document.rejection_reason %}
+                                            <div class="document-rejection mt-2">
+                                                <small class="text-danger">
+                                                    <strong>دلیل رد:</strong> {{ document.rejection_reason }}
+                                                </small>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if document.is_approved and document.approval_date %}
+                                            <div class="document-approval-info mt-2">
+                                                <small class="text-success">
+                                                    <strong>تایید شده در:</strong> {{ document.approval_date | persian_datetime }}
+                                                    {% if document.approver %}
+                                                        توسط {{ document.approver.full_name }}
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">هیچ مستندی بارگذاری نشده است</h5>
+                                    <p class="text-muted">مشتری هنوز مستندات فاکتور را ارسال نکرده است</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">مشاهده مستند</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="مستند فاکتور" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Document Modal -->
+<div class="modal fade" id="rejectDocumentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">رد مستند</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectDocumentForm" method="POST">
+                <div class="modal-body">
+                    <p id="documentInfo"></p>
+                    <div class="mb-3">
+                        <label for="rejection_reason_doc" class="form-label">دلیل رد مستند *</label>
+                        <textarea id="rejection_reason_doc" name="rejection_reason" class="form-control" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                    <button type="submit" class="btn btn-danger">رد مستند</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showImageModal(imageSrc) {
+    document.getElementById('modalImage').src = imageSrc;
+    var imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+    imageModal.show();
+}
+
+function showRejectDocumentModal(documentId, documentType) {
+    document.getElementById('documentInfo').textContent = `آیا از رد مستند "${documentType}" اطمینان دارید؟`;
+    document.getElementById('rejectDocumentForm').action = `/admin/invoices/{{ invoice.id }}/documents/${documentId}/reject`;
+    
+    var rejectModal = new bootstrap.Modal(document.getElementById('rejectDocumentModal'));
+    rejectModal.show();
+}
+</script>
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/invoice-management.js') }}"></script>
+{% endblock %}
+
+<style>
+.document-card {
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 20px;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    height: 100%;
+}
+
+.document-header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.document-preview {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.document-actions .btn-group .btn {
+    flex: 1;
+}
+
+.admin-sidebar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    min-height: 100vh;
+}
+
+.admin-sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+}
+
+.admin-sidebar .nav-link:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+}
+
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-title {
+    color: #333;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.page-subtitle {
+    color: #666;
+    font-size: 14px;
+}
+
+#modalImage {
+    max-height: 80vh;
+    max-width: 100%;
+}
+</style>
+{% endblock %}

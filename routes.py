@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, abort
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -6,9 +6,75 @@ from datetime import datetime, timedelta
 import os
 import json
 import uuid
+import psutil
+import time
 from models import *
 from app import app
 import models
+
+# ------- Persian/Arabic text normalization helpers (for robust search) -------
+# These helpers are used across endpoints to ensure characters like ی/ي, ک/ك,
+# ZWNJ, Arabic digits, and diacritics do not break matching.
+ARABIC_DIACRITICS = [
+    '\u064B', '\u064C', '\u064D', '\u064E', '\u064F', '\u0650', '\u0651', '\u0652', '\u0640'
+]
+PERSIAN_CHAR_MAP = {
+    'ي': 'ی', 'ك': 'ک',
+    'أ': 'ا', 'إ': 'ا', 'آ': 'ا',
+    'ة': 'ه', 'ۀ': 'ه',
+    '\u200c': ' ',  # ZWNJ → space
+    '٠': '0','١': '1','٢': '2','٣': '3','٤': '4','٥': '5','٦': '6','٧': '7','٨': '8','٩': '9',
+    '۰': '0','۱': '1','۲': '2','۳': '3','۴': '4','۵': '5','۶': '6','۷': '7','۸': '8','۹': '9',
+}
+
+def normalize_fa_text(text_value: str) -> str:
+    """Normalize Persian/Arabic variants on the Python side."""
+    import re
+    if not text_value:
+        return ''
+    t = str(text_value)
+    for src, dst in PERSIAN_CHAR_MAP.items():
+        t = t.replace(src, dst)
+    t = re.sub('[' + ''.join(ARABIC_DIACRITICS) + ']', '', t)
+    t = re.sub(r'\s+', ' ', t.strip())
+    return t
+
+def normalize_sql_expr(col):
+    """Build SQL expression that normalizes a column similar to normalize_fa_text."""
+    from sqlalchemy import func
+    expr = col
+    for src, dst in PERSIAN_CHAR_MAP.items():
+        expr = func.replace(expr, src, dst)
+    for ch in ARABIC_DIACRITICS:
+        expr = func.replace(expr, ch, '')
+    return expr
+
+# -------- ISACO Warehouse 15 helpers --------
+def is_isaco_feature_enabled():
+    return app.config.get('ENABLE_ISACO_WH15', False)
+
+def is_isaco_brand(brand_id: int) -> bool:
+    return brand_id == app.config.get('ISACO_BRAND_ID')
+
+def isaco_allowed_plans():
+    return set(app.config.get('ISACO_ALLOWED_PLANS', []))
+
+def get_isaco_unit_price(product: Product, plan: str) -> float:
+    base_price = 0
+    if plan == 'isaco_cash':
+        base_price = product.isaco_cash or 0
+    elif plan == 'isaco_1m':
+        base_price = product.isaco_1m or 0
+    elif plan == 'isaco_2m':
+        base_price = product.isaco_2m or 0
+    elif plan == 'isaco_3m':
+        base_price = product.isaco_3m or 0
+    
+    # Convert from thousands Rials to full Rials and apply 10% markup
+    if base_price > 0:
+        full_price = base_price * 1000  # Convert to full Rials
+        return full_price * 1.10  # Apply 10% markup
+    return 0
 
 # Define format_price function here to avoid circular import
 def format_price(price):
@@ -63,6 +129,9 @@ def shop():
     
     # Build query
     query = Product.query.filter_by(is_active=True)
+
+    # Note: ISACO WH15 products are now included in general listings
+    # The original filter was hiding almost all products
     
     if brand_id:
         query = query.filter_by(brand_id=brand_id)
@@ -77,12 +146,16 @@ def shop():
         )
     
     if search_query:
+        norm_q = normalize_fa_text(search_query)
+        name_norm = normalize_sql_expr(Product.name)
+        name_fa_norm = normalize_sql_expr(Product.name_fa)
+
         query = query.filter(
             models.db.or_(
-                Product.name.contains(search_query),
-                Product.name_fa.contains(search_query),
-                Product.sku.contains(search_query),
-                Product.oem_code.contains(search_query)
+                name_norm.contains(norm_q),
+                name_fa_norm.contains(norm_q),
+                Product.sku.contains(norm_q),
+                Product.oem_code.contains(norm_q)
             )
         )
     
@@ -161,17 +234,34 @@ def brand_products(brand_id):
     
     # Build query for products of this brand
     query = Product.query.filter_by(brand_id=brand_id, is_active=True)
+
+    # If ISACO brand, only show ISACO WH15 or items with ISACO prices
+    if is_isaco_feature_enabled() and is_isaco_brand(brand_id):
+        from sqlalchemy import or_
+        query = query.filter(
+            or_(
+                Product.is_isaco_wh15 == True,
+                (Product.isaco_cash.isnot(None)) |
+                (Product.isaco_1m.isnot(None)) |
+                (Product.isaco_2m.isnot(None)) |
+                (Product.isaco_3m.isnot(None))
+            )
+        )
     
     if category_id:
         query = query.filter_by(category_id=category_id)
     
     if search_query:
+        norm_q = normalize_fa_text(search_query)
+        name_norm = normalize_sql_expr(Product.name)
+        name_fa_norm = normalize_sql_expr(Product.name_fa)
+
         query = query.filter(
             models.db.or_(
-                Product.name.contains(search_query),
-                Product.name_fa.contains(search_query),
-                Product.sku.contains(search_query),
-                Product.oem_code.contains(search_query)
+                name_norm.contains(norm_q),
+                name_fa_norm.contains(norm_q),
+                Product.sku.contains(norm_q),
+                Product.oem_code.contains(norm_q)
             )
         )
     
@@ -263,7 +353,7 @@ def bulk_conditions():
 def login():
     """User login"""
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         username = request.form.get('username')
@@ -274,11 +364,25 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             if user.is_active:
                 login_user(user)
-                user.last_login = datetime.utcnow()
-                models.db.session.commit()
+                
+                # Use retry mechanism for database operations
+                from database_utils import retry_on_database_lock, database_transaction
+                
+                @retry_on_database_lock(max_retries=3, delay=0.5, backoff=2)
+                def update_last_login():
+                    with database_transaction(models.db.session):
+                        user.last_login = datetime.utcnow()
+                
+                try:
+                    update_last_login()
+                except Exception as e:
+                    # Log the error but don't fail the login
+                    from database_utils import logger
+                    logger.error(f"Failed to update last_login: {e}")
+                    # Continue with login even if last_login update fails
                 
                 next_page = request.args.get('next')
-                return redirect(next_page) if next_page else redirect(url_for('dashboard'))
+                return redirect(next_page) if next_page else redirect(url_for('index'))
             else:
                 flash('حساب کاربری شما غیرفعال است.', 'error')
         else:
@@ -290,7 +394,7 @@ def login():
 def register():
     """User registration"""
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         username = request.form.get('username')
@@ -301,6 +405,13 @@ def register():
         phone = request.form.get('phone')
         company_name = request.form.get('company_name')
         is_bulk_buyer_request = request.form.get('is_bulk_buyer') == 'on'
+        
+        # Normalize optional fields
+        username = username.strip() if isinstance(username, str) else username
+        email = (email.strip() if isinstance(email, str) else None) or None  # store NULL instead of ''
+        full_name = full_name.strip() if isinstance(full_name, str) else full_name
+        phone = phone.strip() if isinstance(phone, str) else phone
+        company_name = company_name.strip() if isinstance(company_name, str) else company_name
         
         # Validation
         if password != confirm_password:
@@ -363,44 +474,7 @@ def logout():
 
 # ==================== USER DASHBOARD ROUTES ====================
 
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    """User dashboard"""
-    # Get user's recent invoices
-    recent_invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(
-        Invoice.created_at.desc()
-    ).limit(5).all()
-    
-    # Get all user's invoices for statistics
-    all_invoices = Invoice.query.filter_by(user_id=current_user.id).all()
-    
-    # Calculate statistics
-    total_invoices = len(all_invoices)
-    total_amount = sum(invoice.total_amount for invoice in all_invoices)
-    
-    # Calculate debt and credit (simplified - you may need to adjust based on your business logic)
-    paid_invoices = [inv for inv in all_invoices if inv.status == 'paid']
-    pending_invoices = [inv for inv in all_invoices if inv.status == 'pending']
-    
-    total_debt = sum(invoice.total_amount for invoice in pending_invoices)
-    total_credit = 0  # This would need to be calculated based on your business logic
-    
-    # Get user's cart items count
-    cart_count = Cart.query.filter_by(user_id=current_user.id).count()
-    
-    # Get user's wishlist count
-    wishlist_count = Wishlist.query.filter_by(user_id=current_user.id).count()
-    
-    return render_template('dashboard.html',
-                         recent_invoices=recent_invoices,
-                         invoices=all_invoices,
-                         total_invoices=total_invoices,
-                         total_amount=total_amount,
-                         total_debt=total_debt,
-                         total_credit=total_credit,
-                         cart_count=cart_count,
-                         wishlist_count=wishlist_count)
+# Dashboard route removed - only admin dashboard is available for admins and order managers
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -550,30 +624,72 @@ def add_to_cart():
     product_id = request.form.get('product_id', type=int)
     quantity = request.form.get('quantity', 1, type=int)
     price_type = request.form.get('price_type', 'cash')
+    price_plan = request.form.get('price_plan')  # ISACO plan when applicable
     
     product = Product.query.get_or_404(product_id)
     
-    # Check if item already exists in cart
+    # ISACO validation
+    if is_isaco_feature_enabled() and getattr(product, 'is_isaco_wh15', False):
+        # Check if product has valid Isaco pricing
+        has_valid_isaco_pricing = any([
+            product.isaco_cash and product.isaco_cash > 0,
+            product.isaco_1m and product.isaco_1m > 0,
+            product.isaco_2m and product.isaco_2m > 0,
+            product.isaco_3m and product.isaco_3m > 0
+        ])
+        
+        if has_valid_isaco_pricing:
+            # Product has valid Isaco pricing, require plan selection
+            if not price_plan or price_plan not in isaco_allowed_plans():
+                flash('لطفاً یکی از گزینه‌های ایساکو را انتخاب کنید (نقدی/یک‌ماهه/دوماهه/سه‌ماهه).', 'danger')
+                return redirect(request.referrer or url_for('brand_products', brand_id=app.config.get('ISACO_BRAND_ID')))
+            unit_price_candidate = get_isaco_unit_price(product, price_plan)
+            if not unit_price_candidate or unit_price_candidate <= 0:
+                flash('قیمت انتخاب‌شده برای این کالا معتبر نیست.', 'danger')
+                return redirect(request.referrer or url_for('brand_products', brand_id=app.config.get('ISACO_BRAND_ID')))
+        else:
+            # Product is marked as Isaco but has no valid Isaco pricing, use regular pricing
+            if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
+                unit_price_candidate = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+            else:
+                unit_price_candidate = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
+            
+            if not unit_price_candidate or unit_price_candidate <= 0:
+                flash('قیمت انتخاب‌شده برای این کالا معتبر نیست.', 'danger')
+                return redirect(request.referrer or url_for('brand_products', brand_id=app.config.get('ISACO_BRAND_ID')))
+
+    # Check if item already exists in cart (include plan)
     existing_item = Cart.query.filter_by(
         user_id=current_user.id,
         product_id=product_id,
-        price_type=price_type
+        price_type=price_type,
+        price_plan=price_plan
     ).first()
     
     if existing_item:
         existing_item.quantity += quantity
     else:
-        # Get price based on user type, approval status and payment method
-        if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
-            unit_price = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+        # Determine unit price
+        if is_isaco_feature_enabled() and getattr(product, 'is_isaco_wh15', False):
+            unit_price = get_isaco_unit_price(product, price_plan)
+            # Fallback to regular pricing if Isaco prices are not available
+            if not unit_price or unit_price <= 0:
+                if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
+                    unit_price = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+                else:
+                    unit_price = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
         else:
-            unit_price = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
+            if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
+                unit_price = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+            else:
+                unit_price = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
         
         cart_item = Cart(
             user_id=current_user.id,
             product_id=product_id,
             quantity=quantity,
             price_type=price_type,
+            price_plan=price_plan,
             unit_price=unit_price
         )
         models.db.session.add(cart_item)
@@ -725,8 +841,8 @@ def invoice_print(invoice_id):
 @app.route('/admin')
 @login_required
 def admin_dashboard():
-    """Admin dashboard"""
-    if not current_user.is_admin:
+    """Admin dashboard - only for admins and order managers"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
         abort(403)
     
     # Get statistics
@@ -1170,11 +1286,93 @@ def admin_update_company_info():
     
     return redirect(url_for('admin_company_info'))
 
+@app.route('/admin/invoices/management')
+@login_required
+def admin_invoice_management():
+    """صفحه اصلی مدیریت فاکتورهای مشتریان"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get filter parameters
+    approval_status = request.args.get('approval_status', '')
+    payment_type = request.args.get('payment_type', '')
+    user_search = request.args.get('user_search', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    amount_min = request.args.get('amount_min', type=float)
+    amount_max = request.args.get('amount_max', type=float)
+    
+    # Build query - specify join condition to avoid ambiguous foreign key error
+    query = Invoice.query.join(User, Invoice.user_id == User.id)
+    
+    if approval_status:
+        query = query.filter_by(approval_status=approval_status)
+    
+    if payment_type:
+        query = query.filter_by(payment_type=payment_type)
+    
+    if user_search:
+        query = query.filter(
+            models.db.or_(
+                User.username.contains(user_search),
+                User.full_name.contains(user_search),
+                User.company_name.contains(user_search)
+            )
+        )
+    
+    if date_from:
+        query = query.filter(Invoice.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+    
+    if date_to:
+        query = query.filter(Invoice.created_at <= datetime.strptime(date_to, '%Y-%m-%d'))
+    
+    if amount_min:
+        query = query.filter(Invoice.total_amount >= amount_min * 1000)  # Convert to full rials
+    
+    if amount_max:
+        query = query.filter(Invoice.total_amount <= amount_max * 1000)  # Convert to full rials
+    
+    # Get statistics
+    all_invoices = Invoice.query.all()
+    stats = {
+        'total_invoices': len(all_invoices),
+        'pending_approval': len([i for i in all_invoices if i.approval_status == 'pending']),
+        'approved': len([i for i in all_invoices if i.approval_status == 'approved']),
+        'rejected': len([i for i in all_invoices if i.approval_status == 'rejected']),
+        'under_review': len([i for i in all_invoices if i.approval_status == 'under_review']),
+        'total_amount': sum(i.total_amount for i in all_invoices) / 1000000  # Convert to millions
+    }
+    
+    # Paginate results
+    invoices = query.order_by(Invoice.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Current filters for template
+    current_filters = {
+        'approval_status': approval_status,
+        'payment_type': payment_type,
+        'user_search': user_search,
+        'date_from': date_from,
+        'date_to': date_to,
+        'amount_min': amount_min,
+        'amount_max': amount_max
+    }
+    
+    return render_template('admin/invoice_management.html',
+                         invoices=invoices,
+                         stats=stats,
+                         current_filters=current_filters)
+
 @app.route('/admin/invoices')
 @login_required
 def admin_invoices():
-    # Disabled per request: hide customer invoices section entirely
-    abort(404)
+    """View all customer invoices (order managers only)."""
+    if not current_user.has_role('order_manager', scope='site'):
+        abort(403)
     
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -1196,7 +1394,7 @@ def admin_invoices():
         query = query.filter_by(payment_type=payment_type)
     
     if user_search:
-        query = query.join(User).filter(
+        query = query.join(User, Invoice.user_id == User.id).filter(
             models.db.or_(
                 User.username.contains(user_search),
                 User.full_name.contains(user_search),
@@ -1247,14 +1445,461 @@ def admin_invoices():
 @app.route('/admin/invoice/<int:invoice_id>')
 @login_required
 def admin_invoice_detail(invoice_id):
-    # Disabled per request: hide customer invoices section entirely
-    abort(404)
+    """View invoice details (order managers only)."""
+    if not current_user.has_role('order_manager', scope='site'):
+        abort(403)
+    
+    invoice = Invoice.query.get_or_404(invoice_id)
+    return render_template('admin/invoice_detail.html', invoice=invoice)
+
+# ==================== CUSTOMER INVOICES IN PROFILE ====================
+
+@app.route('/profile/customer-invoices')
+@login_required
+def profile_customer_invoices():
+    """Display customer invoices in profile for order managers."""
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 15
+    
+    # Get filter parameters
+    approval_status = request.args.get('approval_status', '')
+    payment_type = request.args.get('payment_type', '')
+    user_search = request.args.get('user_search', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    
+    # Build query
+    query = Invoice.query
+    
+    if approval_status:
+        query = query.filter_by(approval_status=approval_status)
+    
+    if payment_type:
+        query = query.filter_by(payment_type=payment_type)
+    
+    if user_search:
+        query = query.join(User, Invoice.user_id == User.id).filter(
+            models.db.or_(
+                User.username.contains(user_search),
+                User.full_name.contains(user_search),
+                User.company_name.contains(user_search)
+            )
+        )
+    
+    if date_from:
+        try:
+            query = query.filter(Invoice.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            query = query.filter(Invoice.created_at <= datetime.strptime(date_to, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    
+    # Get all invoices for statistics (before filtering)
+    all_invoices = Invoice.query.all()
+    
+    # Calculate statistics
+    total_invoices = len(all_invoices)
+    pending_approval = len([inv for inv in all_invoices if inv.approval_status == 'pending'])
+    approved = len([inv for inv in all_invoices if inv.approval_status == 'approved'])
+    rejected = len([inv for inv in all_invoices if inv.approval_status == 'rejected'])
+    under_review = len([inv for inv in all_invoices if inv.approval_status == 'under_review'])
+    
+    # Calculate total amounts
+    total_pending_amount = sum([inv.total_amount for inv in all_invoices if inv.approval_status == 'pending'])
+    total_approved_amount = sum([inv.total_amount for inv in all_invoices if inv.approval_status == 'approved'])
+    
+    # Create stats object for template
+    stats = {
+        'total_invoices': total_invoices,
+        'pending_approval': pending_approval,
+        'approved': approved,
+        'rejected': rejected,
+        'under_review': under_review,
+        'total_pending_amount': total_pending_amount,
+        'total_approved_amount': total_approved_amount
+    }
+    
+    # Create current_filters object for template
+    current_filters = {
+        'approval_status': approval_status,
+        'payment_type': payment_type,
+        'user_search': user_search,
+        'date_from': date_from,
+        'date_to': date_to
+    }
+    
+    invoices = query.order_by(Invoice.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('profile_customer_invoices.html', 
+                         invoices=invoices, 
+                         stats=stats, 
+                         current_filters=current_filters)
+
+# ==================== CUSTOMER INVOICES API ENDPOINTS ====================
+
+@app.route('/api/profile/customer-invoices')
+@login_required
+def api_profile_customer_invoices():
+    """Get customer invoices data as JSON for order managers."""
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 15
+        
+        # Get filter parameters
+        approval_status = request.args.get('approval_status', '')
+        payment_type = request.args.get('payment_type', '')
+        user_search = request.args.get('user_search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        # Build query
+        query = Invoice.query
+        
+        if approval_status:
+            query = query.filter_by(approval_status=approval_status)
+        
+        if payment_type:
+            query = query.filter_by(payment_type=payment_type)
+        
+        if user_search:
+            query = query.join(User, Invoice.user_id == User.id).filter(
+                models.db.or_(
+                    User.username.contains(user_search),
+                    User.full_name.contains(user_search),
+                    User.company_name.contains(user_search)
+                )
+            )
+        
+        if date_from:
+            try:
+                query = query.filter(Invoice.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                query = query.filter(Invoice.created_at <= datetime.strptime(date_to, '%Y-%m-%d'))
+            except ValueError:
+                pass
+        
+        # Get paginated results
+        invoices_paginated = query.order_by(Invoice.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Get all invoices for statistics
+        all_invoices = Invoice.query.all()
+        
+        # Calculate statistics
+        stats = {
+            'total_invoices': len(all_invoices),
+            'pending_approval': len([inv for inv in all_invoices if inv.approval_status == 'pending']),
+            'approved': len([inv for inv in all_invoices if inv.approval_status == 'approved']),
+            'rejected': len([inv for inv in all_invoices if inv.approval_status == 'rejected']),
+            'under_review': len([inv for inv in all_invoices if inv.approval_status == 'under_review']),
+            'total_pending_amount': sum([inv.total_amount for inv in all_invoices if inv.approval_status == 'pending']),
+            'total_approved_amount': sum([inv.total_amount for inv in all_invoices if inv.approval_status == 'approved'])
+        }
+        
+        # Format invoices data
+        invoices_data = []
+        for invoice in invoices_paginated.items:
+            invoice_data = {
+                'id': invoice.id,
+                'invoice_number': invoice.invoice_number,
+                'user_id': invoice.user_id,
+                'customer_name': invoice.user.full_name if invoice.user else 'نامشخص',
+                'customer_username': invoice.user.username if invoice.user else 'نامشخص',
+                'company_name': invoice.user.company_name if invoice.user and invoice.user.company_name else None,
+                'total_amount': invoice.total_amount,
+                'payment_type': invoice.payment_type,
+                'payment_type_display': 'نقدی' if invoice.payment_type == 'cash' else 'چکی',
+                'approval_status': invoice.approval_status,
+                'approval_status_display': {
+                    'pending': 'در انتظار تایید',
+                    'approved': 'تایید شده',
+                    'rejected': 'رد شده',
+                    'under_review': 'در حال بررسی'
+                }.get(invoice.approval_status, invoice.approval_status),
+                'created_at': invoice.created_at.isoformat(),
+                'created_at_persian': invoice.created_at.strftime('%Y/%m/%d %H:%M'),
+                'due_date': invoice.due_date.isoformat() if invoice.due_date else None,
+                'approval_date': invoice.approval_date.isoformat() if invoice.approval_date else None,
+                'approved_by': invoice.approver.full_name if invoice.approver else None,
+                'rejection_reason': invoice.rejection_reason,
+                'admin_notes': invoice.admin_notes,
+                'items_count': len(invoice.items),
+                'can_approve': invoice.approval_status in ['pending', 'under_review'],
+                'can_reject': invoice.approval_status in ['pending', 'under_review']
+            }
+            invoices_data.append(invoice_data)
+        
+        # Pagination info
+        pagination = {
+            'page': invoices_paginated.page,
+            'pages': invoices_paginated.pages,
+            'per_page': invoices_paginated.per_page,
+            'total': invoices_paginated.total,
+            'has_next': invoices_paginated.has_next,
+            'has_prev': invoices_paginated.has_prev,
+            'next_num': invoices_paginated.next_num,
+            'prev_num': invoices_paginated.prev_num
+        }
+        
+        # Current filters
+        current_filters = {
+            'approval_status': approval_status,
+            'payment_type': payment_type,
+            'user_search': user_search,
+            'date_from': date_from,
+            'date_to': date_to
+        }
+        
+        return jsonify({
+            'success': True,
+            'invoices': invoices_data,
+            'pagination': pagination,
+            'statistics': stats,
+            'filters': current_filters
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/profile/customer-invoices/<int:invoice_id>/approve', methods=['PUT'])
+@login_required
+def api_profile_approve_invoice(invoice_id):
+    """Approve a customer invoice."""
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        data = request.get_json() or {}
+        admin_notes = data.get('admin_notes', '')
+        
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        if invoice.approval_status not in ['pending', 'under_review']:
+            return jsonify({'error': 'فاکتور در وضعیت قابل تایید نیست'}), 400
+        
+        # Update invoice
+        invoice.approval_status = 'approved'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        if admin_notes:
+            invoice.admin_notes = admin_notes
+        
+        models.db.session.commit()
+        
+        # Create audit log
+        audit_log = models.AuditLog(
+            actor_id=current_user.id,
+            action='approve_invoice',
+            target_type='invoice',
+            target_id=invoice.id,
+            request_id=f"approve_{invoice.id}_{int(datetime.utcnow().timestamp())}",
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', '')
+        )
+        audit_log.set_details({
+            'invoice_number': invoice.invoice_number,
+            'customer_name': invoice.user.full_name if invoice.user else 'نامشخص',
+            'total_amount': invoice.total_amount,
+            'admin_notes': admin_notes
+        })
+        models.db.session.add(audit_log)
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'فاکتور با موفقیت تایید شد',
+            'invoice': {
+                'id': invoice.id,
+                'approval_status': invoice.approval_status,
+                'approval_date': invoice.approval_date.isoformat(),
+                'approved_by': current_user.full_name
+            }
+        }), 200
+        
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/profile/customer-invoices/<int:invoice_id>/reject', methods=['PUT'])
+@login_required
+def api_profile_reject_invoice(invoice_id):
+    """Reject a customer invoice."""
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        data = request.get_json() or {}
+        rejection_reason = data.get('rejection_reason', '')
+        admin_notes = data.get('admin_notes', '')
+        
+        if not rejection_reason:
+            return jsonify({'error': 'دلیل رد فاکتور الزامی است'}), 400
+        
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        if invoice.approval_status not in ['pending', 'under_review']:
+            return jsonify({'error': 'فاکتور در وضعیت قابل رد نیست'}), 400
+        
+        # Update invoice
+        invoice.approval_status = 'rejected'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        invoice.rejection_reason = rejection_reason
+        if admin_notes:
+            invoice.admin_notes = admin_notes
+        
+        models.db.session.commit()
+        
+        # Create audit log
+        audit_log = models.AuditLog(
+            actor_id=current_user.id,
+            action='reject_invoice',
+            target_type='invoice',
+            target_id=invoice.id,
+            request_id=f"reject_{invoice.id}_{int(datetime.utcnow().timestamp())}",
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', '')
+        )
+        audit_log.set_details({
+            'invoice_number': invoice.invoice_number,
+            'customer_name': invoice.user.full_name if invoice.user else 'نامشخص',
+            'total_amount': invoice.total_amount,
+            'rejection_reason': rejection_reason,
+            'admin_notes': admin_notes
+        })
+        models.db.session.add(audit_log)
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'فاکتور با موفقیت رد شد',
+            'invoice': {
+                'id': invoice.id,
+                'approval_status': invoice.approval_status,
+                'approval_date': invoice.approval_date.isoformat(),
+                'rejection_reason': rejection_reason,
+                'rejected_by': current_user.full_name
+            }
+        }), 200
+        
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/profile/customer-invoices/<int:invoice_id>/details')
+@login_required
+def api_profile_invoice_details(invoice_id):
+    """Get detailed invoice information."""
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        # Get invoice items
+        items_data = []
+        for item in invoice.items:
+            item_data = {
+                'id': item.id,
+                'product_id': item.product_id,
+                'product_name': item.product.name if item.product else 'محصول حذف شده',
+                'product_sku': item.product.sku if item.product else 'نامشخص',
+                'quantity': item.quantity,
+                'unit_price': item.unit_price,
+                'total_price': item.total_price,
+                'price_type': item.price_type,
+                'price_plan': item.price_plan
+            }
+            items_data.append(item_data)
+        
+        # Get invoice documents
+        documents_data = []
+        for doc in invoice.documents:
+            doc_data = {
+                'id': doc.id,
+                'document_type': doc.document_type,
+                'document_type_display': 'چک' if doc.document_type == 'check' else 'رسید',
+                'file_path': doc.file_path,
+                'uploaded_at': doc.uploaded_at.isoformat(),
+                'is_approved': doc.is_approved,
+                'approval_date': doc.approval_date.isoformat() if doc.approval_date else None,
+                'approved_by': doc.approver.full_name if doc.approver else None,
+                'rejection_reason': doc.rejection_reason,
+                'admin_notes': doc.admin_notes
+            }
+            documents_data.append(doc_data)
+        
+        # Customer information
+        customer_data = {
+            'id': invoice.user.id if invoice.user else None,
+            'username': invoice.user.username if invoice.user else 'نامشخص',
+            'full_name': invoice.user.full_name if invoice.user else 'نامشخص',
+            'company_name': invoice.user.company_name if invoice.user and invoice.user.company_name else None,
+            'phone': invoice.user.phone if invoice.user else 'نامشخص',
+            'email': invoice.user.email if invoice.user else None,
+            'address': invoice.user.address if invoice.user else None,
+            'is_bulk_buyer': invoice.user.is_bulk_buyer if invoice.user else False,
+            'bulk_buyer_approval_status': invoice.user.bulk_buyer_approval_status if invoice.user else None
+        }
+        
+        # Detailed invoice data
+        invoice_data = {
+            'id': invoice.id,
+            'invoice_number': invoice.invoice_number,
+            'customer': customer_data,
+            'total_amount': invoice.total_amount,
+            'payment_type': invoice.payment_type,
+            'payment_type_display': 'نقدی' if invoice.payment_type == 'cash' else 'چکی',
+            'approval_status': invoice.approval_status,
+            'approval_status_display': {
+                'pending': 'در انتظار تایید',
+                'approved': 'تایید شده',
+                'rejected': 'رد شده',
+                'under_review': 'در حال بررسی'
+            }.get(invoice.approval_status, invoice.approval_status),
+            'created_at': invoice.created_at.isoformat(),
+            'created_at_persian': invoice.created_at.strftime('%Y/%m/%d %H:%M'),
+            'due_date': invoice.due_date.isoformat() if invoice.due_date else None,
+            'approval_date': invoice.approval_date.isoformat() if invoice.approval_date else None,
+            'approved_by': invoice.approver.full_name if invoice.approver else None,
+            'rejection_reason': invoice.rejection_reason,
+            'admin_notes': invoice.admin_notes,
+            'items': items_data,
+            'documents': documents_data,
+            'items_count': len(invoice.items),
+            'documents_count': len(invoice.documents)
+        }
+        
+        return jsonify({
+            'success': True,
+            'invoice': invoice_data
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==== Invoice approval actions (for admins and order managers) ====
 @app.route('/admin/invoice/<int:invoice_id>/approve', methods=['POST'])
 @login_required
 def admin_approve_invoice(invoice_id):
-    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+    if not current_user.has_role('order_manager', scope='site'):
         abort(403)
     invoice = Invoice.query.get_or_404(invoice_id)
     try:
@@ -1272,7 +1917,7 @@ def admin_approve_invoice(invoice_id):
 @app.route('/admin/invoice/<int:invoice_id>/reject', methods=['POST'])
 @login_required
 def admin_reject_invoice(invoice_id):
-    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+    if not current_user.has_role('order_manager', scope='site'):
         abort(403)
     invoice = Invoice.query.get_or_404(invoice_id)
     rejection_reason = request.form.get('rejection_reason', '').strip()
@@ -1291,7 +1936,7 @@ def admin_reject_invoice(invoice_id):
 @app.route('/admin/document/<int:document_id>/approve', methods=['POST'])
 @login_required
 def admin_approve_document(document_id):
-    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+    if not current_user.has_role('order_manager', scope='site'):
         abort(403)
     document = InvoiceDocument.query.get_or_404(document_id)
     try:
@@ -1309,7 +1954,7 @@ def admin_approve_document(document_id):
 @app.route('/admin/document/<int:document_id>/reject', methods=['POST'])
 @login_required
 def admin_reject_document(document_id):
-    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+    if not current_user.has_role('order_manager', scope='site'):
         abort(403)
     document = InvoiceDocument.query.get_or_404(document_id)
     rejection_reason = request.form.get('rejection_reason', '').strip()
@@ -1325,10 +1970,39 @@ def admin_reject_document(document_id):
         flash('خطا در رد سند.', 'error')
     return redirect(url_for('admin_invoice_detail', invoice_id=document.invoice_id))
 
+@app.route('/admin/document/<int:document_id>')
+@login_required
+def admin_view_document(document_id):
+    """View invoice document (order managers only)."""
+    if not current_user.has_role('order_manager', scope='site'):
+        abort(403)
+    
+    document = InvoiceDocument.query.get_or_404(document_id)
+    
+    # Check if file exists
+    file_path = document.file_path
+    if not file_path:
+        abort(404)
+    
+    if not os.path.isabs(file_path):
+        base_upload = app.config.get('UPLOAD_FOLDER', 'uploads')
+        file_path = os.path.join(base_upload, file_path)
+    
+    if not os.path.exists(file_path):
+        abort(404)
+    
+    # Determine content type based on file extension
+    import mimetypes
+    content_type, _ = mimetypes.guess_type(file_path)
+    if not content_type:
+        content_type = 'application/octet-stream'
+    
+    return send_file(file_path, as_attachment=False, mimetype=content_type)
+
 @app.route('/admin/invoice/<int:invoice_id>/set-review', methods=['POST'])
 @login_required
 def admin_set_review_invoice(invoice_id):
-    if not (current_user.is_admin or current_user.has_permission('order.update', scope='site')):
+    if not current_user.has_role('order_manager', scope='site'):
         abort(403)
     invoice = Invoice.query.get_or_404(invoice_id)
     admin_notes = request.form.get('admin_notes', '').strip()
@@ -1663,7 +2337,9 @@ def api_add_multiple_to_cart():
                 product_id = product_data.get('product_id')
                 quantity = product_data.get('quantity', 1)
                 price_type = product_data.get('price_type', 'cash')
+                price_plan = product_data.get('price_plan')
                 notes = product_data.get('notes', '')
+                
                 
                 if not product_id:
                     continue
@@ -1673,27 +2349,68 @@ def api_add_multiple_to_cart():
                     errors.append(f"محصول با شناسه {product_id} یافت نشد")
                     continue
                 
-                # Check if item already exists in cart
+                # ISACO validation
+                if is_isaco_feature_enabled() and getattr(product, 'is_isaco_wh15', False):
+                    # Check if product has valid Isaco pricing
+                    has_valid_isaco_pricing = any([
+                        product.isaco_cash and product.isaco_cash > 0,
+                        product.isaco_1m and product.isaco_1m > 0,
+                        product.isaco_2m and product.isaco_2m > 0,
+                        product.isaco_3m and product.isaco_3m > 0
+                    ])
+                    
+                    if has_valid_isaco_pricing:
+                        # Product has valid Isaco pricing, require plan selection
+                        if not price_plan or price_plan not in isaco_allowed_plans():
+                            errors.append(f"کالا {product.sku}: انتخاب یکی از گزینه‌های ایساکو الزامی است")
+                            continue
+                        unit_price_candidate = get_isaco_unit_price(product, price_plan)
+                        if not unit_price_candidate or unit_price_candidate <= 0:
+                            errors.append(f"کالا {product.sku}: قیمت انتخاب‌شده نامعتبر است")
+                            continue
+                    else:
+                        # Product is marked as Isaco but has no valid Isaco pricing, use regular pricing
+                        if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
+                            unit_price_candidate = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+                        else:
+                            unit_price_candidate = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
+                        
+                        if not unit_price_candidate or unit_price_candidate <= 0:
+                            errors.append(f"کالا {product.sku}: قیمت انتخاب‌شده نامعتبر است")
+                            continue
+
+                # Check if item already exists in cart (include plan)
                 existing_item = Cart.query.filter_by(
                     user_id=current_user.id,
                     product_id=product_id,
-                    price_type=price_type
+                    price_type=price_type,
+                    price_plan=price_plan
                 ).first()
                 
                 if existing_item:
                     existing_item.quantity += quantity
                 else:
-                    # Get price based on user type, approval status and payment method
-                    if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
-                        unit_price = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+                    # Determine unit price
+                    if is_isaco_feature_enabled() and getattr(product, 'is_isaco_wh15', False):
+                        unit_price = get_isaco_unit_price(product, price_plan)
+                        # Fallback to regular pricing if Isaco prices are not available
+                        if not unit_price or unit_price <= 0:
+                            if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
+                                unit_price = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+                            else:
+                                unit_price = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
                     else:
-                        unit_price = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
+                        if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved':
+                            unit_price = product.bulk_price_cash if price_type == 'cash' else product.bulk_price_check
+                        else:
+                            unit_price = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
                     
                     cart_item = Cart(
                         user_id=current_user.id,
                         product_id=product_id,
                         quantity=quantity,
                         price_type=price_type,
+                        price_plan=price_plan,
                         unit_price=unit_price,
                         notes=notes
                     )
@@ -1865,7 +2582,7 @@ def admin_brand_detection():
     """صفحه مدیریت تشخیص برند و نوع خودرو"""
     if not current_user.is_admin:
         flash('شما دسترسی لازم برای این صفحه را ندارید', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
     
     # آمار تشخیص
     from brand_vehicle_detector import get_detector
@@ -1878,21 +2595,38 @@ def admin_brand_detection():
 @app.route('/admin/detection-status')
 @login_required
 def admin_detection_status_alias():
-    # Reuse detection stats API and return JSON
+    # Return stats in the shape expected by admin templates
     try:
-        # call existing function
-        return api_detection_stats()
+        from brand_vehicle_detector import get_detector
+        detector = get_detector()
+        stats = detector.get_detection_stats()
+        return jsonify({'success': True, 'stats': stats})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/admin/run-batch-detection', methods=['POST'])
 @login_required
 def admin_run_batch_detection_alias():
-    # Reuse batch detection API
+    # Run batch detection and return simplified response for dashboard
     try:
-        return api_batch_detect_products()
+        if not current_user.is_admin:
+            return jsonify({'success': False, 'message': 'شما دسترسی لازم برای این عملیات را ندارید'}), 403
+
+        from brand_vehicle_detector import get_detector
+        detector = get_detector()
+        result = detector.batch_detect_products()
+
+        if result.get('status') == 'success':
+            data = result.get('data', {})
+            message = (
+                f"اجرای تشخیص با موفقیت انجام شد. تعداد پردازش‌شده: "
+                f"{data.get('total_processed', 0)}, به‌روزرسانی‌شده: {data.get('updated_count', 0)}"
+            )
+            return jsonify({'success': True, 'message': message, 'data': data})
+        else:
+            return jsonify({'success': False, 'message': result.get('message', 'خطا در تشخیص دسته‌ای')}), 500
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/detect-brand-vehicle', methods=['POST'])
 @login_required
@@ -2007,6 +2741,70 @@ def api_refresh_detection_cache():
             'success': False,
             'message': f'خطا در به‌روزرسانی کش: {str(e)}'
         }), 500
+
+@app.route('/api/category/<int:category_id>/brand-vehicle-stats', methods=['GET'])
+def api_category_brand_vehicle_stats(category_id):
+    """آمار برندها و انواع خودرو برای یک دسته‌بندی بر اساس تعداد محصولات (نزولی)"""
+    try:
+        from sqlalchemy import func
+
+        # Validate category exists
+        category = PartCategory.query.get_or_404(category_id)
+
+        # Brand counts within category
+        brand_counts = (
+            models.db.session
+                .query(Brand.id, Brand.name, Brand.name_fa, func.count(Product.id).label('cnt'))
+                .join(Product, Product.brand_id == Brand.id)
+                .filter(Product.category_id == category_id)
+                .group_by(Brand.id, Brand.name, Brand.name_fa)
+                .order_by(func.count(Product.id).desc())
+                .all()
+        )
+
+        brands = [
+            {
+                'id': b.id,
+                'name': b.name,
+                'name_fa': b.name_fa,
+                'count': int(b.cnt)
+            }
+            for b in brand_counts
+        ]
+
+        # Vehicle type counts within category
+        vt_counts = (
+            models.db.session
+                .query(VehicleType.id, VehicleType.name, func.count(Product.id).label('cnt'))
+                .join(ProductVehicleType, ProductVehicleType.vehicle_type_id == VehicleType.id)
+                .join(Product, Product.id == ProductVehicleType.product_id)
+                .filter(Product.category_id == category_id)
+                .group_by(VehicleType.id, VehicleType.name)
+                .order_by(func.count(Product.id).desc())
+                .all()
+        )
+
+        vehicle_types = [
+            {
+                'id': vt.id,
+                'name': vt.name,
+                'count': int(vt.cnt)
+            }
+            for vt in vt_counts
+        ]
+
+        return jsonify({
+            'success': True,
+            'category': {
+                'id': category.id,
+                'name': category.category_name,
+                'name_fa': category.category_name_fa,
+            },
+            'brands': brands,
+            'vehicle_types': vehicle_types
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 # ==================== TADBIR ACCOUNTING SYSTEM ROUTES ====================
 
@@ -2878,7 +3676,7 @@ def admin_points_users():
     max_points = request.args.get('max_points', type=int)
     
     # ساخت کوئری
-    query = db.session.query(UserPoints, User).join(User)
+    query = db.session.query(UserPoints, User).join(User, UserPoints.user_id == User.id)
     
     if search:
         query = query.filter(
@@ -3551,6 +4349,312 @@ def api_revoke_role(user_id, role_slug):
 
 # ==================== ERROR HANDLERS ====================
 
+# ==================== INVOICE MANAGEMENT ROUTES ====================
+
+@app.route('/admin/invoices/<int:invoice_id>/approve', methods=['POST'])
+@login_required
+def admin_approve_invoice_with_notification(invoice_id):
+    """تایید فاکتور با ارسال اطلاع‌رسانی"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        abort(403)
+    
+    try:
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        if invoice.approval_status != 'pending':
+            flash('فاکتور در وضعیت قابل تایید نیست', 'error')
+            return redirect(url_for('admin_invoice_management'))
+        
+        # Get form data
+        admin_notes = request.form.get('admin_notes', '')
+        send_notification = request.form.get('send_notification') == 'on'
+        
+        # Update invoice
+        invoice.approval_status = 'approved'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        invoice.admin_notes = admin_notes
+        
+        # Send notification if requested
+        if send_notification:
+            from invoice_notification_service import InvoiceNotificationService
+            InvoiceNotificationService.send_approval_notification(invoice_id, admin_notes)
+        
+        models.db.session.commit()
+        flash('فاکتور با موفقیت تایید شد', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در تایید فاکتور', 'error')
+        print(f"Error approving invoice: {str(e)}")
+    
+    return redirect(url_for('admin_invoice_management'))
+
+@app.route('/admin/invoices/<int:invoice_id>/reject', methods=['POST'])
+@login_required
+def admin_reject_invoice_with_notification(invoice_id):
+    """رد فاکتور با ارسال اطلاع‌رسانی"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        abort(403)
+    
+    try:
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        if invoice.approval_status != 'pending':
+            flash('فاکتور در وضعیت قابل رد نیست', 'error')
+            return redirect(url_for('admin_invoice_management'))
+        
+        # Get form data
+        rejection_reason = request.form.get('rejection_reason', '')
+        admin_notes = request.form.get('admin_notes', '')
+        send_notification = request.form.get('send_notification') == 'on'
+        
+        if not rejection_reason:
+            flash('دلیل رد فاکتور الزامی است', 'error')
+            return redirect(url_for('admin_invoice_management'))
+        
+        # Update invoice
+        invoice.approval_status = 'rejected'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        invoice.rejection_reason = rejection_reason
+        invoice.admin_notes = admin_notes
+        
+        # Send notification if requested
+        if send_notification:
+            from invoice_notification_service import InvoiceNotificationService
+            InvoiceNotificationService.send_rejection_notification(invoice_id, rejection_reason, admin_notes)
+        
+        models.db.session.commit()
+        flash('فاکتور با موفقیت رد شد', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در رد فاکتور', 'error')
+        print(f"Error rejecting invoice: {str(e)}")
+    
+    return redirect(url_for('admin_invoice_management'))
+
+@app.route('/admin/invoices/<int:invoice_id>/set-review', methods=['POST'])
+@login_required
+def admin_set_invoice_review(invoice_id):
+    """تنظیم فاکتور به حالت بررسی"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        abort(403)
+    
+    try:
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        if invoice.approval_status != 'pending':
+            flash('فاکتور در وضعیت قابل بررسی نیست', 'error')
+            return redirect(url_for('admin_invoice_management'))
+        
+        # Get form data
+        admin_notes = request.form.get('admin_notes', '')
+        
+        # Update invoice
+        invoice.approval_status = 'under_review'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        invoice.admin_review_notes = admin_notes
+        
+        # Send notification
+        from invoice_notification_service import InvoiceNotificationService
+        InvoiceNotificationService.send_review_notification(invoice_id, admin_notes)
+        
+        models.db.session.commit()
+        flash('فاکتور به حالت بررسی تنظیم شد', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در تنظیم فاکتور به حالت بررسی', 'error')
+        print(f"Error setting invoice review: {str(e)}")
+    
+    return redirect(url_for('admin_invoice_management'))
+
+@app.route('/admin/invoices/<int:invoice_id>/documents')
+@login_required
+def admin_view_invoice_documents(invoice_id):
+    """مشاهده مستندات فاکتور"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        abort(403)
+    
+    invoice = Invoice.query.get_or_404(invoice_id)
+    return render_template('admin/invoice_documents_viewer.html', invoice=invoice)
+
+@app.route('/admin/invoices/<int:invoice_id>/documents/<int:document_id>/approve', methods=['POST'])
+@login_required
+def admin_approve_invoice_document(invoice_id, document_id):
+    """تایید مستند فاکتور"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        abort(403)
+    
+    try:
+        document = InvoiceDocument.query.get_or_404(document_id)
+        
+        if document.invoice_id != invoice_id:
+            flash('مستند متعلق به این فاکتور نیست', 'error')
+            return redirect(url_for('admin_invoice_management'))
+        
+        # Update document
+        document.is_approved = True
+        document.approval_date = datetime.utcnow()
+        document.approved_by = current_user.id
+        
+        models.db.session.commit()
+        flash('مستند با موفقیت تایید شد', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در تایید مستند', 'error')
+        print(f"Error approving document: {str(e)}")
+    
+    return redirect(url_for('admin_view_invoice_documents', invoice_id=invoice_id))
+
+@app.route('/admin/invoices/<int:invoice_id>/documents/<int:document_id>/reject', methods=['POST'])
+@login_required
+def admin_reject_invoice_document(invoice_id, document_id):
+    """رد مستند فاکتور"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        abort(403)
+    
+    try:
+        document = InvoiceDocument.query.get_or_404(document_id)
+        
+        if document.invoice_id != invoice_id:
+            flash('مستند متعلق به این فاکتور نیست', 'error')
+            return redirect(url_for('admin_invoice_management'))
+        
+        # Get form data
+        rejection_reason = request.form.get('rejection_reason', '')
+        
+        if not rejection_reason:
+            flash('دلیل رد مستند الزامی است', 'error')
+            return redirect(url_for('admin_view_invoice_documents', invoice_id=invoice_id))
+        
+        # Update document
+        document.is_approved = False
+        document.rejection_reason = rejection_reason
+        document.approved_by = current_user.id
+        
+        models.db.session.commit()
+        flash('مستند رد شد', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در رد مستند', 'error')
+        print(f"Error rejecting document: {str(e)}")
+    
+    return redirect(url_for('admin_view_invoice_documents', invoice_id=invoice_id))
+
+@app.route('/api/admin/invoices/statistics')
+@login_required
+def api_invoice_statistics():
+    """دریافت آمار فاکتورها به صورت JSON"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        all_invoices = Invoice.query.all()
+        
+        stats = {
+            'total_invoices': len(all_invoices),
+            'pending_approval': len([i for i in all_invoices if i.approval_status == 'pending']),
+            'approved': len([i for i in all_invoices if i.approval_status == 'approved']),
+            'rejected': len([i for i in all_invoices if i.approval_status == 'rejected']),
+            'under_review': len([i for i in all_invoices if i.approval_status == 'under_review']),
+            'total_amount': sum(i.total_amount for i in all_invoices) / 1000000,  # Convert to millions
+            'cash_invoices': len([i for i in all_invoices if i.payment_type == 'cash']),
+            'check_invoices': len([i for i in all_invoices if i.payment_type == 'check'])
+        }
+        
+        return jsonify(stats)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/invoices/search')
+@login_required
+def api_invoice_search():
+    """جستجوی پیشرفته فاکتورها"""
+    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        # Get search parameters
+        approval_status = request.args.get('approval_status', '')
+        payment_type = request.args.get('payment_type', '')
+        user_search = request.args.get('user_search', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        amount_min = request.args.get('amount_min', type=float)
+        amount_max = request.args.get('amount_max', type=float)
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Build query
+        query = Invoice.query.join(User, Invoice.user_id == User.id)
+        
+        if approval_status:
+            query = query.filter_by(approval_status=approval_status)
+        
+        if payment_type:
+            query = query.filter_by(payment_type=payment_type)
+        
+        if user_search:
+            query = query.filter(
+                models.db.or_(
+                    User.username.contains(user_search),
+                    User.full_name.contains(user_search),
+                    User.company_name.contains(user_search)
+                )
+            )
+        
+        if date_from:
+            query = query.filter(Invoice.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+        
+        if date_to:
+            query = query.filter(Invoice.created_at <= datetime.strptime(date_to, '%Y-%m-%d'))
+        
+        if amount_min:
+            query = query.filter(Invoice.total_amount >= amount_min * 1000)
+        
+        if amount_max:
+            query = query.filter(Invoice.total_amount <= amount_max * 1000)
+        
+        # Paginate results
+        invoices = query.order_by(Invoice.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Convert to JSON
+        invoices_data = []
+        for invoice in invoices.items:
+            invoice_data = {
+                'id': invoice.id,
+                'invoice_number': invoice.invoice_number,
+                'customer_name': invoice.user.full_name,
+                'customer_company': invoice.user.company_name,
+                'total_amount': invoice.total_amount,
+                'payment_type': invoice.payment_type,
+                'approval_status': invoice.approval_status,
+                'created_at': invoice.created_at.isoformat(),
+                'approval_date': invoice.approval_date.isoformat() if invoice.approval_date else None
+            }
+            invoices_data.append(invoice_data)
+        
+        return jsonify({
+            'invoices': invoices_data,
+            'total': invoices.total,
+            'pages': invoices.pages,
+            'current_page': invoices.page,
+            'has_next': invoices.has_next,
+            'has_prev': invoices.has_prev
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('errors/404.html'), 404
@@ -3563,3 +4667,71 @@ def internal_error(error):
 @app.errorhandler(403)
 def forbidden_error(error):
     return render_template('errors/403.html'), 403
+
+# ========================================
+# Health Check Endpoint
+# ========================================
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring and load balancers"""
+    try:
+        # Check database connection
+        db.session.execute('SELECT 1')
+        db_status = 'healthy'
+    except Exception as e:
+        db_status = f'unhealthy: {str(e)}'
+    
+    # Check Redis connection (if available)
+    redis_status = 'not_configured'
+    try:
+        import redis
+        r = redis.Redis(host='redis', port=6379, db=0, socket_connect_timeout=5)
+        r.ping()
+        redis_status = 'healthy'
+    except Exception as e:
+        redis_status = f'unhealthy: {str(e)}'
+    
+    # System metrics
+    system_info = {
+        'timestamp': datetime.utcnow().isoformat(),
+        'uptime': time.time(),
+        'cpu_percent': psutil.cpu_percent(interval=1),
+        'memory_percent': psutil.virtual_memory().percent,
+        'disk_percent': psutil.disk_usage('/').percent
+    }
+    
+    # Overall health status
+    overall_status = 'healthy'
+    if db_status != 'healthy':
+        overall_status = 'unhealthy'
+    
+    health_data = {
+        'status': overall_status,
+        'version': '1.0.0',
+        'services': {
+            'database': db_status,
+            'redis': redis_status
+        },
+        'system': system_info
+    }
+    
+    # Return appropriate HTTP status code
+    status_code = 200 if overall_status == 'healthy' else 503
+    
+    return jsonify(health_data), status_code
+
+@app.route('/health/ready')
+def readiness_check():
+    """Readiness check for Kubernetes/Docker health checks"""
+    try:
+        # Check if database is accessible
+        db.session.execute('SELECT 1')
+        return jsonify({'status': 'ready'}), 200
+    except Exception:
+        return jsonify({'status': 'not_ready'}), 503
+
+@app.route('/health/live')
+def liveness_check():
+    """Liveness check for Kubernetes/Docker health checks"""
+    return jsonify({'status': 'alive'}), 200

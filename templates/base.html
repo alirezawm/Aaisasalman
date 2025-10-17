@@ -190,11 +190,13 @@
                             </a></li>
                         </ul>
                     </li>
+                    {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
                     <li class="nav-item">
-                        <a class="nav-link modern-nav-link" href="{{ url_for('dashboard') }}">
+                        <a class="nav-link modern-nav-link" href="{{ url_for('admin_dashboard') }}">
                             <i class="fas fa-tachometer-alt me-1"></i>داشبورد
                         </a>
                     </li>
+                    {% endif %}
                     {% else %}
                     <li class="nav-item">
                         <a class="nav-link modern-nav-link" href="{{ url_for('shop') }}">
@@ -247,9 +249,11 @@
                             <li><a class="dropdown-item" href="{{ url_for('profile') }}">
                                 <i class="fas fa-user-circle me-2"></i>پروفایل
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('dashboard') }}">
+                            {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
+                            <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
                                 <i class="fas fa-tachometer-alt me-2"></i>داشبورد
                             </a></li>
+                            {% endif %}
                             <li><a class="dropdown-item" href="{{ url_for('user_points') }}">
                                 <i class="fas fa-star me-2"></i>امتیازات من
                             </a></li>
@@ -261,17 +265,19 @@
                                     </span>
                                 {% endif %}
                             </a></li>
-                            {% if current_user.is_admin %}
+                            {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
                                 <i class="fas fa-cog me-2"></i>مدیریت
                             </a></li>
+                            {% if current_user.is_admin %}
                             <li><a class="dropdown-item" href="{{ url_for('admin_accounting_dashboard') }}">
                                 <i class="fas fa-calculator me-2"></i>حسابداری تدبیر
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('admin_points_dashboard') }}">
                                 <i class="fas fa-star me-2"></i>مدیریت امتیازات
                             </a></li>
+                            {% endif %}
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('logout') }}">
@@ -348,7 +354,9 @@
                         <li><a href="{{ url_for('index') }}" class="text-light text-decoration-none"><i class="fas fa-home me-2"></i>خانه</a></li>
                         {% if current_user.is_authenticated %}
                         <li><a href="{{ url_for('shop') }}" class="text-light text-decoration-none"><i class="fas fa-store me-2"></i>فروشگاه</a></li>
-                        <li><a href="{{ url_for('dashboard') }}" class="text-light text-decoration-none"><i class="fas fa-tachometer-alt me-2"></i>داشبورد</a></li>
+                        {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
+                        <li><a href="{{ url_for('admin_dashboard') }}" class="text-light text-decoration-none"><i class="fas fa-tachometer-alt me-2"></i>داشبورد</a></li>
+                        {% endif %}
                         {% endif %}
                         <li><a href="{{ url_for('about') }}" class="text-light text-decoration-none"><i class="fas fa-info-circle me-2"></i>درباره ما</a></li>
                         <li><a href="#" class="text-light text-decoration-none"><i class="fas fa-phone me-2"></i>تماس با ما</a></li>

@@ -167,9 +167,9 @@
                                             <span class="badge bg-danger">ناموجود</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ "{:,.0f}".format(product.retail_price_cash * 1000) }} ریال</td>
-                                    <td>{{ "{:,.0f}".format(product.bulk_price_cash * 1000) }} ریال</td>
-                                    <td>{{ "{:,.0f}".format(product.bulk_price_check * 1000) }} ریال</td>
+                                    <td>{{ "{:,.0f}".format(product.retail_price_cash) }} هزار ریال</td>
+                                    <td>{{ "{:,.0f}".format(product.bulk_price_cash) }} هزار ریال</td>
+                                    <td>{{ "{:,.0f}".format(product.bulk_price_check) }} هزار ریال</td>
                                     <td>
                                         {% if product.is_active %}
                                             <span class="badge bg-success">فعال</span>

@@ -170,10 +170,10 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <span class="text-primary">{{ "{:,.0f}".format((price.base_price or 0) * 1000) }} ریال</span>
+                                        <span class="text-primary">{{ "{:,.0f}".format(price.base_price or 0) }} ریال</span>
                                     </td>
                                     <td>
-                                        <span class="text-success font-weight-bold">{{ "{:,.0f}".format((price.final_price or 0) * 1000) }} ریال</span>
+                                        <span class="text-success font-weight-bold">{{ "{:,.0f}".format(price.final_price or 0) }} ریال</span>
                                     </td>
                                     <td>
                                         {% if price.discount_percentage and price.discount_percentage > 0 %}
@@ -184,7 +184,7 @@
                                     </td>
                                     <td>
                                         {% if price.discount_amount and price.discount_amount > 0 %}
-                                            <span class="text-danger">{{ "{:,.0f}".format(price.discount_amount * 1000) }} ریال</span>
+                                            <span class="text-danger">{{ "{:,.0f}".format(price.discount_amount) }} ریال</span>
                                         {% else %}
                                             -
                                         {% endif %}

@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+
+{% block title %}فاکتورهای مشتریان - پروفایل{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-file-invoice me-2 text-danger"></i>فاکتورهای مشتریان
+                    </h2>
+                    <p class="text-muted mb-0">مدیریت و بررسی فاکتورهای مشتریان</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('profile') }}" class="btn btn-outline-danger">
+                        <i class="fas fa-arrow-right me-2"></i>بازگشت به پروفایل
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Dashboard -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>آمار کلی فاکتورها
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 60px; height: 60px;">
+                                    <i class="fas fa-file-invoice fa-2x text-primary"></i>
+                                </div>
+                                <h4 class="mb-1 text-primary">{{ stats.total_invoices }}</h4>
+                                <p class="text-muted mb-0">کل فاکتورها</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 60px; height: 60px;">
+                                    <i class="fas fa-clock fa-2x text-warning"></i>
+                                </div>
+                                <h4 class="mb-1 text-warning">{{ stats.pending_approval }}</h4>
+                                <p class="text-muted mb-0">در انتظار تایید</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 60px; height: 60px;">
+                                    <i class="fas fa-check-circle fa-2x text-success"></i>
+                                </div>
+                                <h4 class="mb-1 text-success">{{ stats.approved }}</h4>
+                                <p class="text-muted mb-0">تایید شده</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 60px; height: 60px;">
+                                    <i class="fas fa-times-circle fa-2x text-danger"></i>
+                                </div>
+                                <h4 class="mb-1 text-danger">{{ stats.rejected }}</h4>
+                                <p class="text-muted mb-0">رد شده</p>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">مجموع مبلغ در انتظار:</span>
+                                <span class="fw-bold text-warning">{{ "{:,.0f}".format(stats.total_pending_amount) }} هزار ریال</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">مجموع مبلغ تایید شده:</span>
+                                <span class="fw-bold text-success">{{ "{:,.0f}".format(stats.total_approved_amount) }} هزار ریال</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>فیلترها و جستجو
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form id="invoice-filters-form" method="GET">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="approval_status" class="form-label">وضعیت تایید</label>
+                                <select class="form-select" id="approval_status" name="approval_status">
+                                    <option value="">همه وضعیت‌ها</option>
+                                    <option value="pending" {% if current_filters.approval_status == 'pending' %}selected{% endif %}>در انتظار تایید</option>
+                                    <option value="approved" {% if current_filters.approval_status == 'approved' %}selected{% endif %}>تایید شده</option>
+                                    <option value="rejected" {% if current_filters.approval_status == 'rejected' %}selected{% endif %}>رد شده</option>
+                                    <option value="under_review" {% if current_filters.approval_status == 'under_review' %}selected{% endif %}>در حال بررسی</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="payment_type" class="form-label">نوع پرداخت</label>
+                                <select class="form-select" id="payment_type" name="payment_type">
+                                    <option value="">همه انواع</option>
+                                    <option value="cash" {% if current_filters.payment_type == 'cash' %}selected{% endif %}>نقدی</option>
+                                    <option value="check" {% if current_filters.payment_type == 'check' %}selected{% endif %}>چکی</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="user_search" class="form-label">جستجو مشتری</label>
+                                <input type="text" class="form-control" id="user_search" name="user_search" 
+                                       placeholder="نام، نام کاربری یا شرکت" value="{{ current_filters.user_search }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="date_from" class="form-label">از تاریخ</label>
+                                <input type="date" class="form-control" id="date_from" name="date_from" 
+                                       value="{{ current_filters.date_from }}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-3">
+                                <label for="date_to" class="form-label">تا تاریخ</label>
+                                <input type="date" class="form-control" id="date_to" name="date_to" 
+                                       value="{{ current_filters.date_to }}">
+                            </div>
+                            <div class="col-md-9 d-flex align-items-end">
+                                <button type="submit" class="btn btn-danger me-2">
+                                    <i class="fas fa-search me-2"></i>جستجو
+                                </button>
+                                <a href="{{ url_for('profile_customer_invoices') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-2"></i>پاک کردن فیلترها
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoices List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list me-2"></i>لیست فاکتورها
+                    </h6>
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-3">تعداد: {{ invoices.total }}</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshInvoices()">
+                            <i class="fas fa-sync-alt me-1"></i>به‌روزرسانی
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="invoices-container">
+                        {% if invoices.items %}
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>شماره فاکتور</th>
+                                            <th>مشتری</th>
+                                            <th>مبلغ</th>
+                                            <th>نوع پرداخت</th>
+                                            <th>وضعیت</th>
+                                            <th>تاریخ</th>
+                                            <th>عملیات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for invoice in invoices.items %}
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold">{{ invoice.invoice_number }}</div>
+                                                <small class="text-muted">#{{ invoice.id }}</small>
+                                            </td>
+                                            <td>
+                                                <div class="fw-bold">{{ invoice.user.full_name if invoice.user else 'نامشخص' }}</div>
+                                                <small class="text-muted">{{ invoice.user.username if invoice.user else 'نامشخص' }}</small>
+                                                {% if invoice.user and invoice.user.company_name %}
+                                                <br><small class="text-info">{{ invoice.user.company_name }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="fw-bold text-success">{{ "{:,.0f}".format(invoice.total_amount) }} هزار ریال</div>
+                                                <small class="text-muted">{{ invoice.items|length }} آیتم</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge {% if invoice.payment_type == 'cash' %}bg-success{% else %}bg-primary{% endif %}">
+                                                    {% if invoice.payment_type == 'cash' %}نقدی{% else %}چکی{% endif %}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if invoice.approval_status == 'pending' %}
+                                                    <span class="badge bg-warning">در انتظار تایید</span>
+                                                {% elif invoice.approval_status == 'approved' %}
+                                                    <span class="badge bg-success">تایید شده</span>
+                                                {% elif invoice.approval_status == 'rejected' %}
+                                                    <span class="badge bg-danger">رد شده</span>
+                                                {% elif invoice.approval_status == 'under_review' %}
+                                                    <span class="badge bg-info">در حال بررسی</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div>{{ invoice.created_at | persian_date }}</div>
+                                                <small class="text-muted">{{ invoice.created_at.strftime('%H:%M') }}</small>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-outline-info" onclick="viewInvoiceDetails({{ invoice.id }})" title="مشاهده جزئیات">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    {% if invoice.approval_status in ['pending', 'under_review'] %}
+                                                    <button class="btn btn-sm btn-outline-success" onclick="approveInvoice({{ invoice.id }})" title="تایید فاکتور">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger" onclick="rejectInvoice({{ invoice.id }})" title="رد فاکتور">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">فاکتوری یافت نشد</h5>
+                                <p class="text-muted">با فیلترهای فعلی هیچ فاکتوری وجود ندارد</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if invoices.pages > 1 %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="صفحه‌بندی فاکتورها">
+                <ul class="pagination justify-content-center">
+                    {% if invoices.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('profile_customer_invoices', page=invoices.prev_num, **current_filters) }}">
+                            <i class="fas fa-chevron-right"></i> قبلی
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in invoices.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != invoices.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('profile_customer_invoices', page=page_num, **current_filters) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if invoices.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('profile_customer_invoices', page=invoices.next_num, **current_filters) }}">
+                            بعدی <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Invoice Details Modal -->
+<div class="modal fade" id="invoiceDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">جزئیات فاکتور</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="invoice-details-content">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">در حال بارگذاری...</span>
+                    </div>
+                    <p class="mt-2">در حال بارگذاری جزئیات فاکتور...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Invoice Modal -->
+<div class="modal fade" id="approveInvoiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">تایید فاکتور</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="approve-invoice-form">
+                    <input type="hidden" id="approve-invoice-id" name="invoice_id">
+                    <div class="mb-3">
+                        <label for="approve-admin-notes" class="form-label">یادداشت مدیر (اختیاری)</label>
+                        <textarea class="form-control" id="approve-admin-notes" name="admin_notes" rows="3" 
+                                  placeholder="یادداشت‌های اضافی در مورد تایید این فاکتور..."></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        با تایید این فاکتور، وضعیت آن به "تایید شده" تغییر خواهد کرد.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" onclick="submitApproveInvoice()">
+                    <i class="fas fa-check me-2"></i>تایید فاکتور
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Invoice Modal -->
+<div class="modal fade" id="rejectInvoiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">رد فاکتور</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reject-invoice-form">
+                    <input type="hidden" id="reject-invoice-id" name="invoice_id">
+                    <div class="mb-3">
+                        <label for="reject-reason" class="form-label">دلیل رد فاکتور <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="reject-reason" name="rejection_reason" rows="3" 
+                                  placeholder="دلیل رد این فاکتور را توضیح دهید..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reject-admin-notes" class="form-label">یادداشت مدیر (اختیاری)</label>
+                        <textarea class="form-control" id="reject-admin-notes" name="admin_notes" rows="3" 
+                                  placeholder="یادداشت‌های اضافی در مورد رد این فاکتور..."></textarea>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        با رد این فاکتور، وضعیت آن به "رد شده" تغییر خواهد کرد و مشتری از این موضوع مطلع خواهد شد.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-danger" onclick="submitRejectInvoice()">
+                    <i class="fas fa-times me-2"></i>رد فاکتور
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/customer-invoices.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/customer-invoices.js') }}"></script>
+{% endblock %}

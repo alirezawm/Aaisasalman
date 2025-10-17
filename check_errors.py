@@ -9,7 +9,7 @@ import traceback
 def check_imports():
     """بررسی import ها"""
     print("\n" + "="*60)
-    print("بررسی Import ها")
+    print("Checking Imports")
     print("="*60)
     
     modules_to_check = [
@@ -26,9 +26,9 @@ def check_imports():
     for module_name, description in modules_to_check:
         try:
             __import__(module_name)
-            print(f"✓ {description:30} - OK")
+            print(f"OK {description:30} - OK")
         except Exception as e:
-            print(f"✗ {description:30} - خطا: {str(e)}")
+            print(f"X {description:30} - Error: {str(e)}")
             errors.append((module_name, str(e)))
     
     return errors
@@ -37,16 +37,16 @@ def check_imports():
 def check_app_context():
     """بررسی app context"""
     print("\n" + "="*60)
-    print("بررسی App Context")
+    print("Checking App Context")
     print("="*60)
     
     try:
         from app import app
         with app.app_context():
-            print("✓ App context کار می‌کند")
+            print("OK App context is working")
             return True
     except Exception as e:
-        print(f"✗ App context خطا: {str(e)}")
+        print(f"X App context error: {str(e)}")
         traceback.print_exc()
         return False
 
@@ -54,7 +54,7 @@ def check_app_context():
 def check_database():
     """بررسی دیتابیس"""
     print("\n" + "="*60)
-    print("بررسی دیتابیس")
+    print("Checking Database")
     print("="*60)
     
     try:
@@ -65,28 +65,28 @@ def check_database():
         with app.app_context():
             # بررسی اتصال
             db.session.execute(db.text('SELECT 1'))
-            print("✓ اتصال دیتابیس OK")
+            print("OK Database connection OK")
             
             # بررسی جداول
             brands_count = Brand.query.count()
-            print(f"✓ جدول Brand: {brands_count} رکورد")
+            print(f"OK Brand table: {brands_count} records")
             
             types_count = VehicleType.query.count()
-            print(f"✓ جدول VehicleType: {types_count} رکورد")
+            print(f"OK VehicleType table: {types_count} records")
             
             products_count = Product.query.count()
-            print(f"✓ جدول Product: {products_count} رکورد")
+            print(f"OK Product table: {products_count} records")
             
             aliases_count = BrandAlias.query.count()
-            print(f"✓ جدول BrandAlias: {aliases_count} رکورد")
+            print(f"OK BrandAlias table: {aliases_count} records")
             
             type_aliases_count = VehicleTypeAlias.query.count()
-            print(f"✓ جدول VehicleTypeAlias: {type_aliases_count} رکورد")
+            print(f"OK VehicleTypeAlias table: {type_aliases_count} records")
             
             return True
             
     except Exception as e:
-        print(f"✗ خطا در دیتابیس: {str(e)}")
+        print(f"X Database error: {str(e)}")
         traceback.print_exc()
         return False
 
@@ -94,7 +94,7 @@ def check_database():
 def check_detector():
     """بررسی detector"""
     print("\n" + "="*60)
-    print("بررسی Detector")
+    print("Checking Detector")
     print("="*60)
     
     try:
@@ -103,20 +103,20 @@ def check_detector():
         
         with app.app_context():
             detector = get_detector()
-            print("✓ Detector ایجاد شد")
+            print("OK Detector created")
             
             # تست تشخیص
             result = detector.detect_brand_and_vehicle_types("تست تویوتا")
             
             if result['status'] == 'success':
-                print("✓ تشخیص کار می‌کند")
+                print("OK Detection is working")
                 return True
             else:
-                print(f"✗ خطا در تشخیص: {result.get('message', 'نامشخص')}")
+                print(f"X Detection error: {result.get('message', 'Unknown')}")
                 return False
                 
     except Exception as e:
-        print(f"✗ خطا در Detector: {str(e)}")
+        print(f"X Detector error: {str(e)}")
         traceback.print_exc()
         return False
 
@@ -124,7 +124,7 @@ def check_detector():
 def check_api():
     """بررسی API"""
     print("\n" + "="*60)
-    print("بررسی API")
+    print("Checking API")
     print("="*60)
     
     try:
@@ -133,22 +133,22 @@ def check_api():
         
         # بررسی blueprint
         if detection_bp in app.blueprints.values():
-            print("✓ Detection API Blueprint ثبت شده")
+            print("OK Detection API Blueprint registered")
         else:
-            print("✗ Detection API Blueprint ثبت نشده")
+            print("X Detection API Blueprint not registered")
             return False
         
         # بررسی routes
         routes = [rule.rule for rule in app.url_map.iter_rules() if 'detection' in rule.rule]
         
-        print(f"✓ تعداد route های detection: {len(routes)}")
+        print(f"OK Number of detection routes: {len(routes)}")
         for route in routes:
             print(f"  - {route}")
         
         return True
         
     except Exception as e:
-        print(f"✗ خطا در API: {str(e)}")
+        print(f"X API error: {str(e)}")
         traceback.print_exc()
         return False
 
@@ -156,7 +156,7 @@ def check_api():
 def check_service():
     """بررسی Service"""
     print("\n" + "="*60)
-    print("بررسی Service")
+    print("Checking Service")
     print("="*60)
     
     try:
@@ -165,20 +165,20 @@ def check_service():
         
         with app.app_context():
             service = get_detection_service()
-            print("✓ Service ایجاد شد")
+            print("OK Service created")
             
             # تست سرویس
             result = service.detect_single("تست هیوندای")
             
             if result['status'] == 'success':
-                print("✓ Service کار می‌کند")
+                print("OK Service is working")
                 return True
             else:
-                print(f"✗ خطا در Service: {result.get('message', 'نامشخص')}")
+                print(f"X Service error: {result.get('message', 'Unknown')}")
                 return False
                 
     except Exception as e:
-        print(f"✗ خطا در Service: {str(e)}")
+        print(f"X Service error: {str(e)}")
         traceback.print_exc()
         return False
 
@@ -186,7 +186,7 @@ def check_service():
 def main():
     """اجرای همه بررسی‌ها"""
     print("\n" + "="*60)
-    print("بررسی کامل سیستم تشخیص خودکار")
+    print("System Error Check - Complete Detection System")
     print("="*60)
     
     results = {
@@ -213,21 +213,21 @@ def main():
     
     # نمایش نتایج
     print("\n" + "="*60)
-    print("نتیجه نهایی")
+    print("Final Results")
     print("="*60)
     
     all_passed = all(results.values())
     
     for check_name, passed in results.items():
-        status = "✓ OK" if passed else "✗ خطا"
+        status = "OK" if passed else "X ERROR"
         print(f"{check_name:20} : {status}")
     
     print("\n" + "="*60)
     
     if all_passed:
-        print("✓✓✓ همه چیز OK است! سیستم آماده است ✓✓✓")
+        print("OK OK OK All systems OK! System is ready OK OK OK")
     else:
-        print("✗✗✗ خطاهایی وجود دارد! ✗✗✗")
+        print("XXX Errors found! XXX")
     
     print("="*60 + "\n")
     

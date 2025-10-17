@@ -1,0 +1,425 @@
+{
+  "title": "تحلیل کامل پروژه فروشگاه قطعات خودرو آسیا سلمان - مگاپرامپت جامع",
+  "description": "این مگاپرامپت شامل تحلیل کامل تمام فایل‌های پروژه و نقش هر کدام در سایت است",
+  "project_overview": {
+    "name": "شرکت بازرگانی قطعات خودرو آسیا سلمان",
+    "type": "فروشگاه آنلاین قطعات خودرو",
+    "framework": "Flask (Python)",
+    "database": "SQLite",
+    "language": "Python 3.11+",
+    "deployment": "Docker + Gunicorn"
+  },
+  "file_analysis": {
+    "core_application_files": {
+      "app.py": {
+        "purpose": "فایل اصلی Flask - نقطه شروع برنامه",
+        "role": "تنظیمات اصلی Flask، پیکربندی دیتابیس، مدیریت session، تنظیمات امنیتی، راه‌اندازی سرویس‌ها",
+        "key_features": [
+          "پیکربندی Flask app و SQLAlchemy",
+          "تنظیمات امنیتی و CSRF",
+          "مدیریت فایل‌های آپلود",
+          "تنظیمات ISACO warehouse 15",
+          "بهینه‌سازی SQLite با WAL mode",
+          "راه‌اندازی Tadbir scheduler",
+          "فیلترهای تاریخ شمسی",
+          "Context processor برای notifications"
+        ],
+        "importance": "قلب سیستم - بدون این فایل برنامه کار نمی‌کند"
+      },
+      "models.py": {
+        "purpose": "مدل‌های دیتابیس - ساختار داده‌ها",
+        "role": "تعریف جداول، روابط، و منطق کسب‌وکار در سطح دیتابیس",
+        "key_models": [
+          "User - مدیریت کاربران و احراز هویت",
+          "Product - محصولات و قطعات خودرو",
+          "Brand - برندهای خودرو",
+          "VehicleModel - مدل‌های خودرو",
+          "PartCategory - دسته‌بندی قطعات",
+          "Cart - سبد خرید",
+          "Invoice - فاکتورها",
+          "UserPoints - سیستم امتیازدهی",
+          "TadbirSyncLog - لاگ همگام‌سازی با تدبیر",
+          "ColorScheme - بهینه‌سازی رنگ‌ها"
+        ],
+        "importance": "پایه داده‌ای سیستم - تمام اطلاعات در این مدل‌ها ذخیره می‌شود"
+      },
+      "routes.py": {
+        "purpose": "مسیرهای وب - کنترلر اصلی",
+        "role": "تعریف تمام URL ها و منطق صفحات وب",
+        "key_routes": [
+          "صفحه اصلی و فروشگاه",
+          "احراز هویت (ورود/ثبت نام)",
+          "مدیریت پروفایل کاربری",
+          "سبد خرید و فاکتور",
+          "پنل مدیریت",
+          "جستجو و فیلتر محصولات",
+          "مدیریت برندها و دسته‌ها"
+        ],
+        "importance": "کنترلر اصلی - تمام تعاملات کاربر با سایت از اینجا مدیریت می‌شود"
+      }
+    },
+    "service_files": {
+      "detection_api.py": {
+        "purpose": "API تشخیص برند و نوع خودرو",
+        "role": "ارائه API برای تشخیص خودکار برند و نوع خودرو از متن",
+        "endpoints": [
+          "/api/detection/detect - تشخیص تکی",
+          "/api/detection/batch - تشخیص دسته‌ای",
+          "/api/detection/stats - آمار تشخیص"
+        ],
+        "importance": "هوش مصنوعی سیستم - کمک به کاربران در پیدا کردن محصولات مناسب"
+      },
+      "detection_service.py": {
+        "purpose": "سرویس لایه میانی تشخیص",
+        "role": "مدیریت منطق تشخیص و اعمال threshold های اطمینان",
+        "features": [
+          "تشخیص تکی با threshold",
+          "تشخیص دسته‌ای",
+          "مدیریت نتایج"
+        ],
+        "importance": "لایه منطق تشخیص - پردازش و فیلتر کردن نتایج"
+      },
+      "brand_vehicle_detector.py": {
+        "purpose": "موتور تشخیص برند و نوع خودرو",
+        "role": "الگوریتم اصلی تشخیص با استفاده از regex و pattern matching",
+        "features": [
+          "تشخیص برندهای خودرو",
+          "تشخیص انواع خودرو",
+          "نرمال‌سازی متن فارسی",
+          "کش کردن داده‌ها",
+          "مدیریت alias ها"
+        ],
+        "importance": "هسته هوش مصنوعی - الگوریتم اصلی تشخیص"
+      },
+      "tadbir_api_service.py": {
+        "purpose": "سرویس اتصال به سیستم حسابداری تدبیر",
+        "role": "همگام‌سازی محصولات، قیمت‌ها و موجودی با سیستم تدبیر",
+        "features": [
+          "احراز هویت با تدبیر",
+          "دریافت محصولات",
+          "دریافت قیمت‌ها",
+          "دریافت موجودی",
+          "مدیریت token",
+          "retry mechanism"
+        ],
+        "importance": "اتصال به سیستم حسابداری - همگام‌سازی داده‌ها با سیستم اصلی"
+      },
+      "shop_sync_service.py": {
+        "purpose": "سرویس همگام‌سازی فروشگاه",
+        "role": "همگام‌سازی داده‌های فروشگاه با cache تدبیر",
+        "features": [
+          "همگام‌سازی محصولات",
+          "همگام‌سازی قیمت‌ها",
+          "همگام‌سازی موجودی",
+          "مدیریت cache",
+          "لاگ‌گیری عملیات"
+        ],
+        "importance": "مدیریت داده‌ها - نگهداری همگام‌سازی بین سیستم‌ها"
+      },
+      "points_service.py": {
+        "purpose": "سیستم امتیازدهی کاربران",
+        "role": "محاسبه و مدیریت امتیازات کاربران",
+        "features": [
+          "محاسبه امتیاز بر اساس خرید",
+          "مدیریت جوایز",
+          "سطح‌بندی کاربران",
+          "قوانین امتیازدهی",
+          "انقضای امتیازات"
+        ],
+        "importance": "سیستم وفاداری - تشویق کاربران به خرید بیشتر"
+      },
+      "search_engine.py": {
+        "purpose": "موتور جستجوی هوشمند",
+        "role": "جستجوی پیشرفته محصولات با الگوریتم‌های مختلف",
+        "features": [
+          "جستجوی دقیق (exact match)",
+          "جستجوی بر اساس برند و مدل",
+          "جستجوی دسته‌ای",
+          "جستجوی فازی",
+          "جستجوی معنایی",
+          "رتبه‌بندی نتایج"
+        ],
+        "importance": "قابلیت جستجو - کمک به کاربران در پیدا کردن محصولات"
+      },
+      "persian_date_utils.py": {
+        "purpose": "ابزارهای تاریخ شمسی",
+        "role": "تبدیل تاریخ میلادی به شمسی و فرمت‌بندی",
+        "features": [
+          "تبدیل تاریخ میلادی به شمسی",
+          "فرمت‌بندی تاریخ‌ها",
+          "فیلترهای Jinja2",
+          "پشتیبانی از timezone"
+        ],
+        "importance": "محلی‌سازی - نمایش تاریخ‌ها به صورت شمسی"
+      },
+      "database_utils.py": {
+        "purpose": "ابزارهای مدیریت دیتابیس",
+        "role": "مدیریت اتصالات دیتابیس و حل مشکلات lock",
+        "features": [
+          "retry mechanism برای database lock",
+          "مدیریت transaction ها",
+          "بهینه‌سازی SQLite",
+          "WAL checkpointing"
+        ],
+        "importance": "پایداری سیستم - حل مشکلات همزمانی دیتابیس"
+      }
+    },
+    "template_files": {
+      "base.html": {
+        "purpose": "قالب پایه - layout اصلی سایت",
+        "role": "تعریف ساختار کلی صفحات، header، footer، navigation",
+        "features": [
+          "SEO meta tags",
+          "Open Graph tags",
+          "Structured data",
+          "Responsive design",
+          "RTL support",
+          "Bootstrap integration"
+        ],
+        "importance": "طراحی کلی - تمام صفحات از این قالب استفاده می‌کنند"
+      },
+      "index.html": {
+        "purpose": "صفحه اصلی سایت",
+        "role": "نمایش محصولات ویژه، جدیدترین محصولات، اطلاعیه‌ها",
+        "importance": "صفحه اول - اولین برخورد کاربر با سایت"
+      },
+      "shop.html": {
+        "purpose": "صفحه فروشگاه",
+        "role": "نمایش محصولات با فیلترها و جستجو",
+        "importance": "صفحه اصلی خرید - جایی که کاربران محصولات را می‌بینند"
+      },
+      "admin/": {
+        "purpose": "پنل مدیریت",
+        "role": "مدیریت محصولات، کاربران، فاکتورها، تنظیمات",
+        "key_templates": [
+          "dashboard.html - داشبورد مدیریت",
+          "products.html - مدیریت محصولات",
+          "invoice_management.html - مدیریت فاکتورها",
+          "brand_detection.html - مدیریت تشخیص برند"
+        ],
+        "importance": "کنترل سیستم - مدیریت کامل سایت"
+      }
+    },
+    "static_files": {
+      "css/style.css": {
+        "purpose": "استایل‌های اصلی سایت",
+        "role": "تعریف ظاهر و طراحی سایت",
+        "features": [
+          "رنگ‌بندی سفید و قرمز",
+          "Responsive design",
+          "Print styles برای فاکتور",
+          "Animation ها",
+          "RTL support"
+        ],
+        "importance": "ظاهر سایت - تعیین زیبایی و کاربری"
+      },
+      "js/main.js": {
+        "purpose": "JavaScript اصلی سایت",
+        "role": "تعاملات کاربری، AJAX، validation",
+        "features": [
+          "مدیریت سبد خرید",
+          "جستجوی زنده",
+          "اعتبارسنجی فرم‌ها",
+          "Animation ها",
+          "Notification ها"
+        ],
+        "importance": "تعامل کاربر - تجربه کاربری بهتر"
+      },
+      "js/multi-select-cart.js": {
+        "purpose": "سیستم سبد خرید چندتایی",
+        "role": "انتخاب چندین محصول و اضافه کردن به سبد خرید",
+        "importance": "قابلیت خرید - انتخاب آسان محصولات"
+      }
+    },
+    "database_files": {
+      "migration_*.sql": {
+        "purpose": "فایل‌های مهاجرت دیتابیس",
+        "role": "تغییرات ساختار دیتابیس و داده‌ها",
+        "key_migrations": [
+          "invoice_management_migration.sql - سیستم مدیریت فاکتور",
+          "price_correction_migration.sql - تصحیح قیمت‌ها",
+          "currency_conversion_migration.sql - تبدیل ارز",
+          "migration_add_profile_fields.sql - فیلدهای پروفایل"
+        ],
+        "importance": "توسعه دیتابیس - اعمال تغییرات به ساختار"
+      }
+    },
+    "initialization_files": {
+      "init_*.py": {
+        "purpose": "فایل‌های راه‌اندازی اولیه",
+        "role": "ایجاد داده‌های اولیه و تنظیمات",
+        "key_files": [
+          "init_sample_data.py - داده‌های نمونه",
+          "init_roles.py - نقش‌های کاربری",
+          "init_points_system.py - سیستم امتیازدهی",
+          "init_detection_system.py - سیستم تشخیص"
+        ],
+        "importance": "راه‌اندازی - آماده‌سازی سیستم برای استفاده"
+      }
+    },
+    "test_files": {
+      "test_*.py": {
+        "purpose": "فایل‌های تست",
+        "role": "تست عملکرد سیستم‌ها",
+        "key_tests": [
+          "test_detection_system.py - تست سیستم تشخیص",
+          "test_invoice_management.py - تست مدیریت فاکتور",
+          "test_shop_sync.py - تست همگام‌سازی"
+        ],
+        "importance": "کیفیت - اطمینان از عملکرد صحیح"
+      }
+    },
+    "deployment_files": {
+      "Dockerfile": {
+        "purpose": "فایل Docker برای containerization",
+        "role": "تعریف محیط اجرای برنامه",
+        "features": [
+          "Python 3.11 base image",
+          "System dependencies",
+          "Security (non-root user)",
+          "Gunicorn server"
+        ],
+        "importance": "استقرار - آماده‌سازی برای production"
+      },
+      "docker-compose.yaml": {
+        "purpose": "تنظیمات Docker Compose",
+        "role": "مدیریت سرویس‌های containerized",
+        "importance": "استقرار - مدیریت آسان سرویس‌ها"
+      }
+    }
+  },
+  "system_architecture": {
+    "frontend": {
+      "framework": "Flask Templates + Bootstrap",
+      "languages": "HTML, CSS, JavaScript",
+      "features": [
+        "Responsive design",
+        "RTL support",
+        "AJAX interactions",
+        "Real-time updates"
+      ]
+    },
+    "backend": {
+      "framework": "Flask",
+      "language": "Python 3.11+",
+      "database": "SQLite (development), PostgreSQL/MySQL (production)",
+      "features": [
+        "RESTful API",
+        "Authentication & Authorization",
+        "File upload handling",
+        "Background tasks"
+      ]
+    },
+    "integrations": {
+      "tadbir_accounting": "سیستم حسابداری تدبیر",
+      "detection_ai": "سیستم تشخیص هوشمند",
+      "points_system": "سیستم امتیازدهی",
+      "notification_system": "سیستم اطلاع‌رسانی"
+    }
+  },
+  "key_features": {
+    "user_management": [
+      "ثبت نام و ورود کاربران",
+      "تفکیک کاربران عادی و خریداران عمده",
+      "مدیریت پروفایل",
+      "سیستم نقش‌ها و مجوزها"
+    ],
+    "product_catalog": [
+      "نمایش محصولات با فیلترهای پیشرفته",
+      "جستجوی هوشمند",
+      "تشخیص خودکار برند و نوع خودرو",
+      "مدیریت دسته‌بندی‌ها"
+    ],
+    "shopping_cart": [
+      "سبد خرید پیشرفته",
+      "انتخاب چندتایی محصولات",
+      "محاسبه قیمت‌های مختلف",
+      "مدیریت session"
+    ],
+    "invoice_system": [
+      "ایجاد فاکتورهای حرفه‌ای",
+      "پشتیبانی از پرداخت نقدی و چکی",
+      "بارگذاری مدارک پرداخت",
+      "سیستم تایید و رد"
+    ],
+    "admin_panel": [
+      "مدیریت کامل محصولات",
+      "مدیریت کاربران و نقش‌ها",
+      "مدیریت فاکتورها",
+      "گزارش‌گیری و آمار"
+    ],
+    "integration": [
+      "همگام‌سازی با سیستم تدبیر",
+      "سیستم امتیازدهی",
+      "اطلاع‌رسانی خودکار",
+      "بهینه‌سازی رنگ‌ها"
+    ]
+  },
+  "technical_highlights": {
+    "performance": [
+      "SQLite WAL mode برای همزمانی بهتر",
+      "Connection pooling",
+      "Caching system",
+      "Database optimization"
+    ],
+    "security": [
+      "CSRF protection",
+      "Password hashing",
+      "Input validation",
+      "Role-based access control"
+    ],
+    "scalability": [
+      "Modular architecture",
+      "Service-oriented design",
+      "Docker containerization",
+      "Background task processing"
+    ],
+    "maintainability": [
+      "Clean code structure",
+      "Comprehensive logging",
+      "Error handling",
+      "Testing framework"
+    ]
+  },
+  "business_logic": {
+    "pricing": [
+      "قیمت‌های مختلف برای خریداران عمده و تکی",
+      "قیمت‌های نقدی و چکی",
+      "قیمت‌های ویژه ISACO",
+      "محاسبه تخفیفات"
+    ],
+    "inventory": [
+      "مدیریت موجودی",
+      "همگام‌سازی با سیستم تدبیر",
+      "هشدار کمبود موجودی",
+      "مدیریت انبارهای مختلف"
+    ],
+    "customer_management": [
+      "تفکیک مشتریان",
+      "مدیریت اعتبار",
+      "سیستم امتیازدهی",
+      "تاریخچه خرید"
+    ]
+  },
+  "deployment_notes": {
+    "development": "python app.py",
+    "production": "Docker + Gunicorn",
+    "database": "SQLite for dev, PostgreSQL for prod",
+    "monitoring": "Logging + Error tracking",
+    "backup": "Database backup scripts"
+  },
+  "maintenance_tasks": {
+    "regular": [
+      "Database cleanup",
+      "Log rotation",
+      "Cache management",
+      "Security updates"
+    ],
+    "periodic": [
+      "Tadbir sync",
+      "Points expiration",
+      "User cleanup",
+      "Performance optimization"
+    ]
+  }
+}

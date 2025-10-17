@@ -202,13 +202,20 @@
                         <a href="{{ url_for('shop') }}" class="btn btn-outline-danger">
                             <i class="fas fa-store me-2"></i>فروشگاه
                         </a>
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-danger">
+                        {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-danger">
                             <i class="fas fa-tachometer-alt me-2"></i>داشبورد
                         </a>
+                        {% endif %}
+                        {% if current_user.has_role('مدیر_سفارشات', scope='site') %}
+                        <a href="{{ url_for('profile_customer_invoices') }}" class="btn btn-outline-info">
+                            <i class="fas fa-file-invoice me-2"></i>فاکتورهای مشتریان
+                        </a>
+                        {% endif %}
                         <a href="{{ url_for('about') }}" class="btn btn-outline-danger">
                             <i class="fas fa-info-circle me-2"></i>درباره ما
                         </a>
-                        {% if current_user.is_admin %}
+                        {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
                         <hr>
                         <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-warning">
                             <i class="fas fa-cog me-2"></i>مدیریت سایت

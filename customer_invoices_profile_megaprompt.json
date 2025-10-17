@@ -1,0 +1,444 @@
+{
+  "title": "Customer Invoices Section in Profile - Order Management Role",
+  "description": "Implementation of customer invoices section in user profile for users with order management role",
+  "version": "1.0",
+  "created_at": "2025-01-27",
+  "language": "Persian",
+  "target_audience": "Order Management Users",
+  
+  "requirements": {
+    "functional": [
+      "Add customer invoices section to user profile page",
+      "Display all customer invoices with filtering and search capabilities",
+      "Show invoice details including items, amounts, and status",
+      "Provide invoice management actions (approve, reject, view details)",
+      "Implement responsive design for mobile and desktop",
+      "Add pagination for large invoice lists",
+      "Include invoice statistics and summary",
+      "Support real-time updates and notifications"
+    ],
+    "technical": [
+      "Use existing role-based access control system",
+      "Integrate with current invoice management system",
+      "Maintain database consistency and performance",
+      "Follow existing UI/UX patterns and Persian RTL design",
+      "Implement proper error handling and validation",
+      "Add audit logging for invoice management actions",
+      "Ensure mobile responsiveness",
+      "Use existing authentication and authorization"
+    ],
+    "security": [
+      "Restrict access to users with 'مدیر_سفارشات' (order_manager) role only",
+      "Validate user permissions before displaying invoices",
+      "Implement CSRF protection for all forms",
+      "Log all invoice management actions",
+      "Sanitize user inputs and prevent SQL injection",
+      "Use secure file handling for invoice documents"
+    ]
+  },
+
+  "implementation_plan": {
+    "phase_1": {
+      "title": "Backend Implementation",
+      "tasks": [
+        {
+          "task": "Create customer invoices route",
+          "description": "Add new route for displaying customer invoices in profile",
+          "file": "routes.py",
+          "function": "profile_customer_invoices()",
+          "permissions": "order.read, user.read",
+          "features": [
+            "Paginated invoice listing",
+            "Filtering by status, date range, customer",
+            "Search functionality",
+            "Statistics calculation",
+            "Role-based access control"
+          ]
+        },
+        {
+          "task": "Add invoice management API endpoints",
+          "description": "Create API endpoints for invoice management actions",
+          "file": "routes.py",
+          "functions": [
+            "api_approve_invoice()",
+            "api_reject_invoice()",
+            "api_get_invoice_details()",
+            "api_update_invoice_notes()"
+          ],
+          "features": [
+            "JSON API responses",
+            "Error handling",
+            "Audit logging",
+            "Permission validation"
+          ]
+        },
+        {
+          "task": "Enhance Invoice model methods",
+          "description": "Add helper methods to Invoice model for better data handling",
+          "file": "models.py",
+          "methods": [
+            "get_customer_info()",
+            "get_total_items()",
+            "get_status_display()",
+            "get_payment_type_display()",
+            "can_be_approved_by(user)",
+            "get_approval_history()"
+          ]
+        }
+      ]
+    },
+    "phase_2": {
+      "title": "Frontend Implementation",
+      "tasks": [
+        {
+          "task": "Create customer invoices template",
+          "description": "Design and implement the customer invoices section template",
+          "file": "templates/profile_customer_invoices.html",
+          "features": [
+            "Responsive Bootstrap design",
+            "Persian RTL layout",
+            "Invoice cards with status indicators",
+            "Filter and search controls",
+            "Pagination controls",
+            "Statistics dashboard",
+            "Action buttons for each invoice"
+          ]
+        },
+        {
+          "task": "Add JavaScript functionality",
+          "description": "Implement interactive features and AJAX calls",
+          "file": "static/js/customer-invoices.js",
+          "features": [
+            "Dynamic filtering and search",
+            "AJAX invoice management",
+            "Real-time status updates",
+            "Modal dialogs for actions",
+            "Form validation",
+            "Loading indicators",
+            "Error handling and notifications"
+          ]
+        },
+        {
+          "task": "Update profile template",
+          "description": "Integrate customer invoices section into main profile page",
+          "file": "templates/profile.html",
+          "changes": [
+            "Add conditional section for order managers",
+            "Include navigation tab for invoices",
+            "Add link to customer invoices section",
+            "Update role-based menu items"
+          ]
+        }
+      ]
+    },
+    "phase_3": {
+      "title": "Integration and Testing",
+      "tasks": [
+        {
+          "task": "Update navigation and routing",
+          "description": "Ensure proper navigation and URL routing",
+          "files": ["routes.py", "templates/base.html"],
+          "changes": [
+            "Add route for customer invoices in profile",
+            "Update navigation menu for order managers",
+            "Add breadcrumb navigation",
+            "Ensure proper URL structure"
+          ]
+        },
+        {
+          "task": "Add CSS styling",
+          "description": "Create custom styles for customer invoices section",
+          "file": "static/css/customer-invoices.css",
+          "features": [
+            "Invoice card styling",
+            "Status badge colors",
+            "Filter controls styling",
+            "Responsive design",
+            "Animation effects",
+            "Print-friendly styles"
+          ]
+        },
+        {
+          "task": "Testing and validation",
+          "description": "Comprehensive testing of all features",
+          "areas": [
+            "Role-based access control",
+            "Invoice filtering and search",
+            "Pagination functionality",
+            "AJAX operations",
+            "Mobile responsiveness",
+            "Error handling",
+            "Performance optimization"
+          ]
+        }
+      ]
+    }
+  },
+
+  "database_changes": {
+    "new_tables": [],
+    "modified_tables": [],
+    "new_indexes": [
+      "CREATE INDEX idx_invoice_user_status ON invoice(user_id, approval_status)",
+      "CREATE INDEX idx_invoice_created_status ON invoice(created_at, approval_status)",
+      "CREATE INDEX idx_invoice_payment_type ON invoice(payment_type, approval_status)"
+    ],
+    "migrations": [
+      "Add indexes for better query performance",
+      "Update existing invoice queries for optimization"
+    ]
+  },
+
+  "api_endpoints": {
+    "GET /profile/customer-invoices": {
+      "description": "Display customer invoices page in profile",
+      "authentication": "Required",
+      "permissions": "order.read, user.read",
+      "parameters": {
+        "page": "Page number for pagination",
+        "status": "Filter by approval status",
+        "payment_type": "Filter by payment type",
+        "search": "Search by customer name or invoice number",
+        "date_from": "Filter from date",
+        "date_to": "Filter to date"
+      },
+      "response": "HTML template with invoice data"
+    },
+    "GET /api/profile/customer-invoices": {
+      "description": "Get customer invoices data as JSON",
+      "authentication": "Required",
+      "permissions": "order.read, user.read",
+      "response": {
+        "success": "boolean",
+        "invoices": "array of invoice objects",
+        "pagination": "pagination info",
+        "statistics": "invoice statistics",
+        "filters": "current filter values"
+      }
+    },
+    "PUT /api/profile/customer-invoices/{invoice_id}/approve": {
+      "description": "Approve a customer invoice",
+      "authentication": "Required",
+      "permissions": "order.update",
+      "parameters": {
+        "admin_notes": "Optional admin notes"
+      },
+      "response": {
+        "success": "boolean",
+        "message": "Success message",
+        "invoice": "Updated invoice object"
+      }
+    },
+    "PUT /api/profile/customer-invoices/{invoice_id}/reject": {
+      "description": "Reject a customer invoice",
+      "authentication": "Required",
+      "permissions": "order.update",
+      "parameters": {
+        "rejection_reason": "Required rejection reason",
+        "admin_notes": "Optional admin notes"
+      },
+      "response": {
+        "success": "boolean",
+        "message": "Success message",
+        "invoice": "Updated invoice object"
+      }
+    },
+    "GET /api/profile/customer-invoices/{invoice_id}/details": {
+      "description": "Get detailed invoice information",
+      "authentication": "Required",
+      "permissions": "order.read",
+      "response": {
+        "success": "boolean",
+        "invoice": "Detailed invoice object with items and customer info"
+      }
+    }
+  },
+
+  "ui_components": {
+    "invoice_card": {
+      "description": "Card component for displaying invoice summary",
+      "elements": [
+        "Invoice number and date",
+        "Customer information",
+        "Total amount with currency formatting",
+        "Payment type and status badges",
+        "Action buttons (view, approve, reject)",
+        "Progress indicators for pending actions"
+      ],
+      "styling": {
+        "status_colors": {
+          "pending": "warning",
+          "approved": "success",
+          "rejected": "danger",
+          "under_review": "info"
+        },
+        "payment_type_colors": {
+          "cash": "success",
+          "check": "primary"
+        }
+      }
+    },
+    "filter_controls": {
+      "description": "Filtering and search controls",
+      "elements": [
+        "Status dropdown filter",
+        "Payment type filter",
+        "Date range picker",
+        "Customer search input",
+        "Clear filters button",
+        "Export options"
+      ]
+    },
+    "statistics_dashboard": {
+      "description": "Summary statistics for invoices",
+      "metrics": [
+        "Total invoices count",
+        "Pending approval count",
+        "Approved invoices count",
+        "Rejected invoices count",
+        "Total amount pending",
+        "Average invoice value"
+      ]
+    },
+    "action_modals": {
+      "approve_modal": {
+        "title": "تایید فاکتور",
+        "fields": ["admin_notes"],
+        "actions": ["approve", "cancel"]
+      },
+      "reject_modal": {
+        "title": "رد فاکتور",
+        "fields": ["rejection_reason", "admin_notes"],
+        "actions": ["reject", "cancel"]
+      },
+      "details_modal": {
+        "title": "جزئیات فاکتور",
+        "content": "Invoice details, items, customer info, documents"
+      }
+    }
+  },
+
+  "permissions_required": {
+    "role": "مدیر_سفارشات (order_manager)",
+    "permissions": [
+      "order.read",
+      "order.update", 
+      "user.read",
+      "invoice.view",
+      "invoice.manage"
+    ],
+    "scope": "site"
+  },
+
+  "error_handling": {
+    "common_errors": [
+      {
+        "error": "Permission denied",
+        "message": "شما دسترسی لازم برای مشاهده فاکتورهای مشتریان را ندارید",
+        "action": "Redirect to profile or show access denied page"
+      },
+      {
+        "error": "Invoice not found",
+        "message": "فاکتور مورد نظر یافت نشد",
+        "action": "Show error message and refresh list"
+      },
+      {
+        "error": "Invalid action",
+        "message": "عملیات درخواستی معتبر نیست",
+        "action": "Show validation error and reset form"
+      }
+    ],
+    "validation_rules": [
+      "Check user role before displaying invoices",
+      "Validate invoice ID exists and belongs to system",
+      "Ensure user has permission for requested action",
+      "Validate form inputs and sanitize data",
+      "Check invoice status before allowing actions"
+    ]
+  },
+
+  "performance_considerations": {
+    "database_optimization": [
+      "Use proper indexes for invoice queries",
+      "Implement pagination to limit result sets",
+      "Use eager loading for related data",
+      "Cache frequently accessed statistics",
+      "Optimize complex filter queries"
+    ],
+    "frontend_optimization": [
+      "Lazy load invoice details",
+      "Implement client-side filtering for small datasets",
+      "Use AJAX for dynamic updates",
+      "Minimize DOM manipulation",
+      "Cache filter states in localStorage"
+    ],
+    "caching_strategy": [
+      "Cache invoice statistics for 5 minutes",
+      "Cache user permissions check results",
+      "Use browser caching for static assets",
+      "Implement Redis caching for frequently accessed data"
+    ]
+  },
+
+  "testing_scenarios": {
+    "functional_tests": [
+      "User with order_manager role can access customer invoices",
+      "User without order_manager role cannot access customer invoices",
+      "Invoice filtering works correctly",
+      "Pagination displays correct results",
+      "Search functionality finds relevant invoices",
+      "Approve/reject actions update invoice status",
+      "Statistics are calculated correctly",
+      "Mobile responsive design works on all devices"
+    ],
+    "security_tests": [
+      "Unauthorized users cannot access customer invoices",
+      "Users cannot access invoices they don't have permission for",
+      "CSRF protection works on all forms",
+      "Input validation prevents malicious data",
+      "Audit logs are created for all actions"
+    ],
+    "performance_tests": [
+      "Page loads within 2 seconds with 1000+ invoices",
+      "Filtering operations complete within 500ms",
+      "AJAX requests respond within 1 second",
+      "Database queries are optimized and fast",
+      "Memory usage remains stable during operations"
+    ]
+  },
+
+  "deployment_checklist": [
+    "Update database with new indexes",
+    "Deploy new routes and API endpoints",
+    "Upload new templates and static files",
+    "Test role-based access control",
+    "Verify all permissions are working",
+    "Test on mobile devices",
+    "Check browser compatibility",
+    "Validate Persian RTL layout",
+    "Test error handling scenarios",
+    "Monitor performance and logs"
+  ],
+
+  "maintenance_tasks": [
+    "Regular cleanup of old audit logs",
+    "Monitor database performance and optimize queries",
+    "Update role permissions as needed",
+    "Backup invoice data regularly",
+    "Review and update security measures",
+    "Monitor user feedback and improve UX",
+    "Keep dependencies updated",
+    "Regular security audits"
+  ],
+
+  "future_enhancements": [
+    "Bulk invoice operations (approve/reject multiple)",
+    "Advanced reporting and analytics",
+    "Email notifications for invoice status changes",
+    "Export functionality (PDF, Excel)",
+    "Invoice templates and customization",
+    "Integration with external accounting systems",
+    "Mobile app support",
+    "Real-time collaboration features"
+  ]
+}

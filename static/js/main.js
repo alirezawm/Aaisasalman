@@ -156,10 +156,16 @@ $(document).ready(function() {
 
     // Quantity controls
     $('.quantity-btn').on('click', function() {
-        var input = $(this).siblings('input');
+        var targetId = $(this).data('target');
+        var input = targetId ? $('#' + targetId) : $(this).siblings('input');
         var currentValue = parseInt(input.val()) || 1;
         var change = $(this).data('change');
         var newValue = currentValue + change;
+        
+        // Ensure minimum quantity of 1 for product selection
+        if (!input.hasClass('update-cart-quantity') && newValue < 1) {
+            newValue = 1;
+        }
         
         // If this is a cart quantity control, handle auto-removal
         if (input.hasClass('update-cart-quantity')) {
@@ -401,9 +407,9 @@ function animatePriceChange($element, newPrice) {
 
 // Enhanced price formatting function
 function formatPrice(price) {
-    // Price is stored in thousands Rials, convert to full Rials for display
-    var fullPrice = price * 1000;
-    return new Intl.NumberFormat('fa-IR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(fullPrice) + ' ریال';
+    // Prices are now stored in full Rials. Display as full Rials.
+    var fullRials = Number(price) || 0;
+    return new Intl.NumberFormat('fa-IR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(fullRials) + ' ریال';
 }
 
 // Enhanced cart total update function
@@ -521,7 +527,7 @@ function updateCartPoints() {
         
         // Calculate points for this product
         var totalPrice = price * quantity;
-        var basePoints = Math.floor((totalPrice / 100) * 500);
+        var basePoints = Math.floor((totalPrice / 100000) * 500); // 500 points per 100k rials
         var bonusPoints = Math.min((quantity - 1) * 50, 1000);
         var productPoints = basePoints + bonusPoints;
         

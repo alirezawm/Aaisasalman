@@ -1,18 +1,159 @@
+# ========================================
+# Production Docker Compose Configuration
+# Asia Salman Flask Application
+# ========================================
+
 version: '3.8'
 
 services:
+  # Main Flask Application
   web:
-    build: .
-    container_name: python_web_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: asia-salman-web
+    restart: unless-stopped
     ports:
-      - "8081:5000"
-    # environment:
-    #   DB_HOST: db
-    #   DB_USER: myuser
-    #   DB_PASSWORD: mypassword
-    #   DB_NAME: mydatabase
+      - "8000:8000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=app.py
+      - PYTHONPATH=/usr/src/app
+      - TZ=Asia/Tehran
     volumes:
-      - .:/usr/src/app
+      # Persistent data volumes
+      - app_uploads:/usr/src/app/uploads
+      - app_instance:/usr/src/app/instance
+      - app_logs:/usr/src/app/logs
+      - app_backups:/usr/src/app/backups
+      # Static files (read-only)
+      - ./static:/usr/src/app/static:ro
+      - ./templates:/usr/src/app/templates:ro
+    networks:
+      - app_network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
 
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: asia-salman-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: asia-salman-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./static:/usr/share/nginx/html/static:ro
+      - nginx_logs:/var/log/nginx
+      - ssl_certs:/etc/nginx/ssl:ro
+    networks:
+      - app_network
+    depends_on:
+      - web
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+
+  # Database backup service
+  backup:
+    image: alpine:latest
+    container_name: asia-salman-backup
+    restart: "no"
+    volumes:
+      - app_instance:/data/instance:ro
+      - app_backups:/backups
+      - ./scripts:/scripts:ro
+    networks:
+      - app_network
+    command: /scripts/backup.sh
+    depends_on:
+      - web
+    profiles:
+      - backup
+
+  # Log rotation service
+  logrotate:
+    image: alpine:latest
+    container_name: asia-salman-logrotate
+    restart: unless-stopped
+    volumes:
+      - app_logs:/logs
+      - nginx_logs:/nginx_logs
+      - ./scripts/logrotate.conf:/etc/logrotate.conf:ro
+    networks:
+      - app_network
+    command: sh -c "while true; do logrotate -f /etc/logrotate.conf; sleep 86400; done"
+    profiles:
+      - maintenance
+
+# Named volumes for persistent data
 volumes:
-  mysql_data:
+  app_uploads:
+    driver: local
+  app_instance:
+    driver: local
+  app_logs:
+    driver: local
+  app_backups:
+    driver: local
+  redis_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  ssl_certs:
+    driver: local
+
+# Custom network for service communication
+networks:
+  app_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

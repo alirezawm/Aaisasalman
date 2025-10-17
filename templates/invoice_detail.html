@@ -228,9 +228,11 @@
                         <a href="{{ url_for('invoice_print', invoice_id=invoice.id) }}" target="_blank" class="btn btn-info me-2">
                             <i class="fas fa-download me-2"></i>دانلود فاکتور
                         </a>
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-danger">
+                        {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-danger">
                             <i class="fas fa-arrow-right me-2"></i>بازگشت به داشبورد
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

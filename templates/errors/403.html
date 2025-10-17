@@ -17,9 +17,11 @@
                         <i class="fas fa-home"></i> بازگشت به خانه
                     </a>
                     {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+                    {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary">
                         <i class="fas fa-tachometer-alt"></i> داشبورد
                     </a>
+                    {% endif %}
                     {% else %}
                     <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
                         <i class="fas fa-sign-in-alt"></i> ورود

@@ -297,6 +297,15 @@ class Product(db.Model):
     retail_price_cash = db.Column(db.Float, nullable=False)
     bulk_price_check = db.Column(db.Float, nullable=False)
     retail_price_check = db.Column(db.Float, nullable=False)
+
+    # ISACO warehouse 15 special pricing (thousands of Rials)
+    isaco_cash = db.Column(db.Float, nullable=True)
+    isaco_1m = db.Column(db.Float, nullable=True)
+    isaco_2m = db.Column(db.Float, nullable=True)
+    isaco_3m = db.Column(db.Float, nullable=True)
+
+    # Visibility/control flags
+    is_isaco_wh15 = db.Column(db.Boolean, default=False)
     
     # Inventory
     stock_quantity = db.Column(db.Integer, default=0)
@@ -448,6 +457,8 @@ class Cart(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     price_type = db.Column(db.String(10), nullable=False)  # 'cash' or 'check'
+    # ISACO specific price plan for warehouse 15 items
+    price_plan = db.Column(db.String(20), nullable=True)  # isaco_cash, isaco_1m, isaco_2m, isaco_3m
     unit_price = db.Column(db.Float, nullable=False)  # Store the actual unit price
     discount_amount = db.Column(db.Float, default=0)
     discount_type = db.Column(db.String(20), default='fixed')  # 'percentage' or 'fixed'
@@ -619,6 +630,11 @@ class Invoice(db.Model):
     rejection_reason = db.Column(db.Text)  # reason for rejection
     admin_notes = db.Column(db.Text)  # admin notes about the invoice
     
+    # Enhanced notification tracking
+    admin_review_notes = db.Column(db.Text)  # admin notes during review process
+    notification_sent = db.Column(db.Boolean, default=False)  # whether notification was sent to customer
+    notification_sent_at = db.Column(db.DateTime)  # when last notification was sent
+    
     # Relationships
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True, cascade='all, delete-orphan')
     documents = db.relationship('InvoiceDocument', backref='invoice', lazy=True, cascade='all, delete-orphan')
@@ -632,6 +648,7 @@ class InvoiceItem(db.Model):
     unit_price = db.Column(db.Float, nullable=False)
     total_price = db.Column(db.Float, nullable=False)
     price_type = db.Column(db.String(10), nullable=False)  # 'cash' or 'check'
+    price_plan = db.Column(db.String(20), nullable=True)  # ISACO plan if applicable
     
     # Relationships
     product = db.relationship('Product', backref='invoice_items')
@@ -771,15 +788,20 @@ class AuditLog(db.Model):
 class UserNotification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    notification_type = db.Column(db.String(50), nullable=False)  # role_change, system, etc.
+    notification_type = db.Column(db.String(50), nullable=False)  # role_change, system, invoice_approved, etc.
     title = db.Column(db.String(200), nullable=False)
     message = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     read_at = db.Column(db.DateTime)
     
+    # Invoice-related notification fields
+    related_invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=True)
+    notification_action = db.Column(db.String(50), nullable=True)  # approve, reject, review
+    
     # Relationships
     user = db.relationship('User', backref='notifications')
+    related_invoice = db.relationship('Invoice', backref='notifications')
     
     def mark_as_read(self):
         """Mark notification as read"""

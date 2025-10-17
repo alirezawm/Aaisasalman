@@ -347,8 +347,8 @@ class TadbirSyncService:
                             
                             # Determine price type based on price list key
                             price_type = self._get_price_type(price_list_key)
-                            # قیمت تدبیر به ریال است، تبدیل به هزار ریال
-                            base_price = float(price_data.get('Price', 0)) / 1000
+                            # قیمت تدبیر به ریال کامل است، مستقیماً ذخیره می‌کنیم
+                            base_price = float(price_data.get('Price', 0))
                             
                             # Calculate final price with markup
                             final_price = self.api_service.calculate_final_price(base_price, price_type)
@@ -365,8 +365,8 @@ class TadbirSyncService:
                                 existing_price.base_price = base_price
                                 existing_price.final_price = final_price
                                 existing_price.discount_percentage = price_data.get('DiscountPrcnt', 0)
-                                # تخفیف را نیز به هزار ریال تبدیل می‌کنیم
-                                existing_price.discount_amount = float(price_data.get('Discount', 0)) / 1000
+                                # تخفیف تدبیر به ریال کامل است، مستقیماً ذخیره می‌کنیم
+                                existing_price.discount_amount = float(price_data.get('Discount', 0))
                                 existing_price.min_order = price_data.get('MinOrder', 0)
                                 existing_price.tadbir_guid = price_data.get('GUID')
                                 existing_price.last_update = self._parse_datetime(price_data.get('LastUpdate'))
@@ -380,8 +380,8 @@ class TadbirSyncService:
                                     base_price=base_price,
                                     final_price=final_price,
                                     discount_percentage=price_data.get('DiscountPrcnt', 0),
-                                    # تخفیف را نیز به هزار ریال تبدیل می‌کنیم
-                                    discount_amount=float(price_data.get('Discount', 0)) / 1000,
+                                    # تخفیف تدبیر به ریال کامل است، مستقیماً ذخیره می‌کنیم
+                                    discount_amount=float(price_data.get('Discount', 0)),
                                     min_order=price_data.get('MinOrder', 0),
                                     tadbir_guid=price_data.get('GUID'),
                                     last_update=self._parse_datetime(price_data.get('LastUpdate')),

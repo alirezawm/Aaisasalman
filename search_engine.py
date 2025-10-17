@@ -451,10 +451,15 @@ class IntelligentSearchEngine:
         query = query.strip()
         
         # Brand suggestions
+        # Normalize Persian/Arabic variants for robust matching
+        from routes import normalize_fa_text, normalize_sql_expr  # reuse helpers
+        norm_q = normalize_fa_text(query)
+        name_norm = normalize_sql_expr(models.Brand.name)
+        name_fa_norm = normalize_sql_expr(models.Brand.name_fa)
         brands = models.Brand.query.filter(
             or_(
-                models.Brand.name.ilike(f'%{query}%'),
-                models.Brand.name_fa.ilike(f'%{query}%')
+                name_norm.contains(norm_q),
+                name_fa_norm.contains(norm_q)
             ),
             models.Brand.is_active == True
         ).limit(5).all()
@@ -470,11 +475,13 @@ class IntelligentSearchEngine:
         
         # Model suggestions (if brand context exists)
         if context and 'brand_id' in context:
+            name_norm = normalize_sql_expr(models.VehicleModel.model_name)
+            name_fa_norm = normalize_sql_expr(models.VehicleModel.model_name_fa)
             models_query = models.VehicleModel.query.filter(
                 models.VehicleModel.brand_id == context['brand_id'],
                 or_(
-                    models.VehicleModel.model_name.ilike(f'%{query}%'),
-                    models.VehicleModel.model_name_fa.ilike(f'%{query}%')
+                    name_norm.contains(norm_q),
+                    name_fa_norm.contains(norm_q)
                 ),
                 models.VehicleModel.is_active == True
             ).limit(5).all()
@@ -507,10 +514,12 @@ class IntelligentSearchEngine:
             })
         
         # Product suggestions
+        name_norm = normalize_sql_expr(models.Product.name)
+        name_fa_norm = normalize_sql_expr(models.Product.name_fa)
         products = models.Product.query.filter(
             or_(
-                models.Product.name.ilike(f'%{query}%'),
-                models.Product.name_fa.ilike(f'%{query}%')
+                name_norm.contains(norm_q),
+                name_fa_norm.contains(norm_q)
             ),
             models.Product.is_active == True
         ).limit(5).all()

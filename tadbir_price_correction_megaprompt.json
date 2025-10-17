@@ -1,0 +1,225 @@
+{
+  "title": "اصلاح کامل سیستم قیمت‌گذاری تدبیر - نمایش قیمت‌های واقعی",
+  "description": "مگاپرامت حرفه‌ای برای اصلاح کامل سیستم قیمت‌گذاری و نمایش قیمت‌های واقعی دریافتی از تدبیر در تمام سایت",
+  "version": "1.0",
+  "created_date": "2025-01-16",
+  "problem_analysis": {
+    "issue": "قیمت‌های دریافتی از تدبیر به ریال هستند اما در سایت به صورت هزار ریال نمایش داده می‌شوند",
+    "example": "کالای 30613470: قیمت تدبیر 182886 ریال، نمایش سایت 183 ریال (باید 182886 ریال نمایش داده شود)",
+    "root_cause": "سیستم فعلی قیمت‌ها را به هزار ریال تبدیل می‌کند در حالی که باید قیمت‌های واقعی تدبیر را نمایش دهد"
+  },
+  "current_system_analysis": {
+    "tadbir_api": {
+      "price_format": "ریال کامل (مثال: 182886)",
+      "storage": "در دیتابیس به صورت هزار ریال ذخیره می‌شود",
+      "display": "در سایت به صورت هزار ریال نمایش داده می‌شود"
+    },
+    "conversion_issue": {
+      "tadbir_to_db": "قیمت تدبیر ÷ 1000 = ذخیره در دیتابیس",
+      "db_to_display": "قیمت دیتابیس × 1000 = نمایش در سایت",
+      "result": "قیمت نهایی = قیمت تدبیر (بدون تغییر)"
+    }
+  },
+  "solution_strategy": {
+    "approach": "حذف کامل تبدیل‌های غیرضروری و نمایش مستقیم قیمت‌های تدبیر",
+    "steps": [
+      "1. اصلاح سرویس همگام‌سازی تدبیر",
+      "2. اصلاح مدل‌های دیتابیس",
+      "3. اصلاح توابع فرمت قیمت",
+      "4. اصلاح تمپلیت‌ها",
+      "5. اصلاح JavaScript",
+      "6. تست و اعتبارسنجی"
+    ]
+  },
+  "implementation_plan": {
+    "phase_1_backend_changes": {
+      "tadbir_sync_service.py": {
+        "changes": [
+          "حذف تقسیم بر 1000 در خط 351: base_price = float(price_data.get('Price', 0))",
+          "حذف تقسیم بر 1000 در خط 369: discount_amount = float(price_data.get('Discount', 0))",
+          "حذف تقسیم بر 1000 در خط 384: discount_amount = float(price_data.get('Discount', 0))",
+          "اصلاح sync_prices_to_products برای ذخیره قیمت‌های واقعی"
+        ],
+        "code_changes": {
+          "line_351": "base_price = float(price_data.get('Price', 0))  # بدون تقسیم بر 1000",
+          "line_369": "existing_price.discount_amount = float(price_data.get('Discount', 0))  # بدون تقسیم بر 1000",
+          "line_384": "discount_amount=float(price_data.get('Discount', 0))  # بدون تقسیم بر 1000"
+        }
+      },
+      "app.py": {
+        "format_price_function": {
+          "current": "def format_price(price, is_isaco=False): return f\"{full_rial:,.0f} ریال\"",
+          "new": "def format_price(price, is_isaco=False): return f\"{price:,.0f} ریال\"",
+          "explanation": "حذف ضرب در 1000 چون قیمت‌ها حالا به ریال کامل ذخیره می‌شوند"
+        }
+      }
+    },
+    "phase_2_database_migration": {
+      "migration_script": {
+        "purpose": "تبدیل قیمت‌های موجود از هزار ریال به ریال کامل",
+        "sql_commands": [
+          "UPDATE product SET bulk_price_cash = bulk_price_cash * 1000;",
+          "UPDATE product SET retail_price_cash = retail_price_cash * 1000;",
+          "UPDATE product SET bulk_price_check = bulk_price_check * 1000;",
+          "UPDATE product SET retail_price_check = retail_price_check * 1000;",
+          "UPDATE product SET isaco_cash = isaco_cash * 1000 WHERE isaco_cash IS NOT NULL;",
+          "UPDATE product SET isaco_1m = isaco_1m * 1000 WHERE isaco_1m IS NOT NULL;",
+          "UPDATE product SET isaco_2m = isaco_2m * 1000 WHERE isaco_2m IS NOT NULL;",
+          "UPDATE product SET isaco_3m = isaco_3m * 1000 WHERE isaco_3m IS NOT NULL;",
+          "UPDATE tadbir_price_cache SET base_price = base_price * 1000;",
+          "UPDATE tadbir_price_cache SET final_price = final_price * 1000;",
+          "UPDATE tadbir_price_cache SET discount_amount = discount_amount * 1000;"
+        ]
+      }
+    },
+    "phase_3_template_updates": {
+      "files_to_update": [
+        "templates/shop.html",
+        "templates/product_detail.html",
+        "templates/category_products.html",
+        "templates/brand_products.html",
+        "templates/admin/accounting_prices.html",
+        "templates/admin/invoice_detail.html"
+      ],
+      "changes": [
+        "حذف ضرب در 1000 در تمام نمایش‌های قیمت",
+        "تغییر برچسب‌ها از 'هزار ریال' به 'ریال'",
+        "اصلاح محاسبات JavaScript"
+      ]
+    },
+    "phase_4_javascript_updates": {
+      "files_to_update": [
+        "static/js/main.js",
+        "static/js/multi-select-cart.js"
+      ],
+      "changes": [
+        "حذف ضرب در 1000 در تابع formatPrice",
+        "اصلاح محاسبات سبد خرید",
+        "اصلاح محاسبات امتیازات"
+      ]
+    }
+  },
+  "detailed_code_changes": {
+    "tadbir_sync_service.py": {
+      "line_351": {
+        "old": "base_price = float(price_data.get('Price', 0))",
+        "new": "base_price = float(price_data.get('Price', 0))  # قیمت تدبیر به ریال کامل",
+        "comment": "حذف تقسیم بر 1000 - قیمت تدبیر مستقیماً ذخیره می‌شود"
+      },
+      "line_369": {
+        "old": "existing_price.discount_amount = float(price_data.get('Discount', 0)) / 1000",
+        "new": "existing_price.discount_amount = float(price_data.get('Discount', 0))",
+        "comment": "حذف تقسیم بر 1000 - تخفیف تدبیر مستقیماً ذخیره می‌شود"
+      },
+      "line_384": {
+        "old": "discount_amount=float(price_data.get('Discount', 0)) / 1000",
+        "new": "discount_amount=float(price_data.get('Discount', 0))",
+        "comment": "حذف تقسیم بر 1000 - تخفیف تدبیر مستقیماً ذخیره می‌شود"
+      }
+    },
+    "app.py": {
+      "format_price_function": {
+        "old": "def format_price(price, is_isaco=False):\n    if price is None or price == 0:\n        return \"0 ریال\"\n    full_rial = float(price)\n    if is_isaco:\n        full_rial = full_rial * 1.10\n    return f\"{full_rial:,.0f} ریال\"",
+        "new": "def format_price(price, is_isaco=False):\n    if price is None or price == 0:\n        return \"0 ریال\"\n    price_value = float(price)\n    if is_isaco:\n        price_value = price_value * 1.10\n    return f\"{price_value:,.0f} ریال\"",
+        "comment": "حذف ضرب در 1000 چون قیمت‌ها حالا به ریال کامل ذخیره می‌شوند"
+      }
+    },
+    "templates_updates": {
+      "shop.html": {
+        "changes": [
+          "حذف ضرب در 1000 در تمام نمایش‌های قیمت",
+          "تغییر برچسب‌ها از 'هزار ریال' به 'ریال'"
+        ]
+      },
+      "admin/accounting_prices.html": {
+        "line_173": {
+          "old": "{{ \"{:,.0f}\".format(price.base_price or 0) }} هزار ریال",
+          "new": "{{ \"{:,.0f}\".format(price.base_price or 0) }} ریال"
+        },
+        "line_176": {
+          "old": "{{ \"{:,.0f}\".format(price.final_price or 0) }} هزار ریال",
+          "new": "{{ \"{:,.0f}\".format(price.final_price or 0) }} ریال"
+        },
+        "line_187": {
+          "old": "{{ \"{:,.0f}\".format(price.discount_amount) }} هزار ریال",
+          "new": "{{ \"{:,.0f}\".format(price.discount_amount) }} ریال"
+        }
+      }
+    },
+    "javascript_updates": {
+      "main.js": {
+        "formatPrice_function": {
+          "old": "var fullPrice = price * 1000;  // Convert to Rials for display",
+          "new": "var fullPrice = price;  // Price is already in Rials",
+          "comment": "حذف ضرب در 1000 چون قیمت‌ها حالا به ریال کامل ذخیره می‌شوند"
+        }
+      },
+      "multi-select-cart.js": {
+        "formatPrice_function": {
+          "old": "let fullRials = Math.round(Number(price));",
+          "new": "let fullRials = Math.round(Number(price));",
+          "comment": "قیمت‌ها حالا به ریال کامل ذخیره می‌شوند، نیازی به تبدیل نیست"
+        }
+      }
+    }
+  },
+  "migration_script": {
+    "filename": "price_correction_migration.sql",
+    "content": "-- Migration script to convert prices from thousands of Rials to full Rials\n-- Run this script before deploying the code changes\n\n-- Backup current prices\nCREATE TABLE product_prices_backup AS \nSELECT id, sku, bulk_price_cash, retail_price_cash, bulk_price_check, retail_price_check, \n       isaco_cash, isaco_1m, isaco_2m, isaco_3m, updated_at \nFROM product;\n\n-- Convert product prices from thousands to full Rials\nUPDATE product SET \n    bulk_price_cash = bulk_price_cash * 1000,\n    retail_price_cash = retail_price_cash * 1000,\n    bulk_price_check = bulk_price_check * 1000,\n    retail_price_check = retail_price_check * 1000,\n    isaco_cash = CASE WHEN isaco_cash IS NOT NULL THEN isaco_cash * 1000 ELSE isaco_cash END,\n    isaco_1m = CASE WHEN isaco_1m IS NOT NULL THEN isaco_1m * 1000 ELSE isaco_1m END,\n    isaco_2m = CASE WHEN isaco_2m IS NOT NULL THEN isaco_2m * 1000 ELSE isaco_2m END,\n    isaco_3m = CASE WHEN isaco_3m IS NOT NULL THEN isaco_3m * 1000 ELSE isaco_3m END,\n    updated_at = CURRENT_TIMESTAMP;\n\n-- Convert Tadbir price cache from thousands to full Rials\nUPDATE tadbir_price_cache SET \n    base_price = base_price * 1000,\n    final_price = final_price * 1000,\n    discount_amount = discount_amount * 1000,\n    cached_at = CURRENT_TIMESTAMP;\n\n-- Verify the conversion\nSELECT 'Product prices converted' as status, COUNT(*) as count FROM product WHERE bulk_price_cash > 1000;\nSELECT 'Tadbir prices converted' as status, COUNT(*) as count FROM tadbir_price_cache WHERE base_price > 1000;"
+  },
+  "testing_plan": {
+    "test_cases": [
+      {
+        "name": "قیمت کالای 30613470",
+        "expected": "182886 ریال",
+        "description": "قیمت باید دقیقاً همان مبلغ دریافتی از تدبیر باشد"
+      },
+      {
+        "name": "محاسبات سبد خرید",
+        "expected": "مجموع قیمت‌ها باید صحیح باشد",
+        "description": "تست محاسبات JavaScript و backend"
+      },
+      {
+        "name": "نمایش قیمت‌های مختلف",
+        "expected": "تمام انواع قیمت (نقدی، چکی، عمده، خرده) صحیح نمایش داده شوند",
+        "description": "تست تمام تمپلیت‌ها"
+      }
+    ]
+  },
+  "rollback_plan": {
+    "if_issues_occur": [
+      "1. بازگردانی دیتابیس از بک‌آپ",
+      "2. بازگردانی کد از git",
+      "3. اجرای مجدد همگام‌سازی تدبیر",
+      "4. تست عملکرد سیستم"
+    ]
+  },
+  "deployment_steps": {
+    "order": [
+      "1. ایجاد بک‌آپ کامل از دیتابیس",
+      "2. اجرای migration script",
+      "3. اعمال تغییرات کد",
+      "4. تست عملکرد",
+      "5. اجرای همگام‌سازی مجدد تدبیر",
+      "6. تست نهایی"
+    ]
+  },
+  "expected_results": {
+    "before": "کالای 30613470: 183 ریال (هزار ریال)",
+    "after": "کالای 30613470: 182886 ریال (ریال کامل)",
+    "benefits": [
+      "نمایش قیمت‌های واقعی تدبیر",
+      "شفافیت بیشتر برای مشتریان",
+      "سازگاری کامل با سیستم تدبیر",
+      "حذف تبدیل‌های غیرضروری"
+    ]
+  },
+  "monitoring": {
+    "metrics_to_watch": [
+      "دقت قیمت‌ها در مقایسه با تدبیر",
+      "عملکرد محاسبات سبد خرید",
+      "سرعت بارگذاری صفحات",
+      "خطاهای JavaScript"
+    ]
+  }
+}

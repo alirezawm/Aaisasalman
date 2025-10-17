@@ -138,6 +138,26 @@
                 </div>
             </div>
             
+            <!-- Multi-select Controls -->
+            <div class="multi-select-controls mb-3">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="selectAll">
+                            <label class="form-check-label" for="selectAll">
+                                <i class="fas fa-check-square me-2"></i>انتخاب همه
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <span class="selected-count badge bg-primary fs-6">0 محصول انتخاب شده</span>
+                        <button class="btn btn-success ms-2" id="addSelectedToCart" disabled>
+                            <i class="fas fa-cart-plus me-1"></i>افزودن انتخاب شده‌ها
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Products -->
             <div class="row g-3" id="productsGrid">
                 {% for product in products.items %}
@@ -147,6 +167,15 @@
                      data-sku="{{ product.sku }}">
                     <div class="card h-100 product-card-item">
                         <div class="card-body">
+                            <!-- Product Selection Checkbox -->
+                            <div class="form-check mb-2">
+                                <input class="form-check-input product-checkbox" type="checkbox" 
+                                       id="product_{{ product.id }}" data-product-id="{{ product.id }}">
+                                <label class="form-check-label" for="product_{{ product.id }}">
+                                    انتخاب این محصول
+                                </label>
+                            </div>
+                            
                             <!-- Product Image -->
                             <div class="text-center mb-3">
                                 {% if product.primary_image %}
@@ -200,7 +229,7 @@
                                             <i class="fas fa-money-bill-wave"></i>
                                             <div class="d-block">
                                                 <span>نقدی</span>
-                                                <small class="d-block">{{ "{:,.0f}".format(product.bulk_price_cash * 1000) }} ریال</small>
+                                                 <small class="d-block">{{ format_price(product.bulk_price_cash) }}</small>
                                             </div>
                                         </label>
                                         
@@ -216,7 +245,7 @@
                                             <i class="fas fa-file-invoice"></i>
                                             <div class="d-block">
                                                 <span>چکی</span>
-                                                <small class="d-block">{{ "{:,.0f}".format(product.bulk_price_check * 1000) }} ریال</small>
+                                                 <small class="d-block">{{ format_price(product.bulk_price_check) }}</small>
                                             </div>
                                         </label>
                                     </div>
@@ -238,7 +267,7 @@
                                             <i class="fas fa-file-invoice"></i>
                                             <div class="d-block">
                                                 <span>قیمت چکی</span>
-                                                <small class="d-block">{{ "{:,.0f}".format(product.retail_price_check * 1000) }} ریال</small>
+                                                 <small class="d-block">{{ format_price(product.retail_price_check) }}</small>
                                             </div>
                                         </label>
                                     </div>
@@ -247,7 +276,7 @@
                                 {% if current_user.is_bulk_buyer %}
                                 <div class="price-savings text-success" style="font-size: 0.7rem; text-align: center; margin-top: 5px;">
                                     <i class="fas fa-tag"></i>
-                                    صرفه‌جویی چکی: {{ "{:,.0f}".format((product.retail_price_check - product.bulk_price_check) * 1000) }} ریال
+                                     صرفه‌جویی چکی: {{ format_price(product.retail_price_check - product.bulk_price_check) }}
                                 </div>
                                 {% endif %}
                                 {% if product.cash_discount_percentage > 0 %}
@@ -525,6 +554,14 @@ $(document).ready(function() {
             showAllProducts();
         }
     });
+    
+    // Initialize Multi-Select Cart System
+    if (typeof MultiSelectCartSystem !== 'undefined') {
+        const multiSelectCart = new MultiSelectCartSystem();
+    }
 });
 </script>
+
+<!-- Multi-Select Cart System -->
+<script src="{{ url_for('static', filename='js/multi-select-cart.js') }}"></script>
 {% endblock %}

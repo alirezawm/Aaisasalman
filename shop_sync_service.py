@@ -24,6 +24,9 @@ class ShopSyncService:
     def __init__(self):
         """Initialize Shop sync service"""
         self.default_stock_code = '10'  # کد انبار پیش‌فرض
+        # ISACO warehouse code as string to match TadbirInventoryCache.stock_code
+        from app import app as flask_app
+        self.isaco_stock_code = str(flask_app.config.get('ISACO_WAREHOUSE_ID', 15))
         
     def _create_sync_log(self, sync_type: str) -> TadbirSyncLog:
         """Create sync log entry"""
@@ -115,6 +118,49 @@ class ShopSyncService:
                         logger.debug(f"Updated prices for product {product.sku}")
                     else:
                         logger.warning(f"No valid prices to update for product {product.sku}")
+
+                    # ISACO special: map four plans from specific Tadbir price lists
+                    try:
+                        # Get ISACO prices from specific lists
+                        isaco_cash = TadbirPriceCache.query.filter_by(
+                            item_code=product.sku,
+                            price_list_key=61  # نقدی
+                        ).order_by(TadbirPriceCache.last_update.desc()).first()
+                        
+                        isaco_1m = TadbirPriceCache.query.filter_by(
+                            item_code=product.sku,
+                            price_list_key=62  # یکماهه
+                        ).order_by(TadbirPriceCache.last_update.desc()).first()
+                        
+                        isaco_2m = TadbirPriceCache.query.filter_by(
+                            item_code=product.sku,
+                            price_list_key=63  # دوماهه
+                        ).order_by(TadbirPriceCache.last_update.desc()).first()
+                        
+                        isaco_3m = TadbirPriceCache.query.filter_by(
+                            item_code=product.sku,
+                            price_list_key=60  # سه‌ماهه
+                        ).order_by(TadbirPriceCache.last_update.desc()).first()
+                        
+                        # Update ISACO prices if any are available
+                        if any([isaco_cash, isaco_1m, isaco_2m, isaco_3m]):
+                            product.is_isaco_wh15 = True
+                            
+                            if isaco_cash and isaco_cash.final_price is not None:
+                                product.isaco_cash = float(isaco_cash.final_price)
+                            
+                            if isaco_1m and isaco_1m.final_price is not None:
+                                product.isaco_1m = float(isaco_1m.final_price)
+                            
+                            if isaco_2m and isaco_2m.final_price is not None:
+                                product.isaco_2m = float(isaco_2m.final_price)
+                            
+                            if isaco_3m and isaco_3m.final_price is not None:
+                                product.isaco_3m = float(isaco_3m.final_price)
+                            
+                            updated = True
+                    except Exception as ie:
+                        logger.debug(f"ISACO pricing map skipped for {product.sku}: {ie}")
                         
                 except Exception as e:
                     logger.error(f"Error updating prices for product {product.sku}: {str(e)}")
@@ -160,10 +206,20 @@ class ShopSyncService:
                     records_processed += 1
                     
                     # Get inventory for this product from TadbirInventoryCache
+                    # General inventory
                     inventory = TadbirInventoryCache.query.filter_by(
                         item_code=product.sku,
                         stock_code=stock_code
                     ).first()
+
+                    # ISACO WH15 inventory flagging (do not mix visibility; only mark flag)
+                    isaco_inventory = TadbirInventoryCache.query.filter_by(
+                        item_code=product.sku,
+                        stock_code=self.isaco_stock_code
+                    ).first()
+                    if isaco_inventory:
+                        # Mark product as ISACO-specific to be shown only on brand page
+                        product.is_isaco_wh15 = True
                     
                     if not inventory:
                         logger.debug(f"No inventory found for product {product.sku}")
