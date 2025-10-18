@@ -531,7 +531,7 @@ function showSuccess(message) {
  * فرمت قیمت
  */
 function formatPrice(price) {
-    return new Intl.NumberFormat('fa-IR').format(price) + ' ریال';
+    return new Intl.NumberFormat('fa-IR').format(price) + ' هزار ریال';
 }
 
 /**

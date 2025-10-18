@@ -407,9 +407,9 @@ function animatePriceChange($element, newPrice) {
 
 // Enhanced price formatting function
 function formatPrice(price) {
-    // Prices are now stored in full Rials. Display as full Rials.
-    var fullRials = Number(price) || 0;
-    return new Intl.NumberFormat('fa-IR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(fullRials) + ' ریال';
+    // Prices are stored in thousands Rials. Display as thousands Rials.
+    var thousandsRials = Number(price) || 0;
+    return new Intl.NumberFormat('fa-IR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(thousandsRials) + ' هزار ریال';
 }
 
 // Enhanced cart total update function

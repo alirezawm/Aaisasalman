@@ -59,9 +59,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg62-turbo \
     libpng16-16 \
     zlib1g \
-    libffi8 \
-    libssl3 \
-    libpq5 \
+    libffi-dev \
+    libssl-dev \
+    libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
@@ -75,8 +75,30 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Create application directory
 WORKDIR /usr/src/app
 
-# Copy application code
-COPY --chown=appuser:appuser . .
+# Copy only essential application files first
+COPY --chown=appuser:appuser app.py ./
+COPY --chown=appuser:appuser models.py ./
+COPY --chown=appuser:appuser routes.py ./
+COPY --chown=appuser:appuser database_utils.py ./
+COPY --chown=appuser:appuser search_engine.py ./
+COPY --chown=appuser:appuser points_service.py ./
+COPY --chown=appuser:appuser shop_sync_service.py ./
+COPY --chown=appuser:appuser tadbir_api_service.py ./
+COPY --chown=appuser:appuser tadbir_sync_service.py ./
+COPY --chown=appuser:appuser tadbir_scheduler_service.py ./
+COPY --chown=appuser:appuser detection_service.py ./
+COPY --chown=appuser:appuser detection_api.py ./
+COPY --chown=appuser:appuser detection_models.py ./
+COPY --chown=appuser:appuser brand_vehicle_detector.py ./
+COPY --chown=appuser:appuser invoice_notification_service.py ./
+COPY --chown=appuser:appuser persian_date_utils.py ./
+
+# Copy Python service files
+COPY --chown=appuser:appuser *.py ./
+
+# Copy templates and static directories
+COPY --chown=appuser:appuser templates/ ./templates/
+COPY --chown=appuser:appuser static/ ./static/
 
 # Create necessary directories with proper permissions
 RUN mkdir -p \

@@ -70,10 +70,9 @@ def get_isaco_unit_price(product: Product, plan: str) -> float:
     elif plan == 'isaco_3m':
         base_price = product.isaco_3m or 0
     
-    # Convert from thousands Rials to full Rials and apply 10% markup
+    # Apply 10% markup to base price (keep in thousands Rials)
     if base_price > 0:
-        full_price = base_price * 1000  # Convert to full Rials
-        return full_price * 1.10  # Apply 10% markup
+        return base_price * 1.10  # Apply 10% markup
     return 0
 
 # Define format_price function here to avoid circular import
@@ -146,18 +145,30 @@ def shop():
         )
     
     if search_query:
-        norm_q = normalize_fa_text(search_query)
-        name_norm = normalize_sql_expr(Product.name)
-        name_fa_norm = normalize_sql_expr(Product.name_fa)
+        try:
+            norm_q = normalize_fa_text(search_query)
+            name_norm = normalize_sql_expr(Product.name)
+            name_fa_norm = normalize_sql_expr(Product.name_fa)
 
-        query = query.filter(
-            models.db.or_(
-                name_norm.contains(norm_q),
-                name_fa_norm.contains(norm_q),
-                Product.sku.contains(norm_q),
-                Product.oem_code.contains(norm_q)
+            query = query.filter(
+                models.db.or_(
+                    name_norm.contains(norm_q),
+                    name_fa_norm.contains(norm_q),
+                    Product.sku.contains(norm_q),
+                    Product.oem_code.contains(norm_q)
+                )
             )
-        )
+        except Exception as e:
+            # Fallback to simple search if normalization fails
+            app.logger.error(f"Search normalization failed: {e}")
+            query = query.filter(
+                models.db.or_(
+                    Product.name.contains(search_query),
+                    Product.name_fa.contains(search_query),
+                    Product.sku.contains(search_query),
+                    Product.oem_code.contains(search_query)
+                )
+            )
     
     if in_stock_only:
         query = query.filter(Product.stock_quantity > 0)
@@ -252,18 +263,30 @@ def brand_products(brand_id):
         query = query.filter_by(category_id=category_id)
     
     if search_query:
-        norm_q = normalize_fa_text(search_query)
-        name_norm = normalize_sql_expr(Product.name)
-        name_fa_norm = normalize_sql_expr(Product.name_fa)
+        try:
+            norm_q = normalize_fa_text(search_query)
+            name_norm = normalize_sql_expr(Product.name)
+            name_fa_norm = normalize_sql_expr(Product.name_fa)
 
-        query = query.filter(
-            models.db.or_(
-                name_norm.contains(norm_q),
-                name_fa_norm.contains(norm_q),
-                Product.sku.contains(norm_q),
-                Product.oem_code.contains(norm_q)
+            query = query.filter(
+                models.db.or_(
+                    name_norm.contains(norm_q),
+                    name_fa_norm.contains(norm_q),
+                    Product.sku.contains(norm_q),
+                    Product.oem_code.contains(norm_q)
+                )
             )
-        )
+        except Exception as e:
+            # Fallback to simple search if normalization fails
+            app.logger.error(f"Search normalization failed: {e}")
+            query = query.filter(
+                models.db.or_(
+                    Product.name.contains(search_query),
+                    Product.name_fa.contains(search_query),
+                    Product.sku.contains(search_query),
+                    Product.oem_code.contains(search_query)
+                )
+            )
     
     if in_stock_only:
         query = query.filter(Product.stock_quantity > 0)
@@ -842,7 +865,7 @@ def invoice_print(invoice_id):
 @login_required
 def admin_dashboard():
     """Admin dashboard - only for admins and order managers"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         abort(403)
     
     # Get statistics
@@ -1290,7 +1313,7 @@ def admin_update_company_info():
 @login_required
 def admin_invoice_management():
     """صفحه اصلی مدیریت فاکتورهای مشتریان"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         abort(403)
     
     page = request.args.get('page', 1, type=int)
@@ -1371,7 +1394,7 @@ def admin_invoice_management():
 @login_required
 def admin_invoices():
     """View all customer invoices (order managers only)."""
-    if not current_user.has_role('order_manager', scope='site'):
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
         abort(403)
     
     page = request.args.get('page', 1, type=int)
@@ -1446,7 +1469,7 @@ def admin_invoices():
 @login_required
 def admin_invoice_detail(invoice_id):
     """View invoice details (order managers only)."""
-    if not current_user.has_role('order_manager', scope='site'):
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
         abort(403)
     
     invoice = Invoice.query.get_or_404(invoice_id)
@@ -1899,7 +1922,7 @@ def api_profile_invoice_details(invoice_id):
 @app.route('/admin/invoice/<int:invoice_id>/approve', methods=['POST'])
 @login_required
 def admin_approve_invoice(invoice_id):
-    if not current_user.has_role('order_manager', scope='site'):
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
         abort(403)
     invoice = Invoice.query.get_or_404(invoice_id)
     try:
@@ -1917,7 +1940,7 @@ def admin_approve_invoice(invoice_id):
 @app.route('/admin/invoice/<int:invoice_id>/reject', methods=['POST'])
 @login_required
 def admin_reject_invoice(invoice_id):
-    if not current_user.has_role('order_manager', scope='site'):
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
         abort(403)
     invoice = Invoice.query.get_or_404(invoice_id)
     rejection_reason = request.form.get('rejection_reason', '').strip()
@@ -1936,7 +1959,7 @@ def admin_reject_invoice(invoice_id):
 @app.route('/admin/document/<int:document_id>/approve', methods=['POST'])
 @login_required
 def admin_approve_document(document_id):
-    if not current_user.has_role('order_manager', scope='site'):
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
         abort(403)
     document = InvoiceDocument.query.get_or_404(document_id)
     try:
@@ -1954,7 +1977,7 @@ def admin_approve_document(document_id):
 @app.route('/admin/document/<int:document_id>/reject', methods=['POST'])
 @login_required
 def admin_reject_document(document_id):
-    if not current_user.has_role('order_manager', scope='site'):
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
         abort(403)
     document = InvoiceDocument.query.get_or_404(document_id)
     rejection_reason = request.form.get('rejection_reason', '').strip()
@@ -1974,7 +1997,7 @@ def admin_reject_document(document_id):
 @login_required
 def admin_view_document(document_id):
     """View invoice document (order managers only)."""
-    if not current_user.has_role('order_manager', scope='site'):
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
         abort(403)
     
     document = InvoiceDocument.query.get_or_404(document_id)
@@ -2002,7 +2025,7 @@ def admin_view_document(document_id):
 @app.route('/admin/invoice/<int:invoice_id>/set-review', methods=['POST'])
 @login_required
 def admin_set_review_invoice(invoice_id):
-    if not current_user.has_role('order_manager', scope='site'):
+    if not current_user.has_role('مدیر_سفارشات', scope='site'):
         abort(403)
     invoice = Invoice.query.get_or_404(invoice_id)
     admin_notes = request.form.get('admin_notes', '').strip()
@@ -2275,34 +2298,57 @@ def admin_reject_bulk_buyer(user_id):
 @app.route('/api/search')
 def api_search():
     """Search API endpoint"""
-    query = request.args.get('q', '')
-    limit = request.args.get('limit', 10, type=int)
-    
-    if not query:
-        return jsonify([])
-    
-    products = Product.query.filter(
-        models.db.or_(
-            Product.name.contains(query),
-            Product.name_fa.contains(query),
-            Product.sku.contains(query),
-            Product.oem_code.contains(query)
-        ),
-        Product.is_active == True
-    ).limit(limit).all()
-    
-    results = []
-    for product in products:
-        results.append({
-            'id': product.id,
-            'name': product.name_fa,
-            'sku': product.sku,
-            'price': product.retail_price_cash,
-            'image': product.primary_image,
-            'url': url_for('product_detail', product_id=product.id)
-        })
-    
-    return jsonify(results)
+    try:
+        query = request.args.get('q', '')
+        limit = request.args.get('limit', 10, type=int)
+        
+        if not query:
+            return jsonify([])
+        
+        # Try normalized search first
+        try:
+            norm_q = normalize_fa_text(query)
+            name_norm = normalize_sql_expr(Product.name)
+            name_fa_norm = normalize_sql_expr(Product.name_fa)
+            
+            products = Product.query.filter(
+                models.db.or_(
+                    name_norm.contains(norm_q),
+                    name_fa_norm.contains(norm_q),
+                    Product.sku.contains(norm_q),
+                    Product.oem_code.contains(norm_q)
+                ),
+                Product.is_active == True
+            ).limit(limit).all()
+        except Exception as e:
+            # Fallback to simple search
+            app.logger.error(f"API search normalization failed: {e}")
+            products = Product.query.filter(
+                models.db.or_(
+                    Product.name.contains(query),
+                    Product.name_fa.contains(query),
+                    Product.sku.contains(query),
+                    Product.oem_code.contains(query)
+                ),
+                Product.is_active == True
+            ).limit(limit).all()
+        
+        results = []
+        for product in products:
+            results.append({
+                'id': product.id,
+                'name': product.name_fa,
+                'sku': product.sku,
+                'price': product.retail_price_cash,
+                'image': product.primary_image,
+                'url': url_for('product_detail', product_id=product.id)
+            })
+        
+        return jsonify(results)
+        
+    except Exception as e:
+        app.logger.error(f"API search error: {e}")
+        return jsonify({'error': 'Search failed'}), 500
 
 @app.route('/api/cart-count')
 def api_cart_count():
@@ -4355,7 +4401,7 @@ def api_revoke_role(user_id, role_slug):
 @login_required
 def admin_approve_invoice_with_notification(invoice_id):
     """تایید فاکتور با ارسال اطلاع‌رسانی"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         abort(403)
     
     try:
@@ -4394,7 +4440,7 @@ def admin_approve_invoice_with_notification(invoice_id):
 @login_required
 def admin_reject_invoice_with_notification(invoice_id):
     """رد فاکتور با ارسال اطلاع‌رسانی"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         abort(403)
     
     try:
@@ -4439,7 +4485,7 @@ def admin_reject_invoice_with_notification(invoice_id):
 @login_required
 def admin_set_invoice_review(invoice_id):
     """تنظیم فاکتور به حالت بررسی"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         abort(403)
     
     try:
@@ -4476,7 +4522,7 @@ def admin_set_invoice_review(invoice_id):
 @login_required
 def admin_view_invoice_documents(invoice_id):
     """مشاهده مستندات فاکتور"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         abort(403)
     
     invoice = Invoice.query.get_or_404(invoice_id)
@@ -4486,7 +4532,7 @@ def admin_view_invoice_documents(invoice_id):
 @login_required
 def admin_approve_invoice_document(invoice_id, document_id):
     """تایید مستند فاکتور"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         abort(403)
     
     try:
@@ -4515,7 +4561,7 @@ def admin_approve_invoice_document(invoice_id, document_id):
 @login_required
 def admin_reject_invoice_document(invoice_id, document_id):
     """رد مستند فاکتور"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         abort(403)
     
     try:
@@ -4551,7 +4597,7 @@ def admin_reject_invoice_document(invoice_id, document_id):
 @login_required
 def api_invoice_statistics():
     """دریافت آمار فاکتورها به صورت JSON"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         return jsonify({'error': 'Access denied'}), 403
     
     try:
@@ -4577,7 +4623,7 @@ def api_invoice_statistics():
 @login_required
 def api_invoice_search():
     """جستجوی پیشرفته فاکتورها"""
-    if not (current_user.is_admin or current_user.has_role('order_manager', scope='site')):
+    if not (current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site')):
         return jsonify({'error': 'Access denied'}), 403
     
     try:

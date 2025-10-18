@@ -728,17 +728,13 @@ class MultiSelectCartSystem {
     // Utility methods
     formatPrice(price, isIsaco = false) {
         if (price === null || price === undefined) {
-            return "0 ریال";
+            return "0 هزار ریال";
         }
-        // Price is already in full Rials; display as full Rials
+        // Price is in thousands Rials; display as thousands Rials
         let priceValue = Math.round(Number(price));
         
-        // Add 10% markup for ISACO products (applied on full Rial unit)
-        if (isIsaco) {
-            priceValue = Math.round(priceValue * 1.10);
-        }
-        
-        return `${priceValue.toLocaleString('fa-IR')} ریال`;
+        // No additional markup needed for ISACO products (already applied in backend)
+        return `${priceValue.toLocaleString('fa-IR')} هزار ریال`;
     }
 
     async handleCheckout(e) {

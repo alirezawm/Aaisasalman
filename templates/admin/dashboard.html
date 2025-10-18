@@ -50,7 +50,7 @@
                         <a class="nav-link" href="{{ url_for('admin_audit_logs') }}">
                             <i class="fas fa-clipboard-list me-2"></i>لاگ‌های حسابرسی
                         </a>
-                        {% if current_user.has_role('order_manager', scope='site') or current_user.is_admin %}
+                        {% if current_user.has_role('مدیر_سفارشات', scope='site') or current_user.is_admin %}
                         <a class="nav-link" href="{{ url_for('admin_invoice_management') }}">
                             <i class="fas fa-file-invoice me-2"></i>مدیریت فاکتورهای مشتریان
                         </a>
