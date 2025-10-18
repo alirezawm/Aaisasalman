@@ -189,14 +189,14 @@ python run_complete_detection.py --full-rebuild --auto-detect-all --generate-rep
 python -c "from brand_vehicle_detector import get_detector; d = get_detector(); print(d.detect_brand_and_vehicle_types('لنت ترمز تویوتا کمری'))"
 
 # دریافت آمار
-curl http://localhost:5000/api/detection/stats
+curl http://localhost:8081/api/detection/stats
 ```
 
 ### مرحله 4: مدیریت
 
 ```
 # دسترسی به پنل
-http://localhost:5000/admin/detection
+http://localhost:8081/admin/detection
 ```
 
 ---

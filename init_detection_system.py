@@ -191,8 +191,8 @@ def main():
         print("=" * 60)
         print("\nگام‌های بعدی:")
         print("   1. python app.py  # راه‌اندازی سرور")
-        print("   2. دسترسی به: http://localhost:5000/admin/detection")
-        print("   3. API: http://localhost:5000/api/detection/stats")
+        print("   2. دسترسی به: http://localhost:8081/admin/detection")
+        print("   3. API: http://localhost:8081/api/detection/stats")
         print("\n")
         
         return True

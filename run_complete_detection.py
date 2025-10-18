@@ -553,7 +553,7 @@ class DetectionSystemRebuilder:
         
         print(f"\n{Colors.OKCYAN}{Colors.BOLD}گام‌های بعدی:{Colors.ENDC}")
         print(f"  1. بازنشانی سرور: python app.py")
-        print(f"  2. دسترسی به پنل مدیریت: http://localhost:5000/admin/detection")
+        print(f"  2. دسترسی به پنل مدیریت: http://localhost:8081/admin/detection")
         print(f"  3. بررسی نتایج تشخیص و اصلاح موارد لازم")
         print(f"  4. مطالعه مستندات: README_DETECTION.md")
     

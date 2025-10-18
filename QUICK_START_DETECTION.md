@@ -39,7 +39,7 @@ detection_rebuild_report_20251010_HHMMSS.json
 import requests
 
 response = requests.post(
-    'http://localhost:5000/api/detection/detect',
+    'http://localhost:8081/api/detection/detect',
     json={'text': 'لنت ترمز جلو تویوتا کمری سدان'}
 )
 
@@ -257,10 +257,10 @@ python app.py
 
 ```bash
 # نمایش آمار
-curl http://localhost:5000/api/detection/stats
+curl http://localhost:8081/api/detection/stats
 
 # تشخیص تکی
-curl -X POST http://localhost:5000/api/detection/detect \
+curl -X POST http://localhost:8081/api/detection/detect \
   -H "Content-Type: application/json" \
   -d '{"text": "لنت ترمز تویوتا"}'
 
@@ -345,7 +345,7 @@ print(result)
 ## API Usage
 
 ```bash
-curl -X POST http://localhost:5000/api/detection/detect \
+curl -X POST http://localhost:8081/api/detection/detect \
   -H "Content-Type: application/json" \
   -d '{"text": "Toyota Camry brake pad"}'
 ```
@@ -354,7 +354,7 @@ curl -X POST http://localhost:5000/api/detection/detect \
 
 ```bash
 # View stats
-curl http://localhost:5000/api/detection/stats
+curl http://localhost:8081/api/detection/stats
 
 # Batch detect all products
 python -c "from brand_vehicle_detector import get_detector; from app import app; app.app_context().push(); get_detector().batch_detect_products()"

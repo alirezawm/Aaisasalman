@@ -257,7 +257,7 @@ Tadbir scheduler started successfully
 
 ```bash
 # Navigate to:
-http://localhost:5000/admin/accounting/dashboard
+http://localhost:8081/admin/accounting/dashboard
 ```
 
 يجب أن يعمل بدون أخطاء الآن!

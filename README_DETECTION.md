@@ -141,7 +141,7 @@ print(f"تعداد به‌روزرسانی: {result['data']['updated_count']}")
 #### تشخیص تکی
 
 ```bash
-curl -X POST http://localhost:5000/api/detection/detect \
+curl -X POST http://localhost:8081/api/detection/detect \
   -H "Content-Type: application/json" \
   -d '{"text": "روغن موتور هیوندای سوناتا"}'
 ```
@@ -168,7 +168,7 @@ curl -X POST http://localhost:5000/api/detection/detect \
 #### تشخیص دسته‌ای
 
 ```bash
-curl -X POST http://localhost:5000/api/detection/batch \
+curl -X POST http://localhost:8081/api/detection/batch \
   -H "Content-Type: application/json" \
   -d '{
     "texts": [
@@ -182,7 +182,7 @@ curl -X POST http://localhost:5000/api/detection/batch \
 #### دریافت آمار
 
 ```bash
-curl http://localhost:5000/api/detection/stats
+curl http://localhost:8081/api/detection/stats
 ```
 
 ---
@@ -270,7 +270,7 @@ curl http://localhost:5000/api/detection/stats
 ### دسترسی به پنل مدیریت
 
 ```
-http://localhost:5000/admin/detection
+http://localhost:8081/admin/detection
 ```
 
 ### بخش‌های پنل مدیریت
@@ -436,7 +436,7 @@ cp instance/asia_salman.db instance/asia_salman.db.backup_$(date +%Y%m%d_%H%M%S)
 بررسی آمار فعلی با:
 
 ```bash
-curl http://localhost:5000/api/detection/stats
+curl http://localhost:8081/api/detection/stats
 ```
 
 ---

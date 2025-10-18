@@ -255,10 +255,10 @@ cat QUICK_START_DETECTION.md
 python run_complete_detection.py --full-rebuild --auto-detect-all --generate-reports --backup-first --verbose
 
 # مرحله 4: تست
-curl http://localhost:5000/api/detection/stats
+curl http://localhost:8081/api/detection/stats
 
 # مرحله 5: استفاده
-# دسترسی به: http://localhost:5000/admin/detection
+# دسترسی به: http://localhost:8081/admin/detection
 ```
 
 ---

@@ -124,7 +124,7 @@ After restarting, you should see:
 ```
 SQLite WAL mode and optimizations enabled
 Tadbir scheduler started successfully
- * Running on http://0.0.0.0:5000
+ * Running on http://0.0.0.0:8081
 ```
 
 ## Understanding WAL Mode

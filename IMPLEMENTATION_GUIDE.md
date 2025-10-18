@@ -95,9 +95,9 @@ python app.py
 ```
 
 ### **4. Access the System**
-- **Homepage**: http://localhost:5000
-- **Brand Selection**: http://localhost:5000/brands
-- **Admin Panel**: http://localhost:5000/admin
+- **Homepage**: http://localhost:8081
+- **Brand Selection**: http://localhost:8081/brands
+- **Admin Panel**: http://localhost:8081/admin
 
 ---
 

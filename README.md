@@ -71,7 +71,7 @@ python app.py
 
 4. **دسترسی به سایت**
 ```
-http://localhost:5000
+http://localhost:8081
 ```
 
 ## ساختار پروژه

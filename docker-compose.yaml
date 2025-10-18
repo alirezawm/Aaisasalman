@@ -15,7 +15,7 @@ services:
     container_name: asia-salman-web
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8081:8000"
     environment:
       - FLASK_ENV=production
       - FLASK_APP=app.py
@@ -85,7 +85,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./static:/usr/share/nginx/html/static:ro
       - nginx_logs:/var/log/nginx
-      - ssl_certs:/etc/nginx/ssl:ro
+      - ./ssl:/etc/nginx/ssl:ro
     networks:
       - app_network
     depends_on:
@@ -146,8 +146,6 @@ volumes:
   redis_data:
     driver: local
   nginx_logs:
-    driver: local
-  ssl_certs:
     driver: local
 
 # Custom network for service communication

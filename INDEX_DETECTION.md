@@ -145,7 +145,7 @@ print(f"موفق: {result['data']['updated_count']}")
 # - README_DETECTION.md → "API"
 # - QUICK_START_DETECTION.md → "استفاده از API"
 
-curl -X POST http://localhost:5000/api/detection/detect \
+curl -X POST http://localhost:8081/api/detection/detect \
   -H "Content-Type: application/json" \
   -d '{"text": "روغن موتور هیوندا"}'
 ```
@@ -157,7 +157,7 @@ curl -X POST http://localhost:5000/api/detection/detect \
 #### داشبورد
 - **فایل**: [VISUAL_GUIDE_DETECTION.md](VISUAL_GUIDE_DETECTION.md)
 - **بخش**: "رابط کاربری → داشبورد اصلی"
-- **URL**: http://localhost:5000/admin/detection
+- **URL**: http://localhost:8081/admin/detection
 
 #### تشخیص تکی
 - **فایل**: [VISUAL_GUIDE_DETECTION.md](VISUAL_GUIDE_DETECTION.md)
@@ -317,7 +317,7 @@ python -m pytest tests/test_detection.py -v
 ### راهنمای گام به گام
 
 #### گام 1: ورود به سیستم
-1. مرور کنید: http://localhost:5000
+1. مرور کنید: http://localhost:8081
 2. وارد شوید با حساب مدیر
 3. بروید به: مدیریت → تشخیص خودکار
 
