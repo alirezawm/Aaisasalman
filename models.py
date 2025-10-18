@@ -1076,7 +1076,7 @@ class Reward(db.Model):
     name_fa = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     description_fa = db.Column(db.Text)
-    points_required = db.Column(db.Integer, nullable=False)
+    points_required = db.Column(db.Float, nullable=False)  # Changed to Float to support decimal points
     discount_percentage = db.Column(db.Float)  # درصد تخفیف
     discount_amount = db.Column(db.Float)  # مقدار تخفیف ثابت
     reward_type = db.Column(db.String(30), nullable=False)  # discount_percentage, discount_amount, free_shipping, product
@@ -1146,8 +1146,8 @@ class UserLevel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     level_name = db.Column(db.String(50), nullable=False)
     level_name_fa = db.Column(db.String(50), nullable=False)
-    min_points = db.Column(db.Integer, nullable=False)
-    max_points = db.Column(db.Integer)  # None برای سطح بالاترین
+    min_points = db.Column(db.Float, nullable=False)  # Changed to Float to support decimal points
+    max_points = db.Column(db.Float)  # None برای سطح بالاترین (Changed to Float to support decimal points)
     discount_percentage = db.Column(db.Float, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -1167,9 +1167,9 @@ class PointsRule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     rule_name = db.Column(db.String(100), nullable=False)
     rule_name_fa = db.Column(db.String(100), nullable=False)
-    points_per_100k_rials = db.Column(db.Integer, default=500)  # امتیاز به ازای هر 100 هزار ریال
-    bonus_points_per_product = db.Column(db.Integer, default=50)  # امتیاز اضافی به ازای هر محصول
-    max_bonus_points = db.Column(db.Integer, default=1000)  # حداکثر امتیاز اضافی
+    points_per_100k_rials = db.Column(db.Float, default=0.5)  # امتیاز به ازای هر 100 هزار ریال (reduced by 3 digits)
+    bonus_points_per_product = db.Column(db.Float, default=0.05)  # امتیاز اضافی به ازای هر محصول (reduced by 3 digits)
+    max_bonus_points = db.Column(db.Float, default=1)  # حداکثر امتیاز اضافی (reduced by 3 digits)
     is_active = db.Column(db.Boolean, default=True)
     valid_from = db.Column(db.DateTime)
     valid_until = db.Column(db.DateTime)
