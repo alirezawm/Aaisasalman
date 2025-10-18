@@ -29,6 +29,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     libssl-dev \
     libpq-dev \
+    libsqlite3-dev \
+    sqlite3 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -62,6 +64,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     libssl-dev \
     libpq-dev \
+    libsqlite3-0 \
+    sqlite3 \
     curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean

@@ -435,6 +435,9 @@ print_status "مرحله 7: راه‌اندازی اپلیکیشن..."
 
 # ساخت Docker images
 print_status "ساخت Docker images..."
+# استفاده از فایل‌های اصلاح شده
+cp Dockerfile.fixed Dockerfile
+cp requirements.fixed.txt requirements.txt
 docker-compose build --no-cache
 
 # راه‌اندازی سرویس‌ها
