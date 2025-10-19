@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
+from sqlalchemy import text
 import os
 import json
 import uuid
@@ -871,6 +872,105 @@ def invoice_print(invoice_id):
     ).first_or_404()
     
     return render_template('invoice_print.html', invoice=invoice)
+
+@app.route('/upload_invoice_document', methods=['POST'])
+@login_required
+def upload_invoice_document():
+    """Upload payment document for invoice"""
+    try:
+        # Get form data
+        invoice_id = request.form.get('invoice_id')
+        document_type = request.form.get('document_type')
+        file = request.files.get('file')
+        
+        # Validate required fields
+        if not invoice_id or not document_type or not file:
+            return jsonify({
+                'success': False,
+                'message': 'تمام فیلدهای مورد نیاز را پر کنید'
+            }), 400
+        
+        # Validate invoice exists and belongs to user
+        invoice = Invoice.query.filter_by(
+            id=int(invoice_id),
+            user_id=current_user.id
+        ).first()
+        
+        if not invoice:
+            return jsonify({
+                'success': False,
+                'message': 'فاکتور مورد نظر یافت نشد'
+            }), 404
+        
+        # Validate document type
+        if document_type not in ['check', 'receipt']:
+            return jsonify({
+                'success': False,
+                'message': 'نوع مدرک نامعتبر است'
+            }), 400
+        
+        # Validate file
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'message': 'فایلی انتخاب نشده است'
+            }), 400
+        
+        # Check file extension
+        allowed_extensions = {'pdf', 'jpg', 'jpeg', 'png'}
+        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        
+        if file_ext not in allowed_extensions:
+            return jsonify({
+                'success': False,
+                'message': 'فرمت فایل مجاز نیست. فرمت‌های مجاز: PDF, JPG, PNG'
+            }), 400
+        
+        # Check file size (5MB max)
+        file.seek(0, 2)  # Seek to end
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+        
+        if file_size > 5 * 1024 * 1024:  # 5MB
+            return jsonify({
+                'success': False,
+                'message': 'حجم فایل نباید از 5 مگابایت بیشتر باشد'
+            }), 400
+        
+        # Generate secure filename
+        filename = secure_filename(file.filename)
+        unique_filename = f"{uuid.uuid4()}_{filename}"
+        
+        # Create upload directory if it doesn't exist
+        upload_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'documents')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save file
+        file_path = os.path.join(upload_dir, unique_filename)
+        file.save(file_path)
+        
+        # Create database record
+        document = InvoiceDocument(
+            invoice_id=int(invoice_id),
+            document_type=document_type,
+            file_path=os.path.join('documents', unique_filename)
+        )
+        
+        db.session.add(document)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'مدرک پرداخت با موفقیت بارگذاری شد'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error uploading document: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'خطا در بارگذاری فایل. لطفاً دوباره تلاش کنید'
+        }), 500
 
 # ==================== ADMIN ROUTES ====================
 
@@ -4736,7 +4836,7 @@ def health_check():
     """Health check endpoint for monitoring and load balancers"""
     try:
         # Check database connection
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         db_status = 'healthy'
     except Exception as e:
         db_status = f'unhealthy: {str(e)}'
@@ -4785,7 +4885,7 @@ def readiness_check():
     """Readiness check for Kubernetes/Docker health checks"""
     try:
         # Check if database is accessible
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         return jsonify({'status': 'ready'}), 200
     except Exception:
         return jsonify({'status': 'not_ready'}), 503
@@ -4794,3 +4894,415 @@ def readiness_check():
 def liveness_check():
     """Liveness check for Kubernetes/Docker health checks"""
     return jsonify({'status': 'alive'}), 200
+
+# ==================== CUSTOMER INVOICE PROFILE SYSTEM API ====================
+
+@app.route('/api/profile/invoices')
+@login_required
+def api_profile_invoices():
+    """دریافت لیست فاکتورهای مشتری در پروفایل"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        status = request.args.get('status', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        customer_type = request.args.get('customer_type', '')
+        
+        # Build query
+        query = Invoice.query.filter_by(user_id=current_user.id)
+        
+        if status:
+            query = query.filter_by(approval_workflow_status=status)
+        
+        if customer_type:
+            query = query.filter_by(customer_type=customer_type)
+        
+        if date_from:
+            try:
+                query = query.filter(Invoice.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                query = query.filter(Invoice.created_at <= datetime.strptime(date_to, '%Y-%m-%d'))
+            except ValueError:
+                pass
+        
+        # Get paginated results
+        invoices_paginated = query.order_by(Invoice.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Prepare invoice data
+        invoices_data = []
+        for invoice in invoices_paginated.items:
+            invoice_data = {
+                'id': invoice.id,
+                'invoice_number': invoice.invoice_number,
+                'total_amount': float(invoice.total_amount),
+                'payment_type': invoice.payment_type,
+                'approval_workflow_status': invoice.approval_workflow_status,
+                'customer_type': invoice.customer_type,
+                'document_required': invoice.document_required,
+                'bulk_discount_applied': float(invoice.bulk_discount_applied),
+                'credit_used': float(invoice.credit_used),
+                'created_at': invoice.created_at.isoformat(),
+                'due_date': invoice.due_date.isoformat() if invoice.due_date else None,
+                'customer_notes': invoice.customer_notes,
+                'items_count': len(invoice.items),
+                'documents_count': len(invoice.documents),
+                'approved_documents_count': len([d for d in invoice.documents if d.approval_record and d.approval_record.approval_status == 'approved'])
+            }
+            invoices_data.append(invoice_data)
+        
+        # Calculate statistics
+        all_user_invoices = Invoice.query.filter_by(user_id=current_user.id).all()
+        stats = {
+            'total_invoices': len(all_user_invoices),
+            'pending_approval': len([i for i in all_user_invoices if i.approval_workflow_status == 'pending']),
+            'auto_approved': len([i for i in all_user_invoices if i.approval_workflow_status == 'auto_approved']),
+            'manual_approved': len([i for i in all_user_invoices if i.approval_workflow_status == 'manual_approved']),
+            'rejected': len([i for i in all_user_invoices if i.approval_workflow_status == 'rejected']),
+            'total_amount': sum(float(i.total_amount) for i in all_user_invoices),
+            'individual_invoices': len([i for i in all_user_invoices if i.customer_type == 'individual']),
+            'bulk_invoices': len([i for i in all_user_invoices if i.customer_type == 'bulk'])
+        }
+        
+        return jsonify({
+            'invoices': invoices_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': invoices_paginated.total,
+                'pages': invoices_paginated.pages,
+                'has_next': invoices_paginated.has_next,
+                'has_prev': invoices_paginated.has_prev
+            },
+            'statistics': stats
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/profile/invoices/<int:invoice_id>/upload-document', methods=['POST'])
+@login_required
+def api_profile_upload_document(invoice_id):
+    """بارگذاری مدرک برای فاکتور"""
+    try:
+        # Validate invoice belongs to user
+        invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first()
+        if not invoice:
+            return jsonify({'error': 'فاکتور یافت نشد'}), 404
+        
+        # Get form data
+        document_type = request.form.get('document_type')
+        description = request.form.get('description', '')
+        file = request.files.get('file')
+        
+        # Validate required fields
+        if not document_type or not file:
+            return jsonify({'error': 'نوع مدرک و فایل الزامی است'}), 400
+        
+        # Validate document type
+        if document_type not in ['check', 'receipt', 'bank_transfer']:
+            return jsonify({'error': 'نوع مدرک نامعتبر است'}), 400
+        
+        # Validate file
+        if file.filename == '':
+            return jsonify({'error': 'فایلی انتخاب نشده است'}), 400
+        
+        # Check file extension
+        allowed_extensions = {'pdf', 'jpg', 'jpeg', 'png'}
+        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        
+        if file_ext not in allowed_extensions:
+            return jsonify({'error': 'فرمت فایل مجاز نیست. فرمت‌های مجاز: PDF, JPG, PNG'}), 400
+        
+        # Check file size (5MB max)
+        file.seek(0, 2)
+        file_size = file.tell()
+        file.seek(0)
+        
+        if file_size > 5 * 1024 * 1024:  # 5MB
+            return jsonify({'error': 'حجم فایل نباید از 5 مگابایت بیشتر باشد'}), 400
+        
+        # Generate secure filename
+        filename = secure_filename(file.filename)
+        unique_filename = f"{uuid.uuid4()}_{filename}"
+        
+        # Create upload directory if it doesn't exist
+        upload_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'documents')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save file
+        file_path = os.path.join(upload_dir, unique_filename)
+        file.save(file_path)
+        
+        # Create database record
+        document = InvoiceDocument(
+            invoice_id=invoice_id,
+            document_type=document_type,
+            file_path=os.path.join('documents', unique_filename)
+        )
+        
+        models.db.session.add(document)
+        models.db.session.commit()
+        
+        # Create approval record
+        approval_record = InvoiceDocumentApproval(
+            document_id=document.id,
+            approval_status='pending'
+        )
+        
+        models.db.session.add(approval_record)
+        models.db.session.commit()
+        
+        # Update invoice status if needed
+        if invoice.document_required and not invoice.approval_workflow_status == 'manual_approved':
+            invoice.approval_workflow_status = 'pending'
+            models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'مدرک با موفقیت بارگذاری شد',
+            'document_id': document.id
+        })
+        
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/profile/invoices/<int:invoice_id>/approve', methods=['POST'])
+@login_required
+def api_profile_approve_invoice_customer(invoice_id):
+    """تایید فاکتور توسط مشتری"""
+    try:
+        # Validate invoice belongs to user
+        invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first()
+        if not invoice:
+            return jsonify({'error': 'فاکتور یافت نشد'}), 404
+        
+        # Check if invoice can be approved
+        if invoice.approval_workflow_status != 'pending':
+            return jsonify({'error': 'فاکتور قابل تایید نیست'}), 400
+        
+        # Get approval data
+        data = request.get_json()
+        approval_notes = data.get('approval_notes', '') if data else ''
+        
+        # Update invoice status
+        invoice.approval_workflow_status = 'manual_approved'
+        invoice.approval_status = 'approved'
+        invoice.approval_date = datetime.utcnow()
+        invoice.approved_by = current_user.id
+        invoice.customer_notes = approval_notes
+        
+        # Update workflow
+        workflow = InvoiceApprovalWorkflow.query.filter_by(invoice_id=invoice_id).first()
+        if workflow:
+            workflow.workflow_status = 'manual_approved'
+            workflow.approval_notes = approval_notes
+        
+        models.db.session.commit()
+        
+        # Send notification
+        notification = UserNotification(
+            user_id=current_user.id,
+            notification_type='invoice_approved',
+            title='فاکتور تایید شد',
+            message=f'فاکتور شماره {invoice.invoice_number} با موفقیت تایید شد',
+            related_invoice_id=invoice_id,
+            notification_action='approve'
+        )
+        
+        models.db.session.add(notification)
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'فاکتور با موفقیت تایید شد'
+        })
+        
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/profile/invoices/<int:invoice_id>/reject', methods=['POST'])
+@login_required
+def api_profile_reject_invoice_customer(invoice_id):
+    """رد فاکتور توسط مشتری"""
+    try:
+        # Validate invoice belongs to user
+        invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first()
+        if not invoice:
+            return jsonify({'error': 'فاکتور یافت نشد'}), 404
+        
+        # Check if invoice can be rejected
+        if invoice.approval_workflow_status not in ['pending', 'auto_approved']:
+            return jsonify({'error': 'فاکتور قابل رد نیست'}), 400
+        
+        # Get rejection data
+        data = request.get_json()
+        rejection_reason = data.get('rejection_reason', '') if data else ''
+        
+        if not rejection_reason:
+            return jsonify({'error': 'دلیل رد الزامی است'}), 400
+        
+        # Update invoice status
+        invoice.approval_workflow_status = 'rejected'
+        invoice.approval_status = 'rejected'
+        invoice.rejection_reason = rejection_reason
+        invoice.customer_notes = data.get('customer_notes', '') if data else ''
+        
+        # Update workflow
+        workflow = InvoiceApprovalWorkflow.query.filter_by(invoice_id=invoice_id).first()
+        if workflow:
+            workflow.workflow_status = 'rejected'
+            workflow.approval_notes = rejection_reason
+        
+        models.db.session.commit()
+        
+        # Send notification
+        notification = UserNotification(
+            user_id=current_user.id,
+            notification_type='invoice_rejected',
+            title='فاکتور رد شد',
+            message=f'فاکتور شماره {invoice.invoice_number} رد شد. دلیل: {rejection_reason}',
+            related_invoice_id=invoice_id,
+            notification_action='reject'
+        )
+        
+        models.db.session.add(notification)
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'فاکتور رد شد'
+        })
+        
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/profile/invoices/<int:invoice_id>/status')
+@login_required
+def api_profile_invoice_status(invoice_id):
+    """دریافت وضعیت فاکتور"""
+    try:
+        # Validate invoice belongs to user
+        invoice = Invoice.query.filter_by(id=invoice_id, user_id=current_user.id).first()
+        if not invoice:
+            return jsonify({'error': 'فاکتور یافت نشد'}), 404
+        
+        # Get workflow information
+        workflow = InvoiceApprovalWorkflow.query.filter_by(invoice_id=invoice_id).first()
+        
+        # Get document approval status
+        documents_status = []
+        for doc in invoice.documents:
+            approval_record = InvoiceDocumentApproval.query.filter_by(document_id=doc.id).first()
+            documents_status.append({
+                'id': doc.id,
+                'type': doc.document_type,
+                'file_path': doc.file_path,
+                'uploaded_at': doc.uploaded_at.isoformat(),
+                'approval_status': approval_record.approval_status if approval_record else 'pending',
+                'approval_date': approval_record.approval_date.isoformat() if approval_record and approval_record.approval_date else None,
+                'rejection_reason': approval_record.rejection_reason if approval_record else None
+            })
+        
+        status_data = {
+            'invoice_id': invoice.id,
+            'invoice_number': invoice.invoice_number,
+            'approval_workflow_status': invoice.approval_workflow_status,
+            'approval_status': invoice.approval_status,
+            'document_required': invoice.document_required,
+            'customer_type': invoice.customer_type,
+            'created_at': invoice.created_at.isoformat(),
+            'approval_date': invoice.approval_date.isoformat() if invoice.approval_date else None,
+            'rejection_reason': invoice.rejection_reason,
+            'customer_notes': invoice.customer_notes,
+            'workflow': {
+                'status': workflow.workflow_status if workflow else 'pending',
+                'auto_approval_eligible': workflow.auto_approval_eligible if workflow else False,
+                'manual_approval_required': workflow.manual_approval_required if workflow else True,
+                'priority_level': workflow.priority_level if workflow else 1,
+                'deadline': workflow.deadline.isoformat() if workflow and workflow.deadline else None,
+                'is_overdue': workflow.is_overdue() if workflow else False,
+                'approval_notes': workflow.approval_notes if workflow else None
+            } if workflow else None,
+            'documents': documents_status
+        }
+        
+        return jsonify(status_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/profile/bulk-benefits')
+@login_required
+def api_profile_bulk_benefits():
+    """دریافت مزایای مشتریان عمده"""
+    try:
+        # Check if user is bulk customer
+        if current_user.customer_type != 'bulk':
+            return jsonify({'error': 'این کاربر مشتری عمده نیست'}), 403
+        
+        # Get customer profile
+        profile = CustomerInvoiceProfile.query.filter_by(user_id=current_user.id).first()
+        if not profile:
+            return jsonify({'error': 'پروفایل فاکتور یافت نشد'}), 404
+        
+        # Get active benefits
+        benefits = BulkCustomerBenefits.query.filter_by(
+            user_id=current_user.id, 
+            is_active=True
+        ).all()
+        
+        benefits_data = []
+        for benefit in benefits:
+            if benefit.is_valid():
+                benefits_data.append({
+                    'type': benefit.benefit_type,
+                    'value': float(benefit.benefit_value),
+                    'description': benefit.benefit_description,
+                    'valid_from': benefit.valid_from.isoformat() if benefit.valid_from else None,
+                    'valid_until': benefit.valid_until.isoformat() if benefit.valid_until else None
+                })
+        
+        # Get customer level info
+        level_info = {
+            'current_level': current_user.bulk_customer_level,
+            'total_purchase_amount': float(current_user.total_purchase_amount),
+            'next_level_threshold': {
+                'silver': 10000000 if current_user.bulk_customer_level == 'bronze' else None,
+                'gold': 50000000 if current_user.bulk_customer_level == 'silver' else None,
+                'platinum': 100000000 if current_user.bulk_customer_level == 'gold' else None
+            }
+        }
+        
+        return jsonify({
+            'customer_type': current_user.customer_type,
+            'level_info': level_info,
+            'profile': {
+                'auto_approval_limit': float(profile.auto_approval_limit),
+                'bulk_discount_percentage': float(profile.bulk_discount_percentage),
+                'credit_limit': float(profile.credit_limit),
+                'current_credit_used': float(profile.current_credit_used),
+                'available_credit': float(profile.get_available_credit())
+            },
+            'benefits': benefits_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== CUSTOMER INVOICE PROFILE ROUTES ====================
+
+@app.route('/profile/invoices')
+@login_required
+def profile_invoices():
+    """صفحه داشبورد فاکتورهای مشتری در پروفایل"""
+    return render_template('profile/invoice_dashboard.html')

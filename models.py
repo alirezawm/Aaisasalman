@@ -39,6 +39,12 @@ class User(UserMixin, db.Model):
     bulk_buyer_approved_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     
+    # Customer invoice profile system fields
+    customer_type = db.Column(db.String(20), default='individual')  # individual, bulk
+    sales_manager_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # مدیر فروش
+    bulk_customer_level = db.Column(db.String(20), default='bronze')  # bronze, silver, gold, platinum
+    total_purchase_amount = db.Column(db.Numeric(15, 2), default=0)  # مجموع مبلغ خریدها
+    
     # User preferences
     preferred_brands = db.Column(db.Text)  # JSON string of brand IDs
     preferred_language = db.Column(db.String(5), default='fa')
@@ -635,6 +641,16 @@ class Invoice(db.Model):
     notification_sent = db.Column(db.Boolean, default=False)  # whether notification was sent to customer
     notification_sent_at = db.Column(db.DateTime)  # when last notification was sent
     
+    # Customer invoice profile system fields
+    customer_type = db.Column(db.String(20), default='individual')  # individual, bulk
+    approval_workflow_status = db.Column(db.String(30), default='pending')  # pending, auto_approved, manual_approved, rejected
+    document_required = db.Column(db.Boolean, default=False)  # نیاز به بارگذاری مدرک
+    auto_approval_threshold = db.Column(db.Numeric(15, 2), default=1000000)  # آستانه تایید خودکار
+    bulk_discount_applied = db.Column(db.Numeric(5, 2), default=0)  # تخفیف عمده اعمال شده
+    credit_used = db.Column(db.Numeric(15, 2), default=0)  # اعتبار استفاده شده
+    sales_manager_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # مدیر فروش
+    customer_notes = db.Column(db.Text, nullable=True)  # یادداشت‌های مشتری
+    
     # Relationships
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True, cascade='all, delete-orphan')
     documents = db.relationship('InvoiceDocument', backref='invoice', lazy=True, cascade='all, delete-orphan')
@@ -1167,9 +1183,9 @@ class PointsRule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     rule_name = db.Column(db.String(100), nullable=False)
     rule_name_fa = db.Column(db.String(100), nullable=False)
-    points_per_100k_rials = db.Column(db.Float, default=0.5)  # امتیاز به ازای هر 100 هزار ریال (reduced by 3 digits)
-    bonus_points_per_product = db.Column(db.Float, default=0.05)  # امتیاز اضافی به ازای هر محصول (reduced by 3 digits)
-    max_bonus_points = db.Column(db.Float, default=1)  # حداکثر امتیاز اضافی (reduced by 3 digits)
+    points_per_100k_rials = db.Column(db.Float, default=0.05)  # امتیاز به ازای هر 100 هزار ریال (reduced by 4 digits)
+    bonus_points_per_product = db.Column(db.Float, default=0.005)  # امتیاز اضافی به ازای هر محصول (reduced by 4 digits)
+    max_bonus_points = db.Column(db.Float, default=0.1)  # حداکثر امتیاز اضافی (reduced by 4 digits)
     is_active = db.Column(db.Boolean, default=True)
     valid_from = db.Column(db.DateTime)
     valid_until = db.Column(db.DateTime)
@@ -1234,3 +1250,115 @@ def move_products_to_misc_before_vehicle_type_delete(mapper, connection, target)
     connection.execute(text(
         "DELETE FROM product_vehicle_types WHERE vehicle_type_id = :old_id"
     ), {"old_id": target.id})
+
+# ==================== CUSTOMER INVOICE PROFILE SYSTEM MODELS ====================
+
+class CustomerInvoiceProfile(db.Model):
+    """پروفایل فاکتور مشتری"""
+    __tablename__ = 'customer_invoice_profile'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    customer_type = db.Column(db.String(20), default='individual')  # individual, bulk
+    auto_approval_limit = db.Column(db.Numeric(15, 2), default=1000000)  # حد تایید خودکار
+    bulk_discount_percentage = db.Column(db.Numeric(5, 2), default=0)  # درصد تخفیف عمده
+    credit_limit = db.Column(db.Numeric(15, 2), default=0)  # حد اعتبار
+    current_credit_used = db.Column(db.Numeric(15, 2), default=0)  # اعتبار استفاده شده
+    assigned_sales_manager = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='invoice_profile')
+    sales_manager = db.relationship('User', foreign_keys=[assigned_sales_manager], backref='managed_customers')
+    
+    def get_available_credit(self):
+        """محاسبه اعتبار موجود"""
+        return float(self.credit_limit) - float(self.current_credit_used)
+    
+    def can_auto_approve(self, amount):
+        """بررسی امکان تایید خودکار"""
+        return float(amount) <= float(self.auto_approval_limit)
+    
+    def __repr__(self):
+        return f'<CustomerInvoiceProfile {self.user.username} - {self.customer_type}>'
+
+class InvoiceApprovalWorkflow(db.Model):
+    """فرآیند تایید فاکتور"""
+    __tablename__ = 'invoice_approval_workflow'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
+    workflow_status = db.Column(db.String(30), default='pending')  # pending, auto_approved, manual_approved, rejected
+    auto_approval_eligible = db.Column(db.Boolean, default=False)
+    manual_approval_required = db.Column(db.Boolean, default=True)
+    assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    priority_level = db.Column(db.Integer, default=1)  # 1=low, 2=medium, 3=high
+    deadline = db.Column(db.DateTime, nullable=True)
+    approval_notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    invoice = db.relationship('Invoice', backref='approval_workflow')
+    assignee = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_invoices')
+    
+    def is_overdue(self):
+        """بررسی انقضای مهلت"""
+        if not self.deadline:
+            return False
+        return datetime.utcnow() > self.deadline
+    
+    def __repr__(self):
+        return f'<InvoiceApprovalWorkflow {self.invoice.invoice_number} - {self.workflow_status}>'
+
+class BulkCustomerBenefits(db.Model):
+    """مزایای مشتریان عمده"""
+    __tablename__ = 'bulk_customer_benefits'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    benefit_type = db.Column(db.String(50), nullable=False)  # discount, credit_increase, priority_support
+    benefit_value = db.Column(db.Numeric(10, 2), nullable=False)
+    benefit_description = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    valid_from = db.Column(db.DateTime, nullable=True)
+    valid_until = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='bulk_benefits')
+    
+    def is_valid(self):
+        """بررسی اعتبار مزیت"""
+        now = datetime.utcnow()
+        if not self.is_active:
+            return False
+        if self.valid_from and now < self.valid_from:
+            return False
+        if self.valid_until and now > self.valid_until:
+            return False
+        return True
+    
+    def __repr__(self):
+        return f'<BulkCustomerBenefits {self.user.username} - {self.benefit_type}>'
+
+class InvoiceDocumentApproval(db.Model):
+    """تایید مدارک فاکتور"""
+    __tablename__ = 'invoice_document_approval'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    document_id = db.Column(db.Integer, db.ForeignKey('invoice_document.id'), nullable=False)
+    approval_status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    approved_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    approval_date = db.Column(db.DateTime, nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)
+    admin_notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    document = db.relationship('InvoiceDocument', backref='approval_record')
+    approver = db.relationship('User', foreign_keys=[approved_by], backref='invoice_document_approvals')
+    
+    def __repr__(self):
+        return f'<InvoiceDocumentApproval {self.document_id} - {self.approval_status}>'

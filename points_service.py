@@ -13,9 +13,9 @@ class PointsService:
     """Main points system service"""
     
     def __init__(self):
-        self.default_points_per_100k = 0.5  # Reduced from 500 to 0.5 (3 digits less)
-        self.default_bonus_per_product = 0.05  # Reduced from 50 to 0.05 (3 digits less)
-        self.default_max_bonus = 1  # Reduced from 1000 to 1 (3 digits less)
+        self.default_points_per_100k = 0.05  # Reduced from 500 to 0.05 (4 digits less)
+        self.default_bonus_per_product = 0.005  # Reduced from 50 to 0.005 (4 digits less)
+        self.default_max_bonus = 0.1  # Reduced from 1000 to 0.1 (4 digits less)
         self.points_expiration_months = 12
     
     def get_active_points_rule(self):
@@ -535,19 +535,19 @@ def init_points_system():
             default_rule = PointsRule(
                 rule_name='Default Rule',
                 rule_name_fa='Default Rule',
-                points_per_100k_rials=0.5,  # Reduced from 500 to 0.5 (3 digits less)
-                bonus_points_per_product=0.05,  # Reduced from 50 to 0.05 (3 digits less)
-                max_bonus_points=1,  # Reduced from 1000 to 1 (3 digits less)
+                points_per_100k_rials=0.05,  # Reduced from 500 to 0.05 (4 digits less)
+                bonus_points_per_product=0.005,  # Reduced from 50 to 0.005 (4 digits less)
+                max_bonus_points=0.1,  # Reduced from 1000 to 0.1 (4 digits less)
                 is_active=True
             )
             db.session.add(default_rule)
         
         # ایجاد سطح‌بندی پیش‌فرض
         default_levels = [
-            {'level_name': 'Bronze', 'level_name_fa': 'Bronze', 'min_points': 0, 'max_points': 0.999, 'discount_percentage': 0},  # Reduced from 999 to 0.999
-            {'level_name': 'Silver', 'level_name_fa': 'Silver', 'min_points': 1, 'max_points': 4.999, 'discount_percentage': 5},  # Reduced from 1000-4999 to 1-4.999
-            {'level_name': 'Gold', 'level_name_fa': 'Gold', 'min_points': 5, 'max_points': 9.999, 'discount_percentage': 10},  # Reduced from 5000-9999 to 5-9.999
-            {'level_name': 'Platinum', 'level_name_fa': 'Platinum', 'min_points': 10, 'max_points': None, 'discount_percentage': 15}  # Reduced from 10000+ to 10+
+            {'level_name': 'Bronze', 'level_name_fa': 'Bronze', 'min_points': 0, 'max_points': 0.0999, 'discount_percentage': 0},  # Reduced from 999 to 0.0999
+            {'level_name': 'Silver', 'level_name_fa': 'Silver', 'min_points': 0.1, 'max_points': 0.4999, 'discount_percentage': 5},  # Reduced from 1000-4999 to 0.1-0.4999
+            {'level_name': 'Gold', 'level_name_fa': 'Gold', 'min_points': 0.5, 'max_points': 0.9999, 'discount_percentage': 10},  # Reduced from 5000-9999 to 0.5-0.9999
+            {'level_name': 'Platinum', 'level_name_fa': 'Platinum', 'min_points': 1, 'max_points': None, 'discount_percentage': 15}  # Reduced from 10000+ to 1+
         ]
         
         for level_data in default_levels:
@@ -563,7 +563,7 @@ def init_points_system():
                 'name_fa': '5% Discount',
                 'description': '5% discount on your next purchase',
                 'description_fa': '5% discount on your next purchase',
-                'points_required': 1,  # Reduced from 1000 to 1 (3 digits less)
+                'points_required': 0.1,  # Reduced from 1000 to 0.1 (4 digits less)
                 'discount_percentage': 5,
                 'reward_type': 'discount_percentage',
                 'is_active': True
@@ -573,7 +573,7 @@ def init_points_system():
                 'name_fa': 'Free Shipping',
                 'description': 'Free shipping on your next order',
                 'description_fa': 'Free shipping on your next order',
-                'points_required': 0.5,  # Reduced from 500 to 0.5 (3 digits less)
+                'points_required': 0.05,  # Reduced from 500 to 0.05 (4 digits less)
                 'reward_type': 'free_shipping',
                 'is_active': True
             }
