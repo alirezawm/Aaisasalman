@@ -1,52 +1,30 @@
-# ========================================
-# Multi-stage Dockerfile for Asia Salman Flask App
-# Optimized for production deployment on Linux servers
-# ========================================
-
-# Stage 1: Build stage
+# Stage 1: Builder
 FROM python:3.11-slim as builder
 
-# Set build arguments
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 
-# Environment variables for build
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies for building Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    g++ \
-    libxml2-dev \
-    libxslt1-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
-    zlib1g-dev \
-    libffi-dev \
-    libssl-dev \
-    libpq-dev \
-    libsqlite3-dev \
-    sqlite3 \
-    curl \
+    build-essential gcc g++ \
+    libxml2-dev libxslt1-dev libjpeg62-turbo-dev libpng-dev zlib1g-dev \
+    libffi-dev libssl-dev libpq-dev libsqlite3-dev sqlite3 curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
 
-# Stage 2: Production stage
+
+# Stage 2: Production
 FROM python:3.11-slim as production
 
-# Set production environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FLASK_ENV=production \
@@ -54,96 +32,88 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000 \
     PATH="/opt/venv/bin:$PATH"
 
-# Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libxml2 \
-    libxslt1.1 \
-    libjpeg62-turbo \
-    libpng16-16 \
-    zlib1g \
-    libffi-dev \
-    libssl-dev \
-    libpq-dev \
-    libsqlite3-0 \
-    sqlite3 \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    libxml2 libxslt1.1 libjpeg62-turbo libpng16-16 zlib1g \
+    libffi-dev libssl-dev libpq-dev libsqlite3-0 sqlite3 \
+    curl ca-certificates wget gnupg dirmngr \
+    && rm -rf /var/lib/apt/lists/* && apt-get clean
 
-# Copy virtual environment from builder stage
 COPY --from=builder /opt/venv /opt/venv
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
 
-# Create application directory
 WORKDIR /usr/src/app
 
-# Copy only essential application files first
-COPY --chown=appuser:appuser app.py ./
-COPY --chown=appuser:appuser models.py ./
-COPY --chown=appuser:appuser routes.py ./
-COPY --chown=appuser:appuser database_utils.py ./
-COPY --chown=appuser:appuser search_engine.py ./
-COPY --chown=appuser:appuser points_service.py ./
-COPY --chown=appuser:appuser shop_sync_service.py ./
-COPY --chown=appuser:appuser tadbir_api_service.py ./
-COPY --chown=appuser:appuser tadbir_sync_service.py ./
-COPY --chown=appuser:appuser tadbir_scheduler_service.py ./
-COPY --chown=appuser:appuser detection_service.py ./
-COPY --chown=appuser:appuser detection_api.py ./
-COPY --chown=appuser:appuser detection_models.py ./
-COPY --chown=appuser:appuser brand_vehicle_detector.py ./
-COPY --chown=appuser:appuser invoice_notification_service.py ./
-COPY --chown=appuser:appuser persian_date_utils.py ./
+COPY --chown=appuser:appuser . .
 
-# Copy Python service files
-COPY --chown=appuser:appuser *.py ./
+# ?? ÓÇÎÊ ÇÓ˜ÑíÊ startup.sh (Èå ÕæÑÊ ˜Çãá ÈÓÊåÔÏå)
+RUN set -eux; \
+cat > /usr/src/app/startup.sh <<'EOF'
+#!/bin/sh
+echo "Starting Asia Salman application (as $(id -u -n))..."
+mkdir -p /usr/src/app/uploads/products \
+         /usr/src/app/uploads/logos \
+         /usr/src/app/uploads/documents \
+         /usr/src/app/uploads/receipts \
+         /usr/src/app/instance \
+         /usr/src/app/logs \
+         /usr/src/app/backups
 
-# Copy templates and static directories
-COPY --chown=appuser:appuser templates/ ./templates/
-COPY --chown=appuser:appuser static/ ./static/
+chmod -R 755 /usr/src/app/uploads || true
+chmod -R 755 /usr/src/app/instance || true
+chmod -R 755 /usr/src/app/logs || true
+chmod -R 755 /usr/src/app/backups || true
 
-# Create necessary directories with proper permissions
-RUN mkdir -p \
-    uploads/products \
-    uploads/logos \
-    uploads/documents \
-    uploads/receipts \
-    instance \
-    logs \
-    backups \
-    && chown -R appuser:appuser /usr/src/app
+echo "Directory setup completed."
+echo "Starting Gunicorn..."
+exec gunicorn \
+    --bind 0.0.0.0:8000 \
+    --workers 4 \
+    --worker-class gevent \
+    --worker-connections 1000 \
+    --max-requests 1000 \
+    --max-requests-jitter 100 \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --keep-alive 5 \
+    --preload \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    app:app
+EOF
 
-# Set proper permissions
-RUN chmod -R 755 /usr/src/app && \
-    chmod -R 777 /usr/src/app/uploads && \
-    chmod -R 777 /usr/src/app/instance && \
-    chmod -R 777 /usr/src/app/logs
+RUN chmod +x /usr/src/app/startup.sh && chown appuser:appuser /usr/src/app/startup.sh
 
-# Switch to non-root user
-USER appuser
+# ?? äÕÈ gosu ÈÑÇí ÇÌÑÇí Çãä ˜ÇÑÈÑ appuser
+ENV GOSU_VERSION=1.16
+RUN set -eux; \
+    dpkgArch="$(dpkg --print-architecture)"; \
+    wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-${dpkgArch}"; \
+    chmod +x /usr/local/bin/gosu; \
+    gosu --version
 
-# Expose port
+# ?? ÓÇÎÊ entrypoint.sh (Èå ÕæÑÊ ÕÍíÍ ÈÓÊåÔÏå)
+RUN set -eux; \
+cat > /usr/local/bin/entrypoint.sh <<'EOF'
+#!/bin/sh
+set -e
+echo "Entrypoint: fixing permissions and creating folders..."
+for d in /usr/src/app/uploads /usr/src/app/instance /usr/src/app/logs /usr/src/app/backups; do
+  mkdir -p "$d"
+  chown -R appuser:appuser "$d" || true
+done
+chown appuser:appuser /usr/src/app/startup.sh || true
+echo "Entrypoint: switching to appuser..."
+exec gosu appuser /usr/src/app/startup.sh
+EOF
+
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 EXPOSE 8000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+  CMD curl -f http://localhost:8000/health || exit 1
 
-# Use gunicorn with optimized settings for production
-CMD ["gunicorn", \
-     "--bind", "0.0.0.0:8000", \
-     "--workers", "4", \
-     "--worker-class", "gevent", \
-     "--worker-connections", "1000", \
-     "--max-requests", "1000", \
-     "--max-requests-jitter", "100", \
-     "--timeout", "120", \
-     "--graceful-timeout", "30", \
-     "--keep-alive", "5", \
-     "--preload", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "--log-level", "info", \
-     "app:app"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/usr/src/app/startup.sh"]

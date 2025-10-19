@@ -28,11 +28,36 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_timeout': 30,  # Timeout for getting connection from pool
 }
 
+# Create upload directories with proper error handling
+def create_upload_directories():
+    """Create upload directories with proper error handling for Docker volumes"""
+    directories = [
+        'uploads/products',
+        'uploads/logos', 
+        'uploads/documents',
+        'uploads/receipts'
+    ]
+    
+    for directory in directories:
+        try:
+            os.makedirs(directory, exist_ok=True)
+            print(f"Created directory: {directory}")
+        except PermissionError as e:
+            print(f"Warning: Could not create directory {directory}: {e}")
+            # Try to create parent directory first
+            try:
+                parent_dir = os.path.dirname(directory)
+                if parent_dir and not os.path.exists(parent_dir):
+                    os.makedirs(parent_dir, exist_ok=True)
+                    os.makedirs(directory, exist_ok=True)
+                    print(f"Created directory after creating parent: {directory}")
+            except Exception as e2:
+                print(f"Error creating directory {directory}: {e2}")
+        except Exception as e:
+            print(f"Unexpected error creating directory {directory}: {e}")
+
 # Create upload directories
-os.makedirs('uploads/products', exist_ok=True)
-os.makedirs('uploads/logos', exist_ok=True)
-os.makedirs('uploads/documents', exist_ok=True)
-os.makedirs('uploads/receipts', exist_ok=True)
+create_upload_directories()
 
 # Import models first to get the db instance
 import models

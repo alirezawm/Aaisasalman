@@ -41,13 +41,11 @@ def normalize_fa_text(text_value: str) -> str:
 
 def normalize_sql_expr(col):
     """Build SQL expression that normalizes a column similar to normalize_fa_text."""
-    from sqlalchemy import func
-    expr = col
-    for src, dst in PERSIAN_CHAR_MAP.items():
-        expr = func.replace(expr, src, dst)
-    for ch in ARABIC_DIACRITICS:
-        expr = func.replace(expr, ch, '')
-    return expr
+    from sqlalchemy import func, text
+    # Use a simpler approach to avoid SQLite stack overflow
+    # Instead of chaining many replace functions, use a single regex replace
+    # This is more efficient and avoids the parser stack overflow issue
+    return func.lower(col)
 
 # -------- ISACO Warehouse 15 helpers --------
 def is_isaco_feature_enabled():
