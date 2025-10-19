@@ -82,21 +82,38 @@ class IntelligentSearchEngine:
             # Normalize the query
             norm_query = normalize_fa_text(query)
             
-            products = models.Product.query.filter(
-                or_(
-                    normalize_sql_expr(models.Product.sku).contains(norm_query),
-                    normalize_sql_expr(models.Product.oem_code).contains(norm_query),
-                    normalize_sql_expr(models.Product.code).contains(norm_query),  # Legacy code field
-                    models.Product.sku.ilike(f'%{query}%'),  # Fallback for exact match
-                    models.Product.oem_code.ilike(f'%{query}%'),
-                    models.Product.code.ilike(f'%{query}%')
-                ),
-                models.Product.is_active == True
-            ).options(
-                joinedload(models.Product.brand),
-                joinedload(models.Product.category),
-                joinedload(models.Product.subcategory)
-            ).all()
+            # Use a hybrid approach: try normalized search first, then fallback to simple search
+            try:
+                products = models.Product.query.filter(
+                    or_(
+                        normalize_sql_expr(models.Product.sku).contains(norm_query),
+                        normalize_sql_expr(models.Product.oem_code).contains(norm_query),
+                        normalize_sql_expr(models.Product.code).contains(norm_query),  # Legacy code field
+                        models.Product.sku.ilike(f'%{query}%'),  # Fallback for exact match
+                        models.Product.oem_code.ilike(f'%{query}%'),
+                        models.Product.code.ilike(f'%{query}%')
+                    ),
+                    models.Product.is_active == True
+                ).options(
+                    joinedload(models.Product.brand),
+                    joinedload(models.Product.category),
+                    joinedload(models.Product.subcategory)
+                ).all()
+            except Exception as sql_error:
+                # If SQL normalization fails, fallback to simple search
+                current_app.logger.warning(f"SQL normalization failed, using fallback: {sql_error}")
+                products = models.Product.query.filter(
+                    or_(
+                        models.Product.sku.ilike(f'%{query}%'),
+                        models.Product.oem_code.ilike(f'%{query}%'),
+                        models.Product.code.ilike(f'%{query}%')
+                    ),
+                    models.Product.is_active == True
+                ).options(
+                    joinedload(models.Product.brand),
+                    joinedload(models.Product.category),
+                    joinedload(models.Product.subcategory)
+                ).all()
             
             return [self._product_to_dict(p) for p in products]
         except Exception as e:
@@ -121,54 +138,88 @@ class IntelligentSearchEngine:
             # Build search conditions
             search_conditions = []
             
-            # Brand search with normalization
+            # Brand search with normalization (with fallback)
             if brand_name:
                 norm_brand = normalize_fa_text(brand_name)
-                search_conditions.append(
-                    models.Product.brand.has(
-                        or_(
-                            normalize_sql_expr(models.Brand.name).contains(norm_brand),
-                            normalize_sql_expr(models.Brand.name_fa).contains(norm_brand),
-                            models.Brand.name.ilike(f'%{brand_name}%'),  # Fallback
-                            models.Brand.name_fa.ilike(f'%{brand_name}%')
+                try:
+                    search_conditions.append(
+                        models.Product.brand.has(
+                            or_(
+                                normalize_sql_expr(models.Brand.name).contains(norm_brand),
+                                normalize_sql_expr(models.Brand.name_fa).contains(norm_brand),
+                                models.Brand.name.ilike(f'%{brand_name}%'),  # Fallback
+                                models.Brand.name_fa.ilike(f'%{brand_name}%')
+                            )
                         )
                     )
-                )
+                except Exception:
+                    # Fallback to simple search if normalization fails
+                    search_conditions.append(
+                        models.Product.brand.has(
+                            or_(
+                                models.Brand.name.ilike(f'%{brand_name}%'),
+                                models.Brand.name_fa.ilike(f'%{brand_name}%')
+                            )
+                        )
+                    )
             
-            # Model search with normalization
+            # Model search with normalization (with fallback)
             if model_name:
                 norm_model = normalize_fa_text(model_name)
-                search_conditions.append(
-                    or_(
-                        normalize_sql_expr(models.Product.compatible_models).contains(norm_model),
-                        models.Product.compatible_models.ilike(f'%{model_name}%')  # Fallback
-                    )
-                )
-            
-            # Vehicle type search with normalization
-            if vehicle_type_name:
-                norm_vehicle_type = normalize_fa_text(vehicle_type_name)
-                search_conditions.append(
-                    models.Product.vehicle_types.any(
+                try:
+                    search_conditions.append(
                         or_(
-                            normalize_sql_expr(models.VehicleType.name).contains(norm_vehicle_type),
-                            models.VehicleType.name.ilike(f'%{vehicle_type_name}%')  # Fallback
+                            normalize_sql_expr(models.Product.compatible_models).contains(norm_model),
+                            models.Product.compatible_models.ilike(f'%{model_name}%')  # Fallback
                         )
                     )
-                )
+                except Exception:
+                    # Fallback to simple search if normalization fails
+                    search_conditions.append(
+                        models.Product.compatible_models.ilike(f'%{model_name}%')
+                    )
             
-            # General product search with normalization
-            search_conditions.extend([
-                normalize_sql_expr(models.Product.name).contains(norm_query),
-                normalize_sql_expr(models.Product.name_fa).contains(norm_query),
-                normalize_sql_expr(models.Product.description).contains(norm_query),
-                normalize_sql_expr(models.Product.description_fa).contains(norm_query),
-                # Fallback searches
-                models.Product.name.ilike(f'%{query}%'),
-                models.Product.name_fa.ilike(f'%{query}%'),
-                models.Product.description.ilike(f'%{query}%'),
-                models.Product.description_fa.ilike(f'%{query}%')
-            ])
+            # Vehicle type search with normalization (with fallback)
+            if vehicle_type_name:
+                norm_vehicle_type = normalize_fa_text(vehicle_type_name)
+                try:
+                    search_conditions.append(
+                        models.Product.vehicle_types.any(
+                            or_(
+                                normalize_sql_expr(models.VehicleType.name).contains(norm_vehicle_type),
+                                models.VehicleType.name.ilike(f'%{vehicle_type_name}%')  # Fallback
+                            )
+                        )
+                    )
+                except Exception:
+                    # Fallback to simple search if normalization fails
+                    search_conditions.append(
+                        models.Product.vehicle_types.any(
+                            models.VehicleType.name.ilike(f'%{vehicle_type_name}%')
+                        )
+                    )
+            
+            # General product search with normalization (with fallback)
+            try:
+                search_conditions.extend([
+                    normalize_sql_expr(models.Product.name).contains(norm_query),
+                    normalize_sql_expr(models.Product.name_fa).contains(norm_query),
+                    normalize_sql_expr(models.Product.description).contains(norm_query),
+                    normalize_sql_expr(models.Product.description_fa).contains(norm_query),
+                    # Fallback searches
+                    models.Product.name.ilike(f'%{query}%'),
+                    models.Product.name_fa.ilike(f'%{query}%'),
+                    models.Product.description.ilike(f'%{query}%'),
+                    models.Product.description_fa.ilike(f'%{query}%')
+                ])
+            except Exception:
+                # Fallback to simple search if normalization fails
+                search_conditions.extend([
+                    models.Product.name.ilike(f'%{query}%'),
+                    models.Product.name_fa.ilike(f'%{query}%'),
+                    models.Product.description.ilike(f'%{query}%'),
+                    models.Product.description_fa.ilike(f'%{query}%')
+                ])
             
             # Apply search conditions
             if search_conditions:
@@ -193,29 +244,49 @@ class IntelligentSearchEngine:
             # Normalize the query
             norm_query = normalize_fa_text(query)
             
-            # Search in category names with normalization
-            categories = models.PartCategory.query.filter(
-                or_(
-                    normalize_sql_expr(models.PartCategory.category_name).contains(norm_query),
-                    normalize_sql_expr(models.PartCategory.category_name_fa).contains(norm_query),
-                    models.PartCategory.category_name.ilike(f'%{query}%'),  # Fallback
-                    models.PartCategory.category_name_fa.ilike(f'%{query}%')
-                ),
-                models.PartCategory.is_active == True
-            ).all()
+            # Search in category names with normalization (with fallback)
+            try:
+                categories = models.PartCategory.query.filter(
+                    or_(
+                        normalize_sql_expr(models.PartCategory.category_name).contains(norm_query),
+                        normalize_sql_expr(models.PartCategory.category_name_fa).contains(norm_query),
+                        models.PartCategory.category_name.ilike(f'%{query}%'),  # Fallback
+                        models.PartCategory.category_name_fa.ilike(f'%{query}%')
+                    ),
+                    models.PartCategory.is_active == True
+                ).all()
+            except Exception:
+                # Fallback to simple search if normalization fails
+                categories = models.PartCategory.query.filter(
+                    or_(
+                        models.PartCategory.category_name.ilike(f'%{query}%'),
+                        models.PartCategory.category_name_fa.ilike(f'%{query}%')
+                    ),
+                    models.PartCategory.is_active == True
+                ).all()
             
             category_ids = [c.id for c in categories]
             
-            # Search in subcategories with normalization
-            subcategories = models.PartSubcategory.query.filter(
-                or_(
-                    normalize_sql_expr(models.PartSubcategory.subcategory_name).contains(norm_query),
-                    normalize_sql_expr(models.PartSubcategory.subcategory_name_fa).contains(norm_query),
-                    models.PartSubcategory.subcategory_name.ilike(f'%{query}%'),  # Fallback
-                    models.PartSubcategory.subcategory_name_fa.ilike(f'%{query}%')
-                ),
-                models.PartSubcategory.is_active == True
-            ).all()
+            # Search in subcategories with normalization (with fallback)
+            try:
+                subcategories = models.PartSubcategory.query.filter(
+                    or_(
+                        normalize_sql_expr(models.PartSubcategory.subcategory_name).contains(norm_query),
+                        normalize_sql_expr(models.PartSubcategory.subcategory_name_fa).contains(norm_query),
+                        models.PartSubcategory.subcategory_name.ilike(f'%{query}%'),  # Fallback
+                        models.PartSubcategory.subcategory_name_fa.ilike(f'%{query}%')
+                    ),
+                    models.PartSubcategory.is_active == True
+                ).all()
+            except Exception:
+                # Fallback to simple search if normalization fails
+                subcategories = models.PartSubcategory.query.filter(
+                    or_(
+                        models.PartSubcategory.subcategory_name.ilike(f'%{query}%'),
+                        models.PartSubcategory.subcategory_name_fa.ilike(f'%{query}%')
+                    ),
+                    models.PartSubcategory.is_active == True
+                ).all()
             
             subcategory_ids = [s.id for s in subcategories]
             
@@ -231,20 +302,31 @@ class IntelligentSearchEngine:
                 
                 query_obj = query_obj.filter(or_(*conditions))
             
-            # Also search in product names and descriptions with normalization
-            query_obj = query_obj.filter(
-                or_(
-                    normalize_sql_expr(models.Product.name).contains(norm_query),
-                    normalize_sql_expr(models.Product.name_fa).contains(norm_query),
-                    normalize_sql_expr(models.Product.description).contains(norm_query),
-                    normalize_sql_expr(models.Product.description_fa).contains(norm_query),
-                    # Fallback searches
-                    models.Product.name.ilike(f'%{query}%'),
-                    models.Product.name_fa.ilike(f'%{query}%'),
-                    models.Product.description.ilike(f'%{query}%'),
-                    models.Product.description_fa.ilike(f'%{query}%')
+            # Also search in product names and descriptions with normalization (with fallback)
+            try:
+                query_obj = query_obj.filter(
+                    or_(
+                        normalize_sql_expr(models.Product.name).contains(norm_query),
+                        normalize_sql_expr(models.Product.name_fa).contains(norm_query),
+                        normalize_sql_expr(models.Product.description).contains(norm_query),
+                        normalize_sql_expr(models.Product.description_fa).contains(norm_query),
+                        # Fallback searches
+                        models.Product.name.ilike(f'%{query}%'),
+                        models.Product.name_fa.ilike(f'%{query}%'),
+                        models.Product.description.ilike(f'%{query}%'),
+                        models.Product.description_fa.ilike(f'%{query}%')
+                    )
                 )
-            )
+            except Exception:
+                # Fallback to simple search if normalization fails
+                query_obj = query_obj.filter(
+                    or_(
+                        models.Product.name.ilike(f'%{query}%'),
+                        models.Product.name_fa.ilike(f'%{query}%'),
+                        models.Product.description.ilike(f'%{query}%'),
+                        models.Product.description_fa.ilike(f'%{query}%')
+                    )
+                )
             
             products = query_obj.options(
                 joinedload(models.Product.brand),
@@ -278,14 +360,18 @@ class IntelligentSearchEngine:
                     models.Product.description_fa.ilike(pattern)
                 ])
             
-            # Add normalized patterns
-            for pattern in norm_fuzzy_patterns:
-                conditions.extend([
-                    normalize_sql_expr(models.Product.name).contains(pattern.replace('%', '')),
-                    normalize_sql_expr(models.Product.name_fa).contains(pattern.replace('%', '')),
-                    normalize_sql_expr(models.Product.description).contains(pattern.replace('%', '')),
-                    normalize_sql_expr(models.Product.description_fa).contains(pattern.replace('%', ''))
-                ])
+            # Add normalized patterns (with fallback)
+            try:
+                for pattern in norm_fuzzy_patterns:
+                    conditions.extend([
+                        normalize_sql_expr(models.Product.name).contains(pattern.replace('%', '')),
+                        normalize_sql_expr(models.Product.name_fa).contains(pattern.replace('%', '')),
+                        normalize_sql_expr(models.Product.description).contains(pattern.replace('%', '')),
+                        normalize_sql_expr(models.Product.description_fa).contains(pattern.replace('%', ''))
+                    ])
+            except Exception:
+                # If normalization fails, skip normalized patterns
+                current_app.logger.warning("Fuzzy search normalization failed, using simple patterns only")
             
             products = models.Product.query.filter(
                 or_(*conditions),
@@ -309,20 +395,34 @@ class IntelligentSearchEngine:
             # Normalize the query
             norm_query = normalize_fa_text(query)
             
-            # Search in tags and technical specs with normalization
-            products = models.Product.query.filter(
-                or_(
-                    normalize_sql_expr(models.Product.tags).contains(norm_query),
-                    normalize_sql_expr(models.Product.technical_specs).contains(norm_query),
-                    models.Product.tags.ilike(f'%{query}%'),  # Fallback
-                    models.Product.technical_specs.ilike(f'%{query}%')
-                ),
-                models.Product.is_active == True
-            ).options(
-                joinedload(models.Product.brand),
-                joinedload(models.Product.category),
-                joinedload(models.Product.subcategory)
-            ).limit(15).all()
+            # Search in tags and technical specs with normalization (with fallback)
+            try:
+                products = models.Product.query.filter(
+                    or_(
+                        normalize_sql_expr(models.Product.tags).contains(norm_query),
+                        normalize_sql_expr(models.Product.technical_specs).contains(norm_query),
+                        models.Product.tags.ilike(f'%{query}%'),  # Fallback
+                        models.Product.technical_specs.ilike(f'%{query}%')
+                    ),
+                    models.Product.is_active == True
+                ).options(
+                    joinedload(models.Product.brand),
+                    joinedload(models.Product.category),
+                    joinedload(models.Product.subcategory)
+                ).limit(15).all()
+            except Exception:
+                # Fallback to simple search if normalization fails
+                products = models.Product.query.filter(
+                    or_(
+                        models.Product.tags.ilike(f'%{query}%'),
+                        models.Product.technical_specs.ilike(f'%{query}%')
+                    ),
+                    models.Product.is_active == True
+                ).options(
+                    joinedload(models.Product.brand),
+                    joinedload(models.Product.category),
+                    joinedload(models.Product.subcategory)
+                ).limit(15).all()
             
             return [self._product_to_dict(p) for p in products]
         except Exception as e:
@@ -515,18 +615,28 @@ class IntelligentSearchEngine:
         suggestions = []
         query = query.strip()
         
-        # Brand suggestions with normalization
+        # Brand suggestions with normalization (with fallback)
         from routes import normalize_fa_text, normalize_sql_expr
         norm_q = normalize_fa_text(query)
-        brands = models.Brand.query.filter(
-            or_(
-                normalize_sql_expr(models.Brand.name).contains(norm_q),
-                normalize_sql_expr(models.Brand.name_fa).contains(norm_q),
-                models.Brand.name.ilike(f'%{query}%'),  # Fallback
-                models.Brand.name_fa.ilike(f'%{query}%')
-            ),
-            models.Brand.is_active == True
-        ).limit(5).all()
+        try:
+            brands = models.Brand.query.filter(
+                or_(
+                    normalize_sql_expr(models.Brand.name).contains(norm_q),
+                    normalize_sql_expr(models.Brand.name_fa).contains(norm_q),
+                    models.Brand.name.ilike(f'%{query}%'),  # Fallback
+                    models.Brand.name_fa.ilike(f'%{query}%')
+                ),
+                models.Brand.is_active == True
+            ).limit(5).all()
+        except Exception:
+            # Fallback to simple search if normalization fails
+            brands = models.Brand.query.filter(
+                or_(
+                    models.Brand.name.ilike(f'%{query}%'),
+                    models.Brand.name_fa.ilike(f'%{query}%')
+                ),
+                models.Brand.is_active == True
+            ).limit(5).all()
         
         for brand in brands:
             suggestions.append({
@@ -539,16 +649,27 @@ class IntelligentSearchEngine:
         
         # Model suggestions (if brand context exists)
         if context and 'brand_id' in context:
-            models_query = models.VehicleModel.query.filter(
-                models.VehicleModel.brand_id == context['brand_id'],
-                or_(
-                    normalize_sql_expr(models.VehicleModel.model_name).contains(norm_q),
-                    normalize_sql_expr(models.VehicleModel.model_name_fa).contains(norm_q),
-                    models.VehicleModel.model_name.ilike(f'%{query}%'),  # Fallback
-                    models.VehicleModel.model_name_fa.ilike(f'%{query}%')
-                ),
-                models.VehicleModel.is_active == True
-            ).limit(5).all()
+            try:
+                models_query = models.VehicleModel.query.filter(
+                    models.VehicleModel.brand_id == context['brand_id'],
+                    or_(
+                        normalize_sql_expr(models.VehicleModel.model_name).contains(norm_q),
+                        normalize_sql_expr(models.VehicleModel.model_name_fa).contains(norm_q),
+                        models.VehicleModel.model_name.ilike(f'%{query}%'),  # Fallback
+                        models.VehicleModel.model_name_fa.ilike(f'%{query}%')
+                    ),
+                    models.VehicleModel.is_active == True
+                ).limit(5).all()
+            except Exception:
+                # Fallback to simple search if normalization fails
+                models_query = models.VehicleModel.query.filter(
+                    models.VehicleModel.brand_id == context['brand_id'],
+                    or_(
+                        models.VehicleModel.model_name.ilike(f'%{query}%'),
+                        models.VehicleModel.model_name_fa.ilike(f'%{query}%')
+                    ),
+                    models.VehicleModel.is_active == True
+                ).limit(5).all()
             
             for model in models_query:
                 suggestions.append({
@@ -560,15 +681,25 @@ class IntelligentSearchEngine:
                 })
         
         # Category suggestions
-        categories = models.PartCategory.query.filter(
-            or_(
-                normalize_sql_expr(models.PartCategory.category_name).contains(norm_q),
-                normalize_sql_expr(models.PartCategory.category_name_fa).contains(norm_q),
-                models.PartCategory.category_name.ilike(f'%{query}%'),  # Fallback
-                models.PartCategory.category_name_fa.ilike(f'%{query}%')
-            ),
-            models.PartCategory.is_active == True
-        ).limit(5).all()
+        try:
+            categories = models.PartCategory.query.filter(
+                or_(
+                    normalize_sql_expr(models.PartCategory.category_name).contains(norm_q),
+                    normalize_sql_expr(models.PartCategory.category_name_fa).contains(norm_q),
+                    models.PartCategory.category_name.ilike(f'%{query}%'),  # Fallback
+                    models.PartCategory.category_name_fa.ilike(f'%{query}%')
+                ),
+                models.PartCategory.is_active == True
+            ).limit(5).all()
+        except Exception:
+            # Fallback to simple search if normalization fails
+            categories = models.PartCategory.query.filter(
+                or_(
+                    models.PartCategory.category_name.ilike(f'%{query}%'),
+                    models.PartCategory.category_name_fa.ilike(f'%{query}%')
+                ),
+                models.PartCategory.is_active == True
+            ).limit(5).all()
         
         for category in categories:
             suggestions.append({
@@ -580,15 +711,25 @@ class IntelligentSearchEngine:
             })
         
         # Product suggestions
-        products = models.Product.query.filter(
-            or_(
-                normalize_sql_expr(models.Product.name).contains(norm_q),
-                normalize_sql_expr(models.Product.name_fa).contains(norm_q),
-                models.Product.name.ilike(f'%{query}%'),  # Fallback
-                models.Product.name_fa.ilike(f'%{query}%')
-            ),
-            models.Product.is_active == True
-        ).limit(5).all()
+        try:
+            products = models.Product.query.filter(
+                or_(
+                    normalize_sql_expr(models.Product.name).contains(norm_q),
+                    normalize_sql_expr(models.Product.name_fa).contains(norm_q),
+                    models.Product.name.ilike(f'%{query}%'),  # Fallback
+                    models.Product.name_fa.ilike(f'%{query}%')
+                ),
+                models.Product.is_active == True
+            ).limit(5).all()
+        except Exception:
+            # Fallback to simple search if normalization fails
+            products = models.Product.query.filter(
+                or_(
+                    models.Product.name.ilike(f'%{query}%'),
+                    models.Product.name_fa.ilike(f'%{query}%')
+                ),
+                models.Product.is_active == True
+            ).limit(5).all()
         
         for product in products:
             suggestions.append({

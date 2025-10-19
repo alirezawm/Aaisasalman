@@ -43,45 +43,21 @@ def normalize_sql_expr(col):
     """Build SQL expression that normalizes a column similar to normalize_fa_text."""
     from sqlalchemy import func, text
     
-    # Apply character normalization using SQLite's replace function
-    # This handles the most common Persian/Arabic character variations
+    # Use a much simpler approach to avoid SQLite stack overflow
+    # Instead of chaining many replace functions, use only the most essential ones
+    # and rely on Python-side normalization for complex cases
+    
+    # Apply only the most critical character normalizations
+    # This keeps the SQL simple and prevents stack overflow
     normalized_col = col
     
-    # Normalize Arabic characters to Persian equivalents
-    char_replacements = [
-        ('ي', 'ی'),  # Arabic yeh to Persian yeh
-        ('ك', 'ک'),  # Arabic kaf to Persian kaf
-        ('أ', 'ا'),  # Arabic alef with hamza above to alef
-        ('إ', 'ا'),  # Arabic alef with hamza below to alef
-        ('آ', 'ا'),  # Arabic alef with madda above to alef
-        ('ة', 'ه'),  # Arabic teh marbuta to heh
-        ('ۀ', 'ه'),  # Arabic heh with yeh above to heh
-        ('\u200c', ' '),  # ZWNJ to space
-    ]
-    
-    # Apply character replacements
-    for arabic_char, persian_char in char_replacements:
-        normalized_col = func.replace(normalized_col, arabic_char, persian_char)
-    
-    # Normalize Arabic digits to Persian digits
-    for i in range(10):
-        arabic_digit = chr(0x0660 + i)  # Arabic-Indic digits
-        persian_digit = str(i)
-        normalized_col = func.replace(normalized_col, arabic_digit, persian_digit)
-    
-    # Remove diacritics and normalize whitespace
-    normalized_col = func.replace(normalized_col, '\u064B', '')  # Fathatan
-    normalized_col = func.replace(normalized_col, '\u064C', '')  # Dammatan
-    normalized_col = func.replace(normalized_col, '\u064D', '')  # Kasratan
-    normalized_col = func.replace(normalized_col, '\u064E', '')  # Fatha
-    normalized_col = func.replace(normalized_col, '\u064F', '')  # Damma
-    normalized_col = func.replace(normalized_col, '\u0650', '')  # Kasra
-    normalized_col = func.replace(normalized_col, '\u0651', '')  # Shadda
-    normalized_col = func.replace(normalized_col, '\u0652', '')  # Sukun
-    normalized_col = func.replace(normalized_col, '\u0640', '')  # Tatweel
-    
-    # Normalize multiple spaces to single space and trim
-    normalized_col = func.trim(func.replace(normalized_col, '  ', ' '))
+    # Apply only the most common character replacements (max 5-6 to avoid stack overflow)
+    normalized_col = func.replace(normalized_col, 'ي', 'ی')  # Arabic yeh to Persian yeh
+    normalized_col = func.replace(normalized_col, 'ك', 'ک')  # Arabic kaf to Persian kaf
+    normalized_col = func.replace(normalized_col, 'أ', 'ا')  # Arabic alef with hamza above to alef
+    normalized_col = func.replace(normalized_col, 'إ', 'ا')  # Arabic alef with hamza below to alef
+    normalized_col = func.replace(normalized_col, 'ة', 'ه')  # Arabic teh marbuta to heh
+    normalized_col = func.replace(normalized_col, '\u200c', ' ')  # ZWNJ to space
     
     # Convert to lowercase for case-insensitive search
     return func.lower(normalized_col)
