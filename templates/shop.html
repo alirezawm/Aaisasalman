@@ -402,8 +402,8 @@ function updateProductPoints(quantityInput) {
     
     // Calculate points using the same logic as the backend
     var totalPrice = price * quantity; // Total price in thousands of rials
-    var basePoints = Math.floor((totalPrice / 100) * 500); // 500 points per 100k rials
-    var bonusPoints = Math.min((quantity - 1) * 50, 1000); // 50 bonus points per additional product, max 1000
+    var basePoints = Math.floor((totalPrice / 100) * 0.5); // 0.5 points per 100k rials
+    var bonusPoints = Math.min((quantity - 1) * 0.05, 1); // 0.05 bonus points per additional product, max 1
     var totalPoints = basePoints + bonusPoints;
     
     // Update points display
