@@ -232,21 +232,8 @@ function clearFilters() {
 
 // View invoice details
 function viewInvoice(invoiceId) {
-    fetch(`/api/profile/invoices/${invoiceId}/status`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                showAlert('خطا در بارگذاری جزئیات فاکتور: ' + data.error, 'danger');
-                return;
-            }
-            
-            renderInvoiceDetail(data);
-            new bootstrap.Modal(document.getElementById('invoiceDetailModal')).show();
-        })
-        .catch(error => {
-            console.error('Error loading invoice details:', error);
-            showAlert('خطا در بارگذاری جزئیات فاکتور', 'danger');
-        });
+    // Redirect to invoice detail page
+    window.location.href = `/invoice/${invoiceId}`;
 }
 
 // Render invoice detail

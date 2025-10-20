@@ -87,6 +87,16 @@ from detection_api import detection_bp
 if 'detection_api' not in app.blueprints:
     app.register_blueprint(detection_bp)
 
+# Register Tadbir Monitoring Dashboard Blueprint
+from tadbir_monitoring_dashboard import monitoring_bp
+if 'tadbir_monitoring' not in app.blueprints:
+    app.register_blueprint(monitoring_bp)
+
+# Register Sync API Blueprint
+from sync_api import sync_api_bp
+if 'sync_api' not in app.blueprints:
+    app.register_blueprint(sync_api_bp)
+
 # Define format_price function here to avoid circular import
 def format_price(price, is_isaco=False):
     """Format price as full Rials. Input is now stored in full Rials."""
@@ -128,11 +138,38 @@ def csrf_token():
 
 # Define helper function here to avoid circular import
 def can_see_bulk_prices(user):
-    """Check if user can see bulk prices (must be bulk buyer AND approved)"""
-    return user and user.is_authenticated and user.is_bulk_buyer and user.bulk_buyer_approval_status == 'approved'
+    """Check if user can see bulk prices (must be bulk buyer AND approved OR have عمده role)"""
+    if not user or not user.is_authenticated:
+        return False
+    
+    # Check if user has the عمده (wholesale) role
+    if user.has_role('عمده', 'site'):
+        return True
+    
+    # Check traditional bulk buyer status
+    return user.is_bulk_buyer and user.bulk_buyer_approval_status == 'approved'
+
+def can_see_isaco_products(user):
+    """Check if user can see Isaco products (must have عمده role or be admin)"""
+    if not user or not user.is_authenticated:
+        return False
+    
+    # Admin users can see everything
+    if user.is_admin:
+        return True
+    
+    # Users with عمده role can see Isaco products
+    if user.has_role('عمده', 'site'):
+        return True
+    
+    # Users with کلربر_عمده role can see Isaco products
+    if user.has_role('کلربر_عمده', 'site'):
+        return True
+    
+    return False
 
 # Make functions available in templates
-app.jinja_env.globals.update(format_price=format_price, csrf_token=csrf_token, can_see_bulk_prices=can_see_bulk_prices)
+app.jinja_env.globals.update(format_price=format_price, csrf_token=csrf_token, can_see_bulk_prices=can_see_bulk_prices, can_see_isaco_products=can_see_isaco_products)
 
 # Register Persian date filters
 app.jinja_env.filters['persian_date'] = persian_date_filter
@@ -186,14 +223,22 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"Failed to enable SQLite optimizations: {e}")
         
-        # Initialize Tadbir scheduler
+        # Initialize Enhanced Tadbir scheduler
         try:
-            from tadbir_scheduler_service import get_scheduler
-            scheduler = get_scheduler()
-            scheduler.start_scheduler()
-            print("Tadbir scheduler started successfully")
+            from enhanced_tadbir_scheduler import get_enhanced_scheduler
+            enhanced_scheduler = get_enhanced_scheduler()
+            enhanced_scheduler.start_scheduler()
+            print("Enhanced Tadbir scheduler started successfully")
         except Exception as e:
-            print(f"Failed to start Tadbir scheduler: {e}")
+            print(f"Failed to start Enhanced Tadbir scheduler: {e}")
+            # Fallback to original scheduler
+            try:
+                from tadbir_scheduler_service import get_scheduler
+                scheduler = get_scheduler()
+                scheduler.start_scheduler()
+                print("Fallback Tadbir scheduler started successfully")
+            except Exception as e2:
+                print(f"Failed to start fallback Tadbir scheduler: {e2}")
     
     # Add periodic WAL checkpointing
     import threading

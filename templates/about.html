@@ -29,19 +29,8 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-8">
+                        <div class="col-md-12">
                             <p class="lead">{{ company_info.description }}</p>
-                        </div>
-                        <div class="col-md-4 text-center">
-                            {% if company_info.logo %}
-                                <img src="{{ url_for('static', filename='images/logos/' + company_info.logo) }}" 
-                                     class="img-fluid" alt="لوگوی شرکت">
-                            {% else %}
-                                <div class="bg-danger rounded-circle d-inline-flex align-items-center justify-content-center" 
-                                     style="width: 150px; height: 150px;">
-                                    <i class="fas fa-building fa-4x text-white"></i>
-                                </div>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -50,6 +39,56 @@
     </div>
     {% endif %}
     
+    <!-- CEO Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-tie me-2"></i>مدیر عامل شرکت
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4 text-center">
+                            <div class="ceo-image-container mb-3">
+                                <img src="{{ url_for('static', filename='images/photo_5460656944265162587_w.jpg') }}" 
+                                     alt="مهندس سلمان یزد فاضلی - مدیر عامل" 
+                                     class="img-fluid rounded-circle shadow" 
+                                     style="width: 250px; height: 250px; object-fit: cover;"
+                                     onerror="this.src='{{ url_for('static', filename='images/logo.png') }}'; this.style.background='#f8f9fa'; this.style.border='2px solid #dc3545';">
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <h5 class="text-primary mb-3">مهندس سلمان یزد فاضلی</h5>
+                            <p class="lead text-muted mb-3">
+                                مدیر عامل و بنیان‌گذار شرکت بازرگانی قطعات خودرو آسیا سلمان
+                            </p>
+                            <p class="mb-3">
+                                با بیش از ۵ سال تجربه در صنعت قطعات خودرو، جناب مهندس سلمان یزد فاضلی توانسته است 
+                                شرکت آسیا سلمان را به یکی از معتبرترین شرکت‌های توزیع قطعات خودرو در شرق کشور تبدیل کند.
+                            </p>
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="h4 text-danger">۵+</div>
+                                    <small class="text-muted">سال تجربه</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="h4 text-danger">۲۰+</div>
+                                    <small class="text-muted">برند نمایندگی</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="h4 text-danger">۱۰۰۰+</div>
+                                    <small class="text-muted">مشتری راضی</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Company Information -->
     <div class="row mb-5">
         <div class="col-md-6">

@@ -200,7 +200,7 @@
                                     </td>
                                     <td>
                                         <div class="price-selection">
-                                            {% if product.is_isaco_wh15 and config['ENABLE_ISACO_WH15'] %}
+                                            {% if product.is_isaco_wh15 and config['ENABLE_ISACO_WH15'] and can_see_isaco_products(current_user) %}
                                                 {% set has_valid_isaco_pricing = (product.isaco_cash and product.isaco_cash > 0) or (product.isaco_1m and product.isaco_1m > 0) or (product.isaco_2m and product.isaco_2m > 0) or (product.isaco_3m and product.isaco_3m > 0) %}
                                                 {% if has_valid_isaco_pricing %}
                                                 <div class="row g-2 align-items-center">

@@ -1,0 +1,701 @@
+{% extends "base.html" %}
+
+{% block title %}جزئیات کاربر {{ user.full_name }} - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_text_color_optimization') }}">
+                            <i class="fas fa-palette me-2"></i>بهینه‌سازی رنگ متن
+                        </a>
+                        <a class="nav-link" href="{{ url_for('excel_reconstruction') }}">
+                            <i class="fas fa-file-excel me-2"></i>بازسازی اکسل
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_roles') }}">
+                            <i class="fas fa-user-shield me-2"></i>مدیریت نقش‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_user_roles') }}">
+                            <i class="fas fa-users-cog me-2"></i>نقش‌های کاربران
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users me-2"></i>مدیریت کاربران
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_bulk_buyer_requests') }}">
+                            <i class="fas fa-handshake me-2"></i>درخواست‌های خریدار عمده
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_audit_logs') }}">
+                            <i class="fas fa-clipboard-list me-2"></i>گزارش‌های حسابرسی
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_invoices') }}">
+                            <i class="fas fa-file-invoice me-2"></i>فاکتورها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_points_dashboard') }}">
+                            <i class="fas fa-coins me-2"></i>سیستم امتیازی
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_accounting_dashboard') }}">
+                            <i class="fas fa-calculator me-2"></i>حسابداری تدبیر
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <div class="admin-content">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="{{ url_for('admin_users') }}">مدیریت کاربران</a></li>
+                                <li class="breadcrumb-item active">{{ user.full_name }}</li>
+                            </ol>
+                        </nav>
+                        <h2 class="mb-1">
+                            <i class="fas fa-user me-2 text-primary"></i>{{ user.full_name }}
+                        </h2>
+                        <p class="text-muted mb-0">@{{ user.username }}</p>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-right me-1"></i>بازگشت به لیست
+                        </a>
+                        <a href="{{ url_for('admin_user_password', user_id=user.id) }}" class="btn btn-outline-info">
+                            <i class="fas fa-key me-1"></i>مدیریت رمز عبور
+                        </a>
+                        {% if user.id != current_user.id %}
+                        <div class="btn-group" role="group">
+                            <form method="POST" action="{{ url_for('admin_toggle_user_status', user_id=user.id) }}" 
+                                  class="d-inline" onsubmit="return confirmToggleStatus('{{ user.full_name }}', {{ user.is_active|lower }})">
+                                <button type="submit" class="btn btn-warning" 
+                                        title="{% if user.is_active %}غیرفعال کردن{% else %}فعال کردن{% endif %}">
+                                    <i class="fas fa-{% if user.is_active %}user-times{% else %}user-check{% endif %} me-1"></i>
+                                    {% if user.is_active %}غیرفعال کردن{% else %}فعال کردن{% endif %}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}" 
+                                  class="d-inline" onsubmit="return confirmDelete('{{ user.full_name }}', '{{ user.username }}')">
+                                <button type="submit" class="btn btn-danger" title="حذف کاربر">
+                                    <i class="fas fa-trash me-1"></i>حذف کاربر
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- User Status and Type -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">وضعیت کاربر</h6>
+                                <div class="d-flex align-items-center">
+                                    {% if user.is_active %}
+                                        <span class="badge bg-success fs-6 me-2">فعال</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary fs-6 me-2">غیرفعال</span>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        {% if user.last_login %}
+                                            آخرین ورود: {{ user.last_login | persian_date_pretty }}
+                                        {% else %}
+                                            هرگز وارد نشده
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">نوع کاربر</h6>
+                                <div class="d-flex align-items-center">
+                                    {% if user.is_admin %}
+                                        <span class="badge bg-danger fs-6 me-2">مدیر</span>
+                                    {% elif user.is_bulk_buyer %}
+                                        <span class="badge bg-warning fs-6 me-2">خریدار عمده</span>
+                                        {% if user.bulk_buyer_approval_status == 'approved' %}
+                                            <span class="badge bg-success fs-6 me-2">تأیید شده</span>
+                                        {% elif user.bulk_buyer_approval_status == 'pending' %}
+                                            <span class="badge bg-warning fs-6 me-2">در انتظار تأیید</span>
+                                        {% else %}
+                                            <span class="badge bg-danger fs-6 me-2">رد شده</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary fs-6 me-2">کاربر عادی</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Information Tabs -->
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="userTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab">
+                                    <i class="fas fa-user me-1"></i>اطلاعات شخصی
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab">
+                                    <i class="fas fa-chart-line me-1"></i>فعالیت‌ها
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab">
+                                    <i class="fas fa-file-invoice me-1"></i>فاکتورها
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="roles-tab" data-bs-toggle="tab" data-bs-target="#roles" type="button" role="tab">
+                                    <i class="fas fa-user-shield me-1"></i>نقش‌ها و مجوزها
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="userTabsContent">
+                            <!-- Profile Information Tab -->
+                            <div class="tab-pane fade show active" id="profile" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary mb-3">اطلاعات اصلی</h6>
+                                        <table class="table table-borderless">
+                                            <tr>
+                                                <td class="fw-bold">نام کاربری:</td>
+                                                <td>{{ user.username }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">نام کامل:</td>
+                                                <td>{{ user.full_name }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">ایمیل:</td>
+                                                <td>
+                                                    {% if user.email %}
+                                                        <a href="mailto:{{ user.email }}" class="text-decoration-none">{{ user.email }}</a>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">تلفن:</td>
+                                                <td>
+                                                    <a href="tel:{{ user.phone }}" class="text-decoration-none">{{ user.phone }}</a>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">نام شرکت:</td>
+                                                <td>{{ user.company_name or '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">تاریخ ثبت:</td>
+                                                <td>{{ user.created_at | persian_date_pretty }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary mb-3">اطلاعات تکمیلی</h6>
+                                        <table class="table table-borderless">
+                                            <tr>
+                                                <td class="fw-bold">کد ملی:</td>
+                                                <td>{{ user.national_id or '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">تاریخ تولد:</td>
+                                                <td>{{ user.birth_date | persian_date_pretty if user.birth_date else '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">آدرس:</td>
+                                                <td>{{ user.address or '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">تلفن ثابت:</td>
+                                                <td>{{ user.landline_phone or '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">تلفن دوم:</td>
+                                                <td>{{ user.secondary_phone or '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">درصد تکمیل پروفایل:</td>
+                                                <td>
+                                                    <div class="progress" style="height: 8px;">
+                                                        <div class="progress-bar" role="progressbar" style="width: {{ user.profile_completion_percentage }}%"></div>
+                                                    </div>
+                                                    <small class="text-muted">{{ user.profile_completion_percentage }}%</small>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Financial Information -->
+                                {% if user_points or invoice_profile %}
+                                <hr class="my-4">
+                                <h6 class="text-primary mb-3">اطلاعات مالی</h6>
+                                <div class="row">
+                                    {% if user_points %}
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-title">امتیازات</h6>
+                                                <div class="row text-center">
+                                                    <div class="col-4">
+                                                        <div class="text-primary fw-bold fs-4">{{ user_points.current_points }}</div>
+                                                        <small class="text-muted">امتیاز فعلی</small>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <div class="text-success fw-bold fs-4">{{ user_points.total_earned_points }}</div>
+                                                        <small class="text-muted">کل کسب شده</small>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <div class="text-warning fw-bold fs-4">{{ user_points.total_spent_points }}</div>
+                                                        <small class="text-muted">کل خرج شده</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if invoice_profile %}
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-title">پروفایل فاکتور</h6>
+                                                <table class="table table-sm table-borderless mb-0">
+                                                    <tr>
+                                                        <td>نوع مشتری:</td>
+                                                        <td>
+                                                            {% if invoice_profile.customer_type == 'bulk' %}
+                                                                <span class="badge bg-warning">عمده</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">تکی</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>حد تایید خودکار:</td>
+                                                        <td>{{ format_price(invoice_profile.auto_approval_limit) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>تخفیف عمده:</td>
+                                                        <td>{{ invoice_profile.bulk_discount_percentage }}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>حد اعتبار:</td>
+                                                        <td>{{ format_price(invoice_profile.credit_limit) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>اعتبار استفاده شده:</td>
+                                                        <td>{{ format_price(invoice_profile.current_credit_used) }}</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Activity Tab -->
+                            <div class="tab-pane fade" id="activity" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary mb-3">آمار کلی</h6>
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-3">
+                                                <div class="card bg-primary text-white">
+                                                    <div class="card-body">
+                                                        <h4 class="mb-0">{{ user_stats.total_invoices }}</h4>
+                                                        <small>تعداد فاکتورها</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="card bg-success text-white">
+                                                    <div class="card-body">
+                                                        <h4 class="mb-0">{{ format_price(user_stats.total_spent) }}</h4>
+                                                        <small>کل خرید</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="card bg-info text-white">
+                                                    <div class="card-body">
+                                                        <h4 class="mb-0">{{ user_stats.cart_items_count }}</h4>
+                                                        <small>آیتم‌های سبد</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="card bg-warning text-white">
+                                                    <div class="card-body">
+                                                        <h4 class="mb-0">{{ user_stats.wishlist_items_count }}</h4>
+                                                        <small>لیست علاقه‌مندی</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary mb-3">فعالیت‌های اخیر</h6>
+                                        <div class="list-group">
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between">
+                                                    <span>جستجوهای انجام شده</span>
+                                                    <span class="badge bg-primary">{{ user_stats.search_queries_count }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between">
+                                                    <span>مدارک آپلود شده</span>
+                                                    <span class="badge bg-info">{{ user_stats.documents_count }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between">
+                                                    <span>اعلان‌های خوانده نشده</span>
+                                                    <span class="badge bg-warning">{{ user_stats.unread_notifications }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Search History -->
+                                {% if search_history %}
+                                <hr class="my-4">
+                                <h6 class="text-primary mb-3">تاریخچه جستجو</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>عبارت جستجو</th>
+                                                <th>تعداد نتایج</th>
+                                                <th>تاریخ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for search in search_history %}
+                                            <tr>
+                                                <td>{{ search.search_query }}</td>
+                                                <td>{{ search.results_count or 0 }}</td>
+                                                <td>{{ search.created_at | persian_date_pretty }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Invoices Tab -->
+                            <div class="tab-pane fade" id="invoices" role="tabpanel">
+                                {% if invoices %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>شماره فاکتور</th>
+                                                <th>مبلغ</th>
+                                                <th>نوع پرداخت</th>
+                                                <th>وضعیت</th>
+                                                <th>تاریخ</th>
+                                                <th>عملیات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for invoice in invoices %}
+                                            <tr>
+                                                <td>{{ invoice.invoice_number }}</td>
+                                                <td>{{ format_price(invoice.total_amount) }}</td>
+                                                <td>
+                                                    {% if invoice.payment_type == 'cash' %}
+                                                        <span class="badge bg-success">نقدی</span>
+                                                    {% else %}
+                                                        <span class="badge bg-warning">چکی</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if invoice.approval_status == 'approved' %}
+                                                        <span class="badge bg-success">تأیید شده</span>
+                                                    {% elif invoice.approval_status == 'rejected' %}
+                                                        <span class="badge bg-danger">رد شده</span>
+                                                    {% elif invoice.approval_status == 'under_review' %}
+                                                        <span class="badge bg-warning">در حال بررسی</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">در انتظار</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ invoice.created_at | persian_date_pretty }}</td>
+                                                <td>
+                                                    <a href="{{ url_for('admin_invoice_detail', invoice_id=invoice.id) }}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">هیچ فاکتوری یافت نشد</p>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Roles Tab -->
+                            <div class="tab-pane fade" id="roles" role="tabpanel">
+                                {% if user_roles %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>نقش</th>
+                                                <th>حوزه</th>
+                                                <th>تخصیص داده شده توسط</th>
+                                                <th>تاریخ تخصیص</th>
+                                                <th>وضعیت</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for user_role in user_roles %}
+                                            <tr>
+                                                <td>{{ user_role.role.name }}</td>
+                                                <td>{{ user_role.scope }}</td>
+                                                <td>{{ user_role.assigner.full_name if user_role.assigner else 'سیستم' }}</td>
+                                                <td>{{ user_role.assigned_at | persian_date_pretty }}</td>
+                                                <td>
+                                                    {% if user_role.is_active %}
+                                                        <span class="badge bg-success">فعال</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">غیرفعال</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-user-shield fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">هیچ نقشی تخصیص داده نشده</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modals -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تأیید حذف کاربر</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>آیا از حذف کاربر <strong id="deleteUserName"></strong> (<span id="deleteUserUsername"></span>) اطمینان دارید؟</p>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    این عمل غیرقابل بازگشت است و تمام اطلاعات مرتبط با این کاربر حذف خواهد شد.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">حذف کاربر</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="toggleStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تغییر وضعیت کاربر</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>آیا از <span id="toggleAction"></span> کاربر <strong id="toggleUserName"></strong> اطمینان دارید؟</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-warning" id="confirmToggle">تأیید</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-sidebar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+}
+
+.admin-sidebar .nav-link {
+    color: rgba(255,255,255,0.8);
+    border-radius: 10px;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+}
+
+.admin-sidebar .nav-link:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    transform: translateX(5px);
+}
+
+.admin-sidebar .nav-link.active {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-weight: bold;
+}
+
+.admin-content {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    padding: 2rem;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    border-radius: 10px;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    color: #6c757d;
+    border-radius: 8px 8px 0 0;
+    margin-right: 5px;
+}
+
+.nav-tabs .nav-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+.nav-tabs .nav-link:hover {
+    border: none;
+    background: #f8f9fa;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+    background-color: #f8f9fa;
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+</style>
+
+<script>
+function confirmDelete(fullName, username) {
+    document.getElementById('deleteUserName').textContent = fullName;
+    document.getElementById('deleteUserUsername').textContent = username;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+    
+    document.getElementById('confirmDelete').onclick = function() {
+        // Find and submit the delete form
+        const forms = document.querySelectorAll('form[action*="/delete"]');
+        for (let form of forms) {
+            if (form.querySelector('button[title="حذف کاربر"]')) {
+                form.submit();
+                break;
+            }
+        }
+    };
+    
+    return false;
+}
+
+function confirmToggleStatus(fullName, isActive) {
+    const action = isActive ? 'غیرفعال کردن' : 'فعال کردن';
+    document.getElementById('toggleAction').textContent = action;
+    document.getElementById('toggleUserName').textContent = fullName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('toggleStatusModal'));
+    modal.show();
+    
+    document.getElementById('confirmToggle').onclick = function() {
+        // Find and submit the toggle form
+        const forms = document.querySelectorAll('form[action*="/toggle-status"]');
+        for (let form of forms) {
+            if (form.querySelector('button[title*="غیرفعال" i]') || form.querySelector('button[title*="فعال" i]')) {
+                form.submit();
+                break;
+            }
+        }
+    };
+    
+    return false;
+}
+</script>
+{% endblock %}

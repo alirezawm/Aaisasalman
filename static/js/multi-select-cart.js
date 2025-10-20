@@ -363,6 +363,7 @@ class MultiSelectCartSystem {
             if (result.success) {
                 const count = result.count;
                 $('.cart-count').text(count).toggle(count > 0);
+                $('.cart-count-text').text('(' + count + ')');
             }
         } catch (error) {
             console.error('Update cart count error:', error);

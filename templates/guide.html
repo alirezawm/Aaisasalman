@@ -1,0 +1,698 @@
+{% extends "base.html" %}
+
+{% block title %}راهنمای کامل سایت آسیا سلمان - آموزش استفاده از تمام امکانات{% endblock %}
+
+{% block description %}راهنمای جامع و کامل استفاده از سایت آسیا سلمان - آموزش ثبت نام، خرید، مدیریت حساب کاربری، و تمام امکانات سایت{% endblock %}
+
+{% block keywords %}راهنمای سایت, آموزش خرید, ثبت نام, مدیریت حساب, خرید عمده, فروشگاه آنلاین, آسیا سلمان{% endblock %}
+
+{% block extra_css %}
+<style>
+.guide-section {
+    margin-bottom: 3rem;
+    padding: 2rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-right: 5px solid #007bff;
+}
+
+.guide-step {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-left: 4px solid #28a745;
+}
+
+.guide-step h4 {
+    color: #007bff;
+    margin-bottom: 1rem;
+}
+
+.guide-step h5 {
+    color: #28a745;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.guide-step ul {
+    padding-right: 1.5rem;
+}
+
+.guide-step li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+.highlight-box {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin: 2rem 0;
+    text-align: center;
+}
+
+.warning-box {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    color: #212529;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    border-right: 5px solid #ffc107;
+}
+
+.success-box {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    border-right: 5px solid #28a745;
+}
+
+.info-box {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    border-right: 5px solid #17a2b8;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.feature-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+}
+
+.feature-card i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #007bff;
+}
+
+.toc {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+    border: 2px solid #e9ecef;
+}
+
+.toc h3 {
+    color: #007bff;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.toc ul {
+    list-style: none;
+    padding: 0;
+}
+
+.toc li {
+    margin-bottom: 0.8rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 5px;
+    border-right: 3px solid #007bff;
+}
+
+.toc a {
+    color: #495057;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.toc a:hover {
+    color: #007bff;
+}
+
+.step-number {
+    background: #007bff;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.screenshot-placeholder {
+    background: #e9ecef;
+    border: 2px dashed #6c757d;
+    border-radius: 8px;
+    padding: 3rem;
+    text-align: center;
+    color: #6c757d;
+    margin: 1rem 0;
+}
+
+.contact-info {
+    background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.contact-info h4 {
+    margin-bottom: 1rem;
+}
+
+.contact-info .phone {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0.5rem 0;
+}
+
+.contact-info .email {
+    font-size: 1.1rem;
+    margin: 0.5rem 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <div class="container">
+        <!-- Header Section -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-primary mb-3">
+                <i class="fas fa-book me-3"></i>راهنمای کامل سایت آسیا سلمان
+            </h1>
+            <p class="lead text-muted">
+                آموزش جامع استفاده از تمام امکانات و ویژگی‌های سایت آسیا سلمان
+            </p>
+            <div class="highlight-box">
+                <h3 class="mb-3">
+                    <i class="fas fa-star me-2"></i>راهنمای حرفه‌ای برای کاربران
+                </h3>
+                <p class="mb-0">
+                    این راهنما تمام جنبه‌های استفاده از سایت را پوشش می‌دهد و شما را به یک کاربر حرفه‌ای تبدیل می‌کند
+                </p>
+            </div>
+        </div>
+
+        <!-- Table of Contents -->
+        <div class="toc">
+            <h3><i class="fas fa-list me-2"></i>فهرست مطالب</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <ul>
+                        <li><a href="#getting-started">۱. شروع کار و ثبت نام</a></li>
+                        <li><a href="#navigation">۲. راهنمای ناوبری سایت</a></li>
+                        <li><a href="#search-products">۳. جستجو و انتخاب محصولات</a></li>
+                        <li><a href="#shopping-cart">۴. سبد خرید و سفارش‌گذاری</a></li>
+                        <li><a href="#user-account">۵. مدیریت حساب کاربری</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <ul>
+                        <li><a href="#bulk-purchasing">۶. خرید عمده و شرایط ویژه</a></li>
+                        <li><a href="#payment-methods">۷. روش‌های پرداخت</a></li>
+                        <li><a href="#shipping-delivery">۸. ارسال و تحویل</a></li>
+                        <li><a href="#support-help">۹. پشتیبانی و راهنمایی</a></li>
+                        <li><a href="#tips-tricks">۱۰. نکات و ترفندهای کاربردی</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Getting Started -->
+        <div id="getting-started" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">1</span>شروع کار و ثبت نام
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-user-plus me-2"></i>مرحله اول: ثبت نام در سایت</h4>
+                <p>برای استفاده از تمام امکانات سایت، ابتدا باید در سایت ثبت نام کنید:</p>
+                <ol>
+                    <li>روی دکمه <strong>"ثبت نام رایگان"</strong> در بالای صفحه کلیک کنید</li>
+                    <li>فرم ثبت نام را با اطلاعات صحیح پر کنید</li>
+                    <li>ایمیل و شماره تلفن معتبر وارد کنید</li>
+                    <li>رمز عبور قوی انتخاب کنید (حداقل 8 کاراکتر)</li>
+                    <li>شرایط و قوانین را مطالعه و تایید کنید</li>
+                    <li>روی دکمه <strong>"ثبت نام"</strong> کلیک کنید</li>
+                </ol>
+                
+                <div class="warning-box">
+                    <h5><i class="fas fa-exclamation-triangle me-2"></i>نکته مهم</h5>
+                    <p class="mb-0">
+                        <strong>فقط در صورت ثبت نام می‌توانید سفارش خود را ثبت کنید.</strong> 
+                        بدون ثبت نام، امکان خرید و سفارش‌گذاری وجود ندارد.
+                    </p>
+                </div>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-sign-in-alt me-2"></i>مرحله دوم: ورود به حساب کاربری</h4>
+                <p>پس از ثبت نام، برای ورود به سایت:</p>
+                <ol>
+                    <li>روی دکمه <strong>"ورود"</strong> کلیک کنید</li>
+                    <li>ایمیل یا شماره تلفن خود را وارد کنید</li>
+                    <li>رمز عبور خود را وارد کنید</li>
+                    <li>روی دکمه <strong>"ورود"</strong> کلیک کنید</li>
+                </ol>
+                
+                <div class="info-box">
+                    <h5><i class="fas fa-info-circle me-2"></i>امکانات پس از ورود</h5>
+                    <ul class="mb-0">
+                        <li>دسترسی به تمام محصولات</li>
+                        <li>امکان سفارش‌گذاری</li>
+                        <li>مدیریت حساب کاربری</li>
+                        <li>مشاهده تاریخچه سفارشات</li>
+                        <li>دسترسی به قیمت‌های ویژه</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Navigation -->
+        <div id="navigation" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">2</span>راهنمای ناوبری سایت
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-compass me-2"></i>منوی اصلی سایت</h4>
+                <p>منوی اصلی در بالای سایت شامل بخش‌های زیر است:</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <i class="fas fa-home"></i>
+                        <h5>صفحه اصلی</h5>
+                        <p>بازگشت به صفحه اول سایت</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-store"></i>
+                        <h5>فروشگاه</h5>
+                        <p>مشاهده تمام محصولات موجود</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-industry"></i>
+                        <h5>برندها</h5>
+                        <p>انتخاب برند مورد نظر</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-handshake"></i>
+                        <h5>خرید عمده</h5>
+                        <p>شرایط و قیمت‌های خرید عمده</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-info-circle"></i>
+                        <h5>درباره ما</h5>
+                        <p>اطلاعات شرکت و تماس</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-book"></i>
+                        <h5>راهنما</h5>
+                        <p>این صفحه راهنمای کامل</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-search me-2"></i>نوار جستجو</h4>
+                <p>نوار جستجو در صفحه اصلی و فروشگاه به شما امکان جستجوی سریع محصولات را می‌دهد:</p>
+                <ul>
+                    <li><strong>جستجو بر اساس نام محصول:</strong> نام قطعه مورد نظر را تایپ کنید</li>
+                    <li><strong>جستجو بر اساس کد قطعه:</strong> کد دقیق قطعه را وارد کنید</li>
+                    <li><strong>جستجو بر اساس برند:</strong> نام برند را تایپ کنید</li>
+                    <li><strong>جستجو بر اساس نوع خودرو:</strong> مدل خودرو را وارد کنید</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 3: Search and Products -->
+        <div id="search-products" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">3</span>جستجو و انتخاب محصولات
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-filter me-2"></i>فیلترهای پیشرفته</h4>
+                <p>در صفحه فروشگاه می‌توانید از فیلترهای مختلف استفاده کنید:</p>
+                <ul>
+                    <li><strong>فیلتر بر اساس برند:</strong> انتخاب برند خاص</li>
+                    <li><strong>فیلتر بر اساس دسته‌بندی:</strong> انتخاب نوع قطعه</li>
+                    <li><strong>فیلتر بر اساس نوع خودرو:</strong> انتخاب مدل خودرو</li>
+                    <li><strong>فیلتر موجودی:</strong> نمایش فقط محصولات موجود</li>
+                    <li><strong>فیلتر قیمت:</strong> محدوده قیمت مورد نظر</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-eye me-2"></i>مشاهده جزئیات محصول</h4>
+                <p>برای مشاهده اطلاعات کامل محصول:</p>
+                <ol>
+                    <li>روی محصول مورد نظر کلیک کنید</li>
+                    <li>در صفحه جزئیات محصول، اطلاعات زیر را مشاهده می‌کنید:</li>
+                    <ul>
+                        <li>تصاویر محصول</li>
+                        <li>توضیحات کامل</li>
+                        <li>قیمت نقدی و چکی</li>
+                        <li>وضعیت موجودی</li>
+                        <li>کد قطعه</li>
+                        <li>سازگاری با خودروهای مختلف</li>
+                    </ul>
+                </ol>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-shopping-cart me-2"></i>افزودن به سبد خرید</h4>
+                <p>برای افزودن محصول به سبد خرید:</p>
+                <ol>
+                    <li>تعداد مورد نظر را انتخاب کنید</li>
+                    <li>روی دکمه <strong>"افزودن به سبد خرید"</strong> کلیک کنید</li>
+                    <li>محصول به سبد خرید شما اضافه می‌شود</li>
+                    <li>می‌توانید به خرید ادامه دهید یا به سبد خرید بروید</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Section 4: Shopping Cart -->
+        <div id="shopping-cart" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">4</span>سبد خرید و سفارش‌گذاری
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-shopping-basket me-2"></i>مدیریت سبد خرید</h4>
+                <p>در سبد خرید می‌توانید:</p>
+                <ul>
+                    <li>محصولات اضافه شده را مشاهده کنید</li>
+                    <li>تعداد هر محصول را تغییر دهید</li>
+                    <li>محصولات ناخواسته را حذف کنید</li>
+                    <li>مجموع قیمت را مشاهده کنید</li>
+                    <li>تخفیفات اعمال شده را ببینید</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-credit-card me-2"></i>تکمیل سفارش</h4>
+                <p>برای تکمیل سفارش:</p>
+                <ol>
+                    <li>روی دکمه <strong>"تکمیل سفارش"</strong> کلیک کنید</li>
+                    <li>آدرس تحویل را وارد کنید</li>
+                    <li>روش پرداخت را انتخاب کنید</li>
+                    <li>اطلاعات تماس را بررسی کنید</li>
+                    <li>روی دکمه <strong>"تایید سفارش"</strong> کلیک کنید</li>
+                </ol>
+                
+                <div class="success-box">
+                    <h5><i class="fas fa-check-circle me-2"></i>تایید سفارش</h5>
+                    <p class="mb-0">
+                        پس از تایید سفارش، کد پیگیری سفارش برای شما ارسال می‌شود و می‌توانید وضعیت سفارش را پیگیری کنید.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: User Account -->
+        <div id="user-account" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">5</span>مدیریت حساب کاربری
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-user-cog me-2"></i>پنل کاربری</h4>
+                <p>در پنل کاربری می‌توانید:</p>
+                <ul>
+                    <li>اطلاعات شخصی خود را ویرایش کنید</li>
+                    <li>رمز عبور را تغییر دهید</li>
+                    <li>آدرس‌های تحویل را مدیریت کنید</li>
+                    <li>تاریخچه سفارشات را مشاهده کنید</li>
+                    <li>صورت‌حساب‌ها را دانلود کنید</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-history me-2"></i>تاریخچه سفارشات</h4>
+                <p>در بخش تاریخچه سفارشات:</p>
+                <ul>
+                    <li>تمام سفارشات گذشته را مشاهده می‌کنید</li>
+                    <li>وضعیت هر سفارش را پیگیری می‌کنید</li>
+                    <li>جزئیات هر سفارش را مشاهده می‌کنید</li>
+                    <li>صورت‌حساب سفارشات را دانلود می‌کنید</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 6: Bulk Purchasing -->
+        <div id="bulk-purchasing" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">6</span>خرید عمده و شرایط ویژه
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-industry me-2"></i>شرایط خرید عمده</h4>
+                <p>برای خریداران عمده شرایط ویژه‌ای در نظر گرفته شده است:</p>
+                <ul>
+                    <li><strong>تخفیفات ویژه:</strong> تا ۱۵٪ تخفیف برای خریدهای عمده</li>
+                    <li><strong>قیمت‌های رقابتی:</strong> بهترین قیمت‌ها در بازار</li>
+                    <li><strong>ارسال رایگان:</strong> برای خریدهای بالای مبلغ مشخص</li>
+                    <li><strong>پشتیبانی ویژه:</strong> مشاوره تخصصی و پشتیبانی ۲۴/۷</li>
+                    <li><strong>امکان خرید چکی:</strong> با شرایط مناسب</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-handshake me-2"></i>درخواست خرید عمده</h4>
+                <p>برای درخواست خرید عمده:</p>
+                <ol>
+                    <li>به بخش <strong>"خرید عمده"</strong> بروید</li>
+                    <li>فرم درخواست را پر کنید</li>
+                    <li>اطلاعات کسب‌وکار خود را وارد کنید</li>
+                    <li>درخواست خود را ارسال کنید</li>
+                    <li>منتظر تایید و تماس تیم فروش باشید</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Section 7: Payment Methods -->
+        <div id="payment-methods" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">7</span>روش‌های پرداخت
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-credit-card me-2"></i>روش‌های پرداخت موجود</h4>
+                <p>سایت آسیا سلمان روش‌های مختلف پرداخت را پشتیبانی می‌کند:</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <h5>پرداخت نقدی</h5>
+                        <p>پرداخت در محل تحویل</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-university"></i>
+                        <h5>پرداخت چکی</h5>
+                        <p>پرداخت با چک با شرایط مناسب</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <h5>پرداخت آنلاین</h5>
+                        <p>پرداخت از طریق درگاه‌های بانکی</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-exchange-alt"></i>
+                        <h5>پرداخت اقساطی</h5>
+                        <p>برای خریدهای عمده</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 8: Shipping and Delivery -->
+        <div id="shipping-delivery" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">8</span>ارسال و تحویل
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-truck me-2"></i>سیستم ارسال</h4>
+                <p>سیستم ارسال آسیا سلمان شامل:</p>
+                <ul>
+                    <li><strong>ارسال سریع:</strong> ارسال ۲۴ ساعته در مشهد</li>
+                    <li><strong>ارسال به سراسر کشور:</strong> تحویل در تمام شهرها</li>
+                    <li><strong>بسته‌بندی مناسب:</strong> بسته‌بندی حرفه‌ای و امن</li>
+                    <li><strong>ردیابی سفارش:</strong> امکان پیگیری سفارش</li>
+                    <li><strong>ارسال رایگان:</strong> برای خریدهای بالای مبلغ مشخص</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-map-marker-alt me-2"></i>هزینه ارسال</h4>
+                <p>هزینه ارسال بر اساس:</p>
+                <ul>
+                    <li>فاصله مقصد</li>
+                    <li>وزن و حجم سفارش</li>
+                    <li>روش ارسال انتخابی</li>
+                    <li>مبلغ سفارش (ارسال رایگان برای خریدهای بالا)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 9: Support and Help -->
+        <div id="support-help" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">9</span>پشتیبانی و راهنمایی
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-headset me-2"></i>راه‌های ارتباط با پشتیبانی</h4>
+                <p>تیم پشتیبانی آسیا سلمان آماده پاسخگویی به شما است:</p>
+                
+                <div class="contact-info">
+                    <h4><i class="fas fa-phone me-2"></i>تماس تلفنی</h4>
+                    <div class="phone">۰۵۱۳۳۳۳۸۸۸۱-۶</div>
+                    <div class="phone">۰۵۱۳۵۰۹۳۱۷۴-۸</div>
+                    <p class="mb-0">پشتیبانی ۲۴ ساعته</p>
+                </div>
+                
+                <div class="info-box">
+                    <h5><i class="fas fa-envelope me-2"></i>ایمیل پشتیبانی</h5>
+                    <p class="mb-0">info@asiasalman.com</p>
+                </div>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-question-circle me-2"></i>سوالات متداول</h4>
+                <p>برخی از سوالات متداول کاربران:</p>
+                <ul>
+                    <li><strong>آیا امکان بازگشت محصول وجود دارد؟</strong> بله، طبق شرایط گارانتی</li>
+                    <li><strong>چگونه می‌توانم سفارش خود را لغو کنم؟</strong> از طریق تماس با پشتیبانی</li>
+                    <li><strong>آیا امکان تغییر آدرس تحویل وجود دارد؟</strong> بله، قبل از ارسال</li>
+                    <li><strong>چگونه می‌توانم وضعیت سفارش را پیگیری کنم؟</strong> از طریق کد پیگیری</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 10: Tips and Tricks -->
+        <div id="tips-tricks" class="guide-section">
+            <h2 class="text-primary mb-4">
+                <span class="step-number">10</span>نکات و ترفندهای کاربردی
+            </h2>
+            
+            <div class="guide-step">
+                <h4><i class="fas fa-lightbulb me-2"></i>نکات مهم برای خرید بهتر</h4>
+                <ul>
+                    <li><strong>جستجوی دقیق:</strong> از کد دقیق قطعه استفاده کنید</li>
+                    <li><strong>مقایسه قیمت:</strong> قیمت‌های مختلف را مقایسه کنید</li>
+                    <li><strong>بررسی موجودی:</strong> قبل از سفارش موجودی را بررسی کنید</li>
+                    <li><strong>خواندن توضیحات:</strong> توضیحات محصول را کامل بخوانید</li>
+                    <li><strong>تماس با پشتیبانی:</strong> در صورت ابهام با پشتیبانی تماس بگیرید</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fas fa-star me-2"></i>مزایای عضویت در سایت</h4>
+                <ul>
+                    <li>دسترسی به قیمت‌های ویژه</li>
+                    <li>تخفیفات اختصاصی</li>
+                    <li>اطلاع‌رسانی محصولات جدید</li>
+                    <li>پشتیبانی اولویت‌دار</li>
+                    <li>تاریخچه سفارشات</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Final CTA -->
+        <div class="highlight-box">
+            <h3 class="mb-3">
+                <i class="fas fa-rocket me-2"></i>آماده شروع خرید هستید؟
+            </h3>
+            <p class="mb-4">
+                حالا که با تمام امکانات سایت آشنا شدید، می‌توانید به راحتی خرید کنید
+            </p>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                {% if not current_user.is_authenticated %}
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-user-plus me-2"></i>ثبت نام رایگان
+                </a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
+                    <i class="fas fa-sign-in-alt me-2"></i>ورود
+                </a>
+                {% else %}
+                <a href="{{ url_for('shop') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-store me-2"></i>ورود به فروشگاه
+                </a>
+                {% endif %}
+                <a href="{{ url_for('bulk_conditions') }}" class="btn btn-outline-light btn-lg">
+                    <i class="fas fa-handshake me-2"></i>خرید عمده
+                </a>
+            </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="contact-info">
+            <h4><i class="fas fa-phone me-2"></i>تماس با ما</h4>
+            <div class="phone">۰۵۱۳۳۳۳۸۸۸۱-۶ - ۰۵۱۳۵۰۹۳۱۷۴-۸</div>
+            <div class="email">info@asiasalman.com</div>
+            <p class="mb-0">آدرس: رباط طرق ۲، مشهد، خراسان رضوی</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Smooth scrolling for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
+});
+
+// Add active class to current section in TOC
+window.addEventListener('scroll', function() {
+    const sections = document.querySelectorAll('.guide-section');
+    const tocLinks = document.querySelectorAll('.toc a');
+    
+    let current = '';
+    sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+        if (window.scrollY >= (sectionTop - 200)) {
+            current = section.getAttribute('id');
+        }
+    });
+    
+    tocLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+            link.classList.add('active');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -127,6 +127,11 @@ def about():
     company_info = CompanyInfo.query.first()
     return render_template('about.html', company_info=company_info)
 
+@app.route('/guide')
+def guide():
+    """Comprehensive website guide"""
+    return render_template('guide.html')
+
 @app.route('/shop')
 def shop():
     """Shop page with products"""
@@ -143,8 +148,13 @@ def shop():
     # Build query
     query = Product.query.filter_by(is_active=True)
 
-    # Note: ISACO WH15 products are now included in general listings
-    # The original filter was hiding almost all products
+    # Filter out Isaco products if user doesn't have permission to see them
+    from app import can_see_isaco_products
+    if not can_see_isaco_products(current_user):
+        # Exclude Isaco products for users without permission
+        isaco_brand_id = app.config.get('ISACO_BRAND_ID')
+        if isaco_brand_id:
+            query = query.filter(Product.brand_id != isaco_brand_id)
     
     if brand_id:
         query = query.filter_by(brand_id=brand_id)
@@ -261,17 +271,25 @@ def brand_products(brand_id):
     query = Product.query.filter_by(brand_id=brand_id, is_active=True)
 
     # If ISACO brand, only show ISACO WH15 or items with ISACO prices
+    # But only if user has permission to see Isaco products
     if is_isaco_feature_enabled() and is_isaco_brand(brand_id):
         from sqlalchemy import or_
-        query = query.filter(
-            or_(
-                Product.is_isaco_wh15 == True,
-                (Product.isaco_cash.isnot(None)) |
-                (Product.isaco_1m.isnot(None)) |
-                (Product.isaco_2m.isnot(None)) |
-                (Product.isaco_3m.isnot(None))
+        from app import can_see_isaco_products
+        
+        # Only filter Isaco products if user can see them
+        if can_see_isaco_products(current_user):
+            query = query.filter(
+                or_(
+                    Product.is_isaco_wh15 == True,
+                    (Product.isaco_cash.isnot(None)) |
+                    (Product.isaco_1m.isnot(None)) |
+                    (Product.isaco_2m.isnot(None)) |
+                    (Product.isaco_3m.isnot(None))
+                )
             )
-        )
+        else:
+            # If user can't see Isaco products, show no products for Isaco brand
+            query = query.filter(Product.id == -1)  # This will return no results
     
     if category_id:
         query = query.filter_by(category_id=category_id)
@@ -351,10 +369,21 @@ def category_products(category_id):
     page = request.args.get('page', 1, type=int)
     per_page = 12
     
-    products = Product.query.filter_by(
+    # Build query
+    query = Product.query.filter_by(
         category_id=category_id, 
         is_active=True
-    ).paginate(
+    )
+    
+    # Filter out Isaco products if user doesn't have permission to see them
+    from app import can_see_isaco_products
+    if not can_see_isaco_products(current_user):
+        # Exclude Isaco products for users without permission
+        isaco_brand_id = app.config.get('ISACO_BRAND_ID')
+        if isaco_brand_id:
+            query = query.filter(Product.brand_id != isaco_brand_id)
+    
+    products = query.paginate(
         page=page, per_page=per_page, error_out=False
     )
     
@@ -368,11 +397,21 @@ def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
     
     # Get related products (same category)
-    related_products = Product.query.filter(
+    related_query = Product.query.filter(
         Product.category_id == product.category_id,
         Product.id != product_id,
         Product.is_active == True
-    ).limit(4).all()
+    )
+    
+    # Filter out Isaco products if user doesn't have permission to see them
+    from app import can_see_isaco_products
+    if not can_see_isaco_products(current_user):
+        # Exclude Isaco products for users without permission
+        isaco_brand_id = app.config.get('ISACO_BRAND_ID')
+        if isaco_brand_id:
+            related_query = related_query.filter(Product.brand_id != isaco_brand_id)
+    
+    related_products = related_query.limit(4).all()
     
     return render_template('product_detail.html', 
                          product=product, 
@@ -872,6 +911,126 @@ def invoice_print(invoice_id):
     ).first_or_404()
     
     return render_template('invoice_print.html', invoice=invoice)
+
+@app.route('/delete_invoice_item/<int:item_id>', methods=['POST'])
+@login_required
+def delete_invoice_item(item_id):
+    """Delete item from invoice"""
+    try:
+        # Find the invoice item
+        item = InvoiceItem.query.get_or_404(item_id)
+        
+        # Verify the invoice belongs to current user
+        invoice = Invoice.query.filter_by(
+            id=item.invoice_id,
+            user_id=current_user.id
+        ).first()
+        
+        if not invoice:
+            flash('فاکتور مورد نظر یافت نشد.', 'error')
+            return redirect(url_for('invoices'))
+        
+        # Check if invoice can be modified (only pending invoices)
+        if invoice.status != 'pending':
+            flash('فقط فاکتورهای در انتظار قابل ویرایش هستند.', 'error')
+            return redirect(url_for('invoice_detail', invoice_id=invoice.id))
+        
+        # Store item details for logging
+        product_name = item.product.name
+        item_quantity = item.quantity
+        item_total = item.total_price
+        
+        # Delete the item
+        models.db.session.delete(item)
+        
+        # Recalculate invoice total
+        remaining_items = InvoiceItem.query.filter_by(invoice_id=invoice.id).all()
+        new_total = sum(item.total_price for item in remaining_items)
+        invoice.total_amount = new_total
+        
+        # If no items left, delete the invoice
+        if not remaining_items:
+            models.db.session.delete(invoice)
+            models.db.session.commit()
+            flash(f'محصول "{product_name}" حذف شد. فاکتور به دلیل عدم وجود آیتم حذف شد.', 'success')
+            return redirect(url_for('invoices'))
+        
+        models.db.session.commit()
+        flash(f'محصول "{product_name}" با موفقیت از فاکتور حذف شد.', 'success')
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash('خطا در حذف محصول از فاکتور.', 'error')
+    
+    return redirect(url_for('invoice_detail', invoice_id=invoice.id))
+
+@app.route('/update_invoice_item_quantity', methods=['POST'])
+@login_required
+def update_invoice_item_quantity():
+    """Update quantity of invoice item"""
+    try:
+        item_id = request.form.get('item_id')
+        new_quantity = int(request.form.get('quantity', 0))
+        
+        if not item_id or new_quantity <= 0:
+            return jsonify({
+                'success': False,
+                'message': 'تعداد نامعتبر است'
+            }), 400
+        
+        # Find the invoice item
+        item = InvoiceItem.query.get_or_404(item_id)
+        
+        # Verify the invoice belongs to current user
+        invoice = Invoice.query.filter_by(
+            id=item.invoice_id,
+            user_id=current_user.id
+        ).first()
+        
+        if not invoice:
+            return jsonify({
+                'success': False,
+                'message': 'فاکتور مورد نظر یافت نشد'
+            }), 404
+        
+        # Check if invoice can be modified (only pending invoices)
+        if invoice.status != 'pending':
+            return jsonify({
+                'success': False,
+                'message': 'فقط فاکتورهای در انتظار قابل ویرایش هستند'
+            }), 400
+        
+        # Update quantity and recalculate total
+        old_quantity = item.quantity
+        item.quantity = new_quantity
+        item.total_price = item.unit_price * new_quantity
+        
+        # Recalculate invoice total
+        invoice_items = InvoiceItem.query.filter_by(invoice_id=invoice.id).all()
+        invoice.total_amount = sum(item.total_price for item in invoice_items)
+        
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'تعداد محصول از {old_quantity} به {new_quantity} تغییر یافت',
+            'new_total': invoice.total_amount,
+            'formatted_total': format_price(invoice.total_amount),
+            'item_total': item.total_price,
+            'formatted_item_total': format_price(item.total_price)
+        })
+        
+    except ValueError:
+        return jsonify({
+            'success': False,
+            'message': 'تعداد نامعتبر است'
+        }), 400
+    except Exception as e:
+        models.db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'خطا در به‌روزرسانی تعداد'
+        }), 500
 
 @app.route('/upload_invoice_document', methods=['POST'])
 @login_required
@@ -5306,3 +5465,521 @@ def api_profile_bulk_benefits():
 def profile_invoices():
     """صفحه داشبورد فاکتورهای مشتری در پروفایل"""
     return render_template('profile/invoice_dashboard.html')
+
+# ==================== USER MANAGEMENT ROUTES ====================
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    """مدیریت کاربران - لیست تمام کاربران"""
+    if not (current_user.is_admin or current_user.has_permission('user.manage')):
+        flash('شما دسترسی لازم برای مدیریت کاربران را ندارید.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    try:
+        # Get search and filter parameters
+        search_query = request.args.get('search', '').strip()
+        user_type_filter = request.args.get('user_type', '')
+        status_filter = request.args.get('status', '')
+        sort_by = request.args.get('sort', 'created_at')
+        sort_order = request.args.get('order', 'desc')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Build query
+        query = User.query
+        
+        # Apply search filter
+        if search_query:
+            query = query.filter(
+                models.db.or_(
+                    User.username.contains(search_query),
+                    User.full_name.contains(search_query),
+                    User.email.contains(search_query),
+                    User.phone.contains(search_query),
+                    User.company_name.contains(search_query)
+                )
+            )
+        
+        # Apply user type filter
+        if user_type_filter:
+            if user_type_filter == 'admin':
+                query = query.filter(User.is_admin == True)
+            elif user_type_filter == 'bulk_buyer':
+                query = query.filter(User.is_bulk_buyer == True)
+            elif user_type_filter == 'regular':
+                query = query.filter(User.is_admin == False, User.is_bulk_buyer == False)
+        
+        # Apply status filter
+        if status_filter:
+            if status_filter == 'active':
+                query = query.filter(User.is_active == True)
+            elif status_filter == 'inactive':
+                query = query.filter(User.is_active == False)
+        
+        # Apply sorting
+        if sort_by == 'username':
+            order_column = User.username
+        elif sort_by == 'full_name':
+            order_column = User.full_name
+        elif sort_by == 'email':
+            order_column = User.email
+        elif sort_by == 'created_at':
+            order_column = User.created_at
+        elif sort_by == 'last_login':
+            order_column = User.last_login
+        else:
+            order_column = User.created_at
+        
+        if sort_order == 'asc':
+            query = query.order_by(order_column.asc())
+        else:
+            query = query.order_by(order_column.desc())
+        
+        # Paginate results
+        users = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
+        
+        # Get statistics
+        total_users = User.query.count()
+        active_users = User.query.filter_by(is_active=True).count()
+        admin_users_count = User.query.filter_by(is_admin=True).count()
+        bulk_buyer_users = User.query.filter_by(is_bulk_buyer=True).count()
+        
+        stats = {
+            'total_users': total_users,
+            'active_users': active_users,
+            'inactive_users': total_users - active_users,
+            'admin_users': admin_users_count,
+            'bulk_buyer_users': bulk_buyer_users,
+            'regular_users': total_users - admin_users_count - bulk_buyer_users
+        }
+        
+        return render_template('admin/users.html', 
+                             users=users, 
+                             stats=stats,
+                             search_query=search_query,
+                             user_type_filter=user_type_filter,
+                             status_filter=status_filter,
+                             sort_by=sort_by,
+                             sort_order=sort_order)
+        
+    except Exception as e:
+        flash(f'خطا در بارگذاری لیست کاربران: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/users/<int:user_id>')
+@login_required
+def admin_user_detail(user_id):
+    """جزئیات کامل کاربر"""
+    if not (current_user.is_admin or current_user.has_permission('user.manage')):
+        flash('شما دسترسی لازم برای مشاهده جزئیات کاربر را ندارید.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Get user's invoices
+        invoices = Invoice.query.filter_by(user_id=user_id).order_by(Invoice.created_at.desc()).limit(10).all()
+        
+        # Get user's cart items
+        cart_items = Cart.query.filter_by(user_id=user_id).all()
+        
+        # Get user's wishlist items
+        wishlist_items = Wishlist.query.filter_by(user_id=user_id).all()
+        
+        # Get user's search history
+        search_history = UserSearchHistory.query.filter_by(user_id=user_id).order_by(UserSearchHistory.created_at.desc()).limit(20).all()
+        
+        # Get user's documents
+        documents = UserDocument.query.filter_by(user_id=user_id).all()
+        
+        # Get user's notifications
+        notifications = UserNotification.query.filter_by(user_id=user_id).order_by(UserNotification.created_at.desc()).limit(20).all()
+        
+        # Get user's roles
+        user_roles = UserRole.query.filter_by(user_id=user_id, is_active=True).all()
+        
+        # Get user's points if available
+        user_points = None
+        try:
+            user_points = UserPoints.query.filter_by(user_id=user_id).first()
+        except:
+            pass
+        
+        # Get user's invoice profile if available
+        invoice_profile = None
+        try:
+            invoice_profile = CustomerInvoiceProfile.query.filter_by(user_id=user_id).first()
+        except:
+            pass
+        
+        # Calculate user statistics
+        total_invoices = Invoice.query.filter_by(user_id=user_id).count()
+        total_spent = models.db.session.query(models.db.func.sum(Invoice.total_amount)).filter_by(user_id=user_id).scalar() or 0
+        
+        user_stats = {
+            'total_invoices': total_invoices,
+            'total_spent': float(total_spent),
+            'cart_items_count': len(cart_items),
+            'wishlist_items_count': len(wishlist_items),
+            'search_queries_count': len(search_history),
+            'documents_count': len(documents),
+            'unread_notifications': len([n for n in notifications if not n.is_read])
+        }
+        
+        return render_template('admin/user_detail.html',
+                             user=user,
+                             invoices=invoices,
+                             cart_items=cart_items,
+                             wishlist_items=wishlist_items,
+                             search_history=search_history,
+                             documents=documents,
+                             notifications=notifications,
+                             user_roles=user_roles,
+                             user_points=user_points,
+                             invoice_profile=invoice_profile,
+                             user_stats=user_stats)
+        
+    except Exception as e:
+        flash(f'خطا در بارگذاری جزئیات کاربر: {str(e)}', 'error')
+        return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+def admin_delete_user(user_id):
+    """حذف کاربر"""
+    if not (current_user.is_admin or current_user.has_permission('user.delete')):
+        flash('شما دسترسی لازم برای حذف کاربر را ندارید.', 'error')
+        return redirect(url_for('admin_users'))
+    
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Prevent admin from deleting themselves
+        if user.id == current_user.id:
+            flash('شما نمی‌توانید خودتان را حذف کنید.', 'error')
+            return redirect(url_for('admin_user_detail', user_id=user_id))
+        
+        # Get user data for logging
+        user_data = {
+            'username': user.username,
+            'full_name': user.full_name,
+            'email': user.email,
+            'phone': user.phone,
+            'company_name': user.company_name,
+            'user_type': user.user_type,
+            'is_admin': user.is_admin,
+            'is_bulk_buyer': user.is_bulk_buyer,
+            'created_at': user.created_at.isoformat() if user.created_at else None
+        }
+        
+        # Delete related data first (cascade delete)
+        # Delete cart items
+        Cart.query.filter_by(user_id=user_id).delete()
+        
+        # Delete wishlist items
+        Wishlist.query.filter_by(user_id=user_id).delete()
+        
+        # Delete search history
+        UserSearchHistory.query.filter_by(user_id=user_id).delete()
+        
+        # Delete notifications
+        UserNotification.query.filter_by(user_id=user_id).delete()
+        
+        # Delete user roles
+        UserRole.query.filter_by(user_id=user_id).delete()
+        
+        # Delete user documents
+        UserDocument.query.filter_by(user_id=user_id).delete()
+        
+        # Delete user points
+        UserPoints.query.filter_by(user_id=user_id).delete()
+        
+        # Delete points transactions
+        PointsTransaction.query.filter_by(user_id=user_id).delete()
+        
+        # Delete reward redemptions
+        RewardRedemption.query.filter_by(user_id=user_id).delete()
+        
+        # Delete bulk customer benefits
+        BulkCustomerBenefits.query.filter_by(user_id=user_id).delete()
+        
+        # Delete customer invoice profile
+        CustomerInvoiceProfile.query.filter_by(user_id=user_id).delete()
+        
+        # Delete audit logs
+        AuditLog.query.filter_by(actor_id=user_id).delete()
+        
+        # Delete the user
+        models.db.session.delete(user)
+        models.db.session.commit()
+        
+        # Log the deletion
+        try:
+            audit_log = AuditLog(
+                actor_id=current_user.id,
+                action='delete_user',
+                target_type='user',
+                target_id=user_id,
+                details=json.dumps(user_data),
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', '')
+            )
+            models.db.session.add(audit_log)
+            models.db.session.commit()
+        except Exception as e:
+            print(f"Failed to create audit log: {e}")
+        
+        flash(f'کاربر {user_data["full_name"]} ({user_data["username"]}) با موفقیت حذف شد.', 'success')
+        return redirect(url_for('admin_users'))
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash(f'خطا در حذف کاربر: {str(e)}', 'error')
+        return redirect(url_for('admin_user_detail', user_id=user_id))
+
+@app.route('/admin/users/<int:user_id>/toggle-status', methods=['POST'])
+@login_required
+def admin_toggle_user_status(user_id):
+    """تغییر وضعیت فعال/غیرفعال کاربر"""
+    if not (current_user.is_admin or current_user.has_permission('user.manage')):
+        flash('شما دسترسی لازم برای تغییر وضعیت کاربر را ندارید.', 'error')
+        return redirect(url_for('admin_users'))
+    
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Prevent admin from deactivating themselves
+        if user.id == current_user.id:
+            flash('شما نمی‌توانید وضعیت خودتان را تغییر دهید.', 'error')
+            return redirect(url_for('admin_user_detail', user_id=user_id))
+        
+        # Toggle status
+        user.is_active = not user.is_active
+        models.db.session.commit()
+        
+        # Log the action
+        try:
+            audit_log = AuditLog(
+                actor_id=current_user.id,
+                action='toggle_user_status',
+                target_type='user',
+                target_id=user_id,
+                details=json.dumps({
+                    'username': user.username,
+                    'new_status': 'active' if user.is_active else 'inactive',
+                    'previous_status': 'inactive' if user.is_active else 'active'
+                }),
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', '')
+            )
+            models.db.session.add(audit_log)
+            models.db.session.commit()
+        except Exception as e:
+            print(f"Failed to create audit log: {e}")
+        
+        status_text = 'فعال' if user.is_active else 'غیرفعال'
+        flash(f'وضعیت کاربر {user.full_name} به {status_text} تغییر یافت.', 'success')
+        return redirect(url_for('admin_user_detail', user_id=user_id))
+        
+    except Exception as e:
+        models.db.session.rollback()
+        flash(f'خطا در تغییر وضعیت کاربر: {str(e)}', 'error')
+        return redirect(url_for('admin_user_detail', user_id=user_id))
+
+@app.route('/api/admin/users/statistics')
+@login_required
+def api_user_statistics():
+    """آمار کاربران برای داشبورد"""
+    if not (current_user.is_admin or current_user.has_permission('user.view')):
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        # Get basic statistics
+        total_users = User.query.count()
+        active_users = User.query.filter_by(is_active=True).count()
+        admin_users = User.query.filter_by(is_admin=True).count()
+        bulk_buyer_users = User.query.filter_by(is_bulk_buyer=True).count()
+        
+        # Get registration statistics for the last 30 days
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        recent_registrations = User.query.filter(User.created_at >= thirty_days_ago).count()
+        
+        # Get user type distribution
+        user_types = {
+            'admin': admin_users,
+            'bulk_buyer': bulk_buyer_users,
+            'regular': total_users - admin_users - bulk_buyer_users
+        }
+        
+        # Get monthly registration data for chart
+        monthly_data = []
+        for i in range(12):
+            month_start = datetime.utcnow() - timedelta(days=30 * (i + 1))
+            month_end = datetime.utcnow() - timedelta(days=30 * i)
+            count = User.query.filter(
+                User.created_at >= month_start,
+                User.created_at < month_end
+            ).count()
+            monthly_data.append({
+                'month': month_start.strftime('%Y-%m'),
+                'count': count
+            })
+        
+        monthly_data.reverse()
+        
+        return jsonify({
+            'total_users': total_users,
+            'active_users': active_users,
+            'inactive_users': total_users - active_users,
+            'admin_users': admin_users,
+            'bulk_buyer_users': bulk_buyer_users,
+            'regular_users': total_users - admin_users - bulk_buyer_users,
+            'recent_registrations': recent_registrations,
+            'user_types': user_types,
+            'monthly_registrations': monthly_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/users/<int:user_id>/password', methods=['GET', 'POST'])
+@login_required
+def admin_user_password(user_id):
+    """مدیریت رمز عبور کاربر توسط ادمین"""
+    if not (current_user.is_admin or current_user.has_permission('user.manage')):
+        flash('شما دسترسی لازم برای مدیریت رمز عبور کاربران را ندارید.', 'error')
+        return redirect(url_for('admin_users'))
+    
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        if request.method == 'POST':
+            action = request.form.get('action')
+            
+            if action == 'reset':
+                # بازنشانی رمز عبور
+                new_password = request.form.get('new_password', '')
+                confirm_password = request.form.get('confirm_password', '')
+                
+                if not new_password or not confirm_password:
+                    flash('رمز عبور جدید و تأیید آن الزامی است.', 'error')
+                    return redirect(url_for('admin_user_password', user_id=user_id))
+                
+                if new_password != confirm_password:
+                    flash('رمزهای عبور مطابقت ندارند.', 'error')
+                    return redirect(url_for('admin_user_password', user_id=user_id))
+                
+                if len(new_password) < 6:
+                    flash('رمز عبور باید حداقل 6 کاراکتر باشد.', 'error')
+                    return redirect(url_for('admin_user_password', user_id=user_id))
+                
+                # تغییر رمز عبور
+                user.password_hash = generate_password_hash(new_password)
+                models.db.session.commit()
+                
+                # لاگ عملیات
+                try:
+                    audit_log = AuditLog(
+                        actor_id=current_user.id,
+                        action='reset_user_password',
+                        target_type='user',
+                        target_id=user_id,
+                        details=json.dumps({
+                            'username': user.username,
+                            'admin_username': current_user.username
+                        }),
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent', '')
+                    )
+                    models.db.session.add(audit_log)
+                    models.db.session.commit()
+                except Exception as e:
+                    print(f"Failed to create audit log: {e}")
+                
+                flash(f'رمز عبور کاربر {user.full_name} با موفقیت تغییر یافت.', 'success')
+                return redirect(url_for('admin_user_detail', user_id=user_id))
+            
+            elif action == 'generate':
+                # تولید رمز عبور تصادفی
+                import secrets
+                import string
+                
+                # تولید رمز عبور 12 کاراکتری
+                alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+                new_password = ''.join(secrets.choice(alphabet) for i in range(12))
+                
+                user.password_hash = generate_password_hash(new_password)
+                models.db.session.commit()
+                
+                # لاگ عملیات
+                try:
+                    audit_log = AuditLog(
+                        actor_id=current_user.id,
+                        action='generate_user_password',
+                        target_type='user',
+                        target_id=user_id,
+                        details=json.dumps({
+                            'username': user.username,
+                            'admin_username': current_user.username,
+                            'password_length': 12
+                        }),
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent', '')
+                    )
+                    models.db.session.add(audit_log)
+                    models.db.session.commit()
+                except Exception as e:
+                    print(f"Failed to create audit log: {e}")
+                
+                flash(f'رمز عبور جدید برای کاربر {user.full_name} تولید شد: {new_password}', 'success')
+                return redirect(url_for('admin_user_detail', user_id=user_id))
+        
+        # نمایش اطلاعات رمز عبور
+        password_info = {
+            'hash': user.password_hash,
+            'hash_type': user.password_hash.split('$')[0] if '$' in user.password_hash else 'Unknown',
+            'created_at': user.created_at,
+            'last_password_change': user.created_at  # در سیستم فعلی تاریخ تغییر رمز ذخیره نمی‌شود
+        }
+        
+        return render_template('admin/user_password.html', 
+                             user=user, 
+                             password_info=password_info)
+        
+    except Exception as e:
+        flash(f'خطا در مدیریت رمز عبور: {str(e)}', 'error')
+        return redirect(url_for('admin_user_detail', user_id=user_id))
+
+@app.route('/api/admin/users/<int:user_id>/password-hash')
+@login_required
+def api_user_password_hash(user_id):
+    """دریافت هش رمز عبور کاربر (فقط برای ادمین)"""
+    if not (current_user.is_admin or current_user.has_permission('user.manage')):
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # تجزیه هش رمز عبور
+        hash_parts = user.password_hash.split('$') if '$' in user.password_hash else [user.password_hash]
+        
+        password_info = {
+            'user_id': user.id,
+            'username': user.username,
+            'full_name': user.full_name,
+            'password_hash': user.password_hash,
+            'hash_method': hash_parts[0] if len(hash_parts) > 0 else 'Unknown',
+            'salt': hash_parts[1] if len(hash_parts) > 1 else 'N/A',
+            'hash_value': hash_parts[2] if len(hash_parts) > 2 else 'N/A',
+            'created_at': user.created_at.isoformat() if user.created_at else None
+        }
+        
+        return jsonify(password_info)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

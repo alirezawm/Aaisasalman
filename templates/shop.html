@@ -141,11 +141,11 @@
                                     <td>
                                         <!-- Price Display Element -->
                                         <div id="price_{{ product.id }}" class="price-display" style="display: none;">
-                                            {{ product.bulk_price_cash if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved' else product.retail_price_cash }}
+                                            {{ product.bulk_price_cash if can_see_bulk_prices(current_user) else product.retail_price_cash }}
                                         </div>
                                         
                                         <div class="price-selection">
-                                            {% if current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'approved' %}
+                                            {% if can_see_bulk_prices(current_user) %}
                                             <div class="price-selection-container mb-2">
                                                 <div class="btn-group btn-group-xs w-100" role="group" aria-label="انتخاب نوع قیمت">
                                                     <input type="radio" class="btn-check price-type-radio" 
@@ -236,6 +236,51 @@
                                                 صرفه‌جویی چکی: {{ format_price(product.retail_price_check - product.bulk_price_check) }}
                                             </div>
                                             {% endif %}
+                                            
+                                            <!-- ISACO Warehouse 15 Pricing for wholesale users -->
+                                            {% if can_see_isaco_products(current_user) and product.is_isaco_wh15 %}
+                                            <div class="isaco-pricing-section mt-2">
+                                                <small class="text-primary d-block mb-1">
+                                                    <i class="fas fa-warehouse me-1"></i>انبار ایساکو:
+                                                </small>
+                                                {% set has_valid_isaco_pricing = (product.isaco_cash and product.isaco_cash > 0) or (product.isaco_1m and product.isaco_1m > 0) or (product.isaco_2m and product.isaco_2m > 0) or (product.isaco_3m and product.isaco_3m > 0) %}
+                                                {% if has_valid_isaco_pricing %}
+                                                <div class="btn-group btn-group-xs w-100" role="group" aria-label="قیمت‌های ایساکو">
+                                                    {% if product.isaco_cash and product.isaco_cash > 0 %}
+                                                    <input type="radio" class="btn-check isaco-plan-radio" name="price_plan_{{ product.id }}" id="isaco_cash_{{ product.id }}" value="isaco_cash">
+                                                    <label class="btn btn-outline-success btn-xs" for="isaco_cash_{{ product.id }}">
+                                                        نقدی<br>
+                                                        <small>{{ format_price(product.isaco_cash, is_isaco=True) }}</small>
+                                                    </label>
+                                                    {% endif %}
+                                                    {% if product.isaco_1m and product.isaco_1m > 0 %}
+                                                    <input type="radio" class="btn-check isaco-plan-radio" name="price_plan_{{ product.id }}" id="isaco_1m_{{ product.id }}" value="isaco_1m">
+                                                    <label class="btn btn-outline-info btn-xs" for="isaco_1m_{{ product.id }}">
+                                                        ۱م<br>
+                                                        <small>{{ format_price(product.isaco_1m, is_isaco=True) }}</small>
+                                                    </label>
+                                                    {% endif %}
+                                                    {% if product.isaco_2m and product.isaco_2m > 0 %}
+                                                    <input type="radio" class="btn-check isaco-plan-radio" name="price_plan_{{ product.id }}" id="isaco_2m_{{ product.id }}" value="isaco_2m">
+                                                    <label class="btn btn-outline-warning btn-xs" for="isaco_2m_{{ product.id }}">
+                                                        ۲م<br>
+                                                        <small>{{ format_price(product.isaco_2m, is_isaco=True) }}</small>
+                                                    </label>
+                                                    {% endif %}
+                                                    {% if product.isaco_3m and product.isaco_3m > 0 %}
+                                                    <input type="radio" class="btn-check isaco-plan-radio" name="price_plan_{{ product.id }}" id="isaco_3m_{{ product.id }}" value="isaco_3m">
+                                                    <label class="btn btn-outline-secondary btn-xs" for="isaco_3m_{{ product.id }}">
+                                                        ۳م<br>
+                                                        <small>{{ format_price(product.isaco_3m, is_isaco=True) }}</small>
+                                                    </label>
+                                                    {% endif %}
+                                                </div>
+                                                {% else %}
+                                                <small class="text-muted">قیمت ایساکو در دسترس نیست</small>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
+                                            
                                             {% if product.cash_discount_percentage > 0 %}
                                                 <small class="text-success" style="font-size: 0.7rem; text-align: center; display: block; margin-top: 3px;">
                                                     <i class="fas fa-percentage"></i>
@@ -418,4 +463,45 @@ function initializeProductPoints() {
     });
 }
 </script>
+{% endblock %}
+
+{% block sticky_mobile_bar %}
+{% if current_user.is_authenticated %}
+<div class="mobile-sticky-cta d-md-none">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between gap-2">
+      <div class="flex-grow-1">
+        <div class="small text-muted">محصول انتخاب شده</div>
+        <div class="fw-bold selected-count">0 محصول انتخاب شده</div>
+      </div>
+      <button class="btn btn-success" id="sticky_add_selected" disabled>
+        <i class="fas fa-cart-plus me-1"></i>
+        افزودن انتخاب‌شده‌ها
+      </button>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function updateStickyBarState() {
+    const count = document.querySelectorAll('.product-checkbox:checked').length;
+    document.querySelectorAll('.selected-count').forEach(el => el.textContent = count + ' محصول انتخاب شده');
+    const btn = document.getElementById('sticky_add_selected');
+    if (btn) btn.disabled = count === 0;
+  }
+  document.querySelectorAll('.product-checkbox, #selectAll, #selectAllHeader').forEach(el => {
+    el.addEventListener('change', updateStickyBarState);
+  });
+  const addBtn = document.getElementById('addSelectedToCart');
+  const stickyBtn = document.getElementById('sticky_add_selected');
+  if (addBtn && stickyBtn) {
+    stickyBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      addBtn.click();
+    });
+  }
+  updateStickyBarState();
+});
+</script>
+{% endif %}
 {% endblock %}

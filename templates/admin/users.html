@@ -1,0 +1,560 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت کاربران - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_text_color_optimization') }}">
+                            <i class="fas fa-palette me-2"></i>بهینه‌سازی رنگ متن
+                        </a>
+                        <a class="nav-link" href="{{ url_for('excel_reconstruction') }}">
+                            <i class="fas fa-file-excel me-2"></i>بازسازی اکسل
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_roles') }}">
+                            <i class="fas fa-user-shield me-2"></i>مدیریت نقش‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_user_roles') }}">
+                            <i class="fas fa-users-cog me-2"></i>نقش‌های کاربران
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users me-2"></i>مدیریت کاربران
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_bulk_buyer_requests') }}">
+                            <i class="fas fa-handshake me-2"></i>درخواست‌های خریدار عمده
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_audit_logs') }}">
+                            <i class="fas fa-clipboard-list me-2"></i>گزارش‌های حسابرسی
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_invoices') }}">
+                            <i class="fas fa-file-invoice me-2"></i>فاکتورها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_points_dashboard') }}">
+                            <i class="fas fa-coins me-2"></i>سیستم امتیازی
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_accounting_dashboard') }}">
+                            <i class="fas fa-calculator me-2"></i>حسابداری تدبیر
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <div class="admin-content">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="mb-1">
+                            <i class="fas fa-users me-2 text-primary"></i>مدیریت کاربران
+                        </h2>
+                        <p class="text-muted mb-0">مدیریت و نظارت بر تمام کاربران سیستم</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary" onclick="refreshPage()">
+                            <i class="fas fa-sync-alt me-1"></i>بروزرسانی
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4 class="mb-0">{{ stats.total_users }}</h4>
+                                        <p class="mb-0">کل کاربران</p>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-users fa-2x opacity-75"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4 class="mb-0">{{ stats.active_users }}</h4>
+                                        <p class="mb-0">کاربران فعال</p>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-user-check fa-2x opacity-75"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4 class="mb-0">{{ stats.admin_users }}</h4>
+                                        <p class="mb-0">مدیران</p>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-user-shield fa-2x opacity-75"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4 class="mb-0">{{ stats.bulk_buyer_users }}</h4>
+                                        <p class="mb-0">خریداران عمده</p>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-handshake fa-2x opacity-75"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search and Filter Section -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form method="GET" class="row g-3">
+                            <div class="col-md-4">
+                                <label for="search" class="form-label">جستجو</label>
+                                <input type="text" class="form-control" id="search" name="search" 
+                                       value="{{ search_query }}" placeholder="نام کاربری، نام کامل، ایمیل، تلفن...">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="user_type" class="form-label">نوع کاربر</label>
+                                <select class="form-select" id="user_type" name="user_type">
+                                    <option value="">همه</option>
+                                    <option value="admin" {% if user_type_filter == 'admin' %}selected{% endif %}>مدیر</option>
+                                    <option value="bulk_buyer" {% if user_type_filter == 'bulk_buyer' %}selected{% endif %}>خریدار عمده</option>
+                                    <option value="regular" {% if user_type_filter == 'regular' %}selected{% endif %}>عادی</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="status" class="form-label">وضعیت</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="">همه</option>
+                                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>فعال</option>
+                                    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>غیرفعال</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="sort" class="form-label">مرتب‌سازی</label>
+                                <select class="form-select" id="sort" name="sort">
+                                    <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>تاریخ ثبت</option>
+                                    <option value="username" {% if sort_by == 'username' %}selected{% endif %}>نام کاربری</option>
+                                    <option value="full_name" {% if sort_by == 'full_name' %}selected{% endif %}>نام کامل</option>
+                                    <option value="email" {% if sort_by == 'email' %}selected{% endif %}>ایمیل</option>
+                                    <option value="last_login" {% if sort_by == 'last_login' %}selected{% endif %}>آخرین ورود</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="order" class="form-label">ترتیب</label>
+                                <select class="form-select" id="order" name="order">
+                                    <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>نزولی</option>
+                                    <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>صعودی</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-1"></i>جستجو
+                                </button>
+                                <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-1"></i>پاک کردن
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">لیست کاربران</h5>
+                        <span class="badge bg-primary">{{ users.total }} کاربر</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>نام کاربری</th>
+                                        <th>نام کامل</th>
+                                        <th>ایمیل</th>
+                                        <th>تلفن</th>
+                                        <th>نوع کاربر</th>
+                                        <th>وضعیت</th>
+                                        <th>تاریخ ثبت</th>
+                                        <th>آخرین ورود</th>
+                                        <th>عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                    {{ user.username[0].upper() }}
+                                                </div>
+                                                <strong>{{ user.username }}</strong>
+                                            </div>
+                                        </td>
+                                        <td>{{ user.full_name }}</td>
+                                        <td>
+                                            {% if user.email %}
+                                                <a href="mailto:{{ user.email }}" class="text-decoration-none">
+                                                    {{ user.email }}
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="tel:{{ user.phone }}" class="text-decoration-none">
+                                                {{ user.phone }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% if user.is_admin %}
+                                                <span class="badge bg-danger">مدیر</span>
+                                            {% elif user.is_bulk_buyer %}
+                                                <span class="badge bg-warning">خریدار عمده</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">عادی</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if user.is_active %}
+                                                <span class="badge bg-success">فعال</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">غیرفعال</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ user.created_at | persian_date_pretty }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if user.last_login %}
+                                                <small class="text-muted">
+                                                    {{ user.last_login | persian_date_pretty }}
+                                                </small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('admin_user_detail', user_id=user.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" title="مشاهده جزئیات">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{{ url_for('admin_user_password', user_id=user.id) }}" 
+                                                   class="btn btn-sm btn-outline-info" title="مدیریت رمز عبور">
+                                                    <i class="fas fa-key"></i>
+                                                </a>
+                                                {% if user.id != current_user.id %}
+                                                <form method="POST" action="{{ url_for('admin_toggle_user_status', user_id=user.id) }}" 
+                                                      class="d-inline" onsubmit="return confirmToggleStatus('{{ user.full_name }}', {{ user.is_active|lower }})">
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning" 
+                                                            title="{% if user.is_active %}غیرفعال کردن{% else %}فعال کردن{% endif %}">
+                                                        <i class="fas fa-{% if user.is_active %}user-times{% else %}user-check{% endif %}"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}" 
+                                                      class="d-inline" onsubmit="return confirmDelete('{{ user.full_name }}', '{{ user.username }}')">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف کاربر">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="9" class="text-center py-4">
+                                            <div class="text-muted">
+                                                <i class="fas fa-users fa-3x mb-3 opacity-50"></i>
+                                                <p>هیچ کاربری یافت نشد</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if users.pages > 1 %}
+                    <div class="card-footer">
+                        <nav aria-label="صفحه‌بندی کاربران">
+                            <ul class="pagination justify-content-center mb-0">
+                                {% if users.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_users', page=users.prev_num, search=search_query, user_type=user_type_filter, status=status_filter, sort=sort_by, order=sort_order) }}">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for page_num in users.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != users.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin_users', page=page_num, search=search_query, user_type=user_type_filter, status=status_filter, sort=sort_by, order=sort_order) }}">
+                                                {{ page_num }}
+                                            </a>
+                                        </li>
+                                        {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                        {% endif %}
+                                    {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if users.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_users', page=users.next_num, search=search_query, user_type=user_type_filter, status=status_filter, sort=sort_by, order=sort_order) }}">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modals -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تأیید حذف کاربر</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>آیا از حذف کاربر <strong id="deleteUserName"></strong> (<span id="deleteUserUsername"></span>) اطمینان دارید؟</p>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    این عمل غیرقابل بازگشت است و تمام اطلاعات مرتبط با این کاربر حذف خواهد شد.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">حذف کاربر</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="toggleStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تغییر وضعیت کاربر</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>آیا از <span id="toggleAction"></span> کاربر <strong id="toggleUserName"></strong> اطمینان دارید؟</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-warning" id="confirmToggle">تأیید</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-sidebar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+}
+
+.admin-sidebar .nav-link {
+    color: rgba(255,255,255,0.8);
+    border-radius: 10px;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+}
+
+.admin-sidebar .nav-link:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    transform: translateX(5px);
+}
+
+.admin-sidebar .nav-link.active {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-weight: bold;
+}
+
+.admin-content {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    padding: 2rem;
+}
+
+.avatar-sm {
+    width: 35px;
+    height: 35px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+    background-color: #f8f9fa;
+}
+
+.btn-group .btn {
+    margin-left: 2px;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    border-radius: 10px;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.pagination .page-link {
+    border: none;
+    color: #6c757d;
+    margin: 0 2px;
+    border-radius: 8px;
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+    color: #495057;
+}
+</style>
+
+<script>
+function refreshPage() {
+    window.location.reload();
+}
+
+function confirmDelete(fullName, username) {
+    document.getElementById('deleteUserName').textContent = fullName;
+    document.getElementById('deleteUserUsername').textContent = username;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+    
+    document.getElementById('confirmDelete').onclick = function() {
+        // Find and submit the delete form
+        const forms = document.querySelectorAll('form[action*="/delete"]');
+        for (let form of forms) {
+            if (form.querySelector('button[title="حذف کاربر"]')) {
+                form.submit();
+                break;
+            }
+        }
+    };
+    
+    return false;
+}
+
+function confirmToggleStatus(fullName, isActive) {
+    const action = isActive ? 'غیرفعال کردن' : 'فعال کردن';
+    document.getElementById('toggleAction').textContent = action;
+    document.getElementById('toggleUserName').textContent = fullName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('toggleStatusModal'));
+    modal.show();
+    
+    document.getElementById('confirmToggle').onclick = function() {
+        // Find and submit the toggle form
+        const forms = document.querySelectorAll('form[action*="/toggle-status"]');
+        for (let form of forms) {
+            if (form.querySelector('button[title*="غیرفعال" i]') || form.querySelector('button[title*="فعال" i]')) {
+                form.submit();
+                break;
+            }
+        }
+    };
+    
+    return false;
+}
+
+// Auto-submit form on filter change
+document.addEventListener('DOMContentLoaded', function() {
+    const filterSelects = document.querySelectorAll('#user_type, #status, #sort, #order');
+    filterSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+});
+</script>
+{% endblock %}

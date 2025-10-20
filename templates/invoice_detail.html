@@ -99,9 +99,23 @@
                                     <td>{{ loop.index }}</td>
                                     <td><code>{{ item.product.code or item.product.sku }}</code></td>
                                     <td>{{ item.product.name }}</td>
-                                    <td>{{ item.quantity }}</td>
+                                    <td>
+                                        {% if invoice.status == 'pending' %}
+                                        <div class="input-group input-group-sm" style="width: 120px;">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="decreaseQuantity({{ item.id }})">-</button>
+                                            <input type="number" class="form-control text-center" 
+                                                   id="quantity-{{ item.id }}" 
+                                                   value="{{ item.quantity }}" 
+                                                   min="1" 
+                                                   onchange="updateQuantity({{ item.id }})">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="increaseQuantity({{ item.id }})">+</button>
+                                        </div>
+                                        {% else %}
+                                        {{ item.quantity }}
+                                        {% endif %}
+                                    </td>
                                     <td>{{ format_price(item.unit_price) }}</td>
-                                    <td>{{ format_price(item.total_price) }}</td>
+                                    <td id="total-{{ item.id }}">{{ format_price(item.total_price) }}</td>
                                     {% if invoice.status == 'pending' %}
                                     <td>
                                         <button type="button" 
@@ -295,6 +309,105 @@ function deleteInvoiceItem(itemId, productName) {
         document.body.appendChild(form);
         form.submit();
     }
+}
+
+function increaseQuantity(itemId) {
+    const input = document.getElementById('quantity-' + itemId);
+    const currentValue = parseInt(input.value) || 0;
+    input.value = currentValue + 1;
+    updateQuantity(itemId);
+}
+
+function decreaseQuantity(itemId) {
+    const input = document.getElementById('quantity-' + itemId);
+    const currentValue = parseInt(input.value) || 0;
+    if (currentValue > 1) {
+        input.value = currentValue - 1;
+        updateQuantity(itemId);
+    }
+}
+
+function updateQuantity(itemId) {
+    const input = document.getElementById('quantity-' + itemId);
+    const newQuantity = parseInt(input.value) || 1;
+    
+    if (newQuantity < 1) {
+        input.value = 1;
+        return;
+    }
+    
+    // Show loading state
+    const totalCell = document.getElementById('total-' + itemId);
+    const originalContent = totalCell.innerHTML;
+    totalCell.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('item_id', itemId);
+    formData.append('quantity', newQuantity);
+    
+    // Add CSRF token if available
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken.getAttribute('content'));
+    }
+    
+    // Send request
+    fetch('/update_invoice_item_quantity', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the total for this item
+            totalCell.innerHTML = data.formatted_item_total;
+            
+            // Update the grand total
+            const grandTotalCell = document.querySelector('tfoot .fw-bold:last-child');
+            if (grandTotalCell) {
+                grandTotalCell.textContent = data.formatted_total;
+            }
+            
+            // Show success message
+            showAlert(data.message, 'success');
+        } else {
+            // Restore original content
+            totalCell.innerHTML = originalContent;
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating quantity:', error);
+        // Restore original content
+        totalCell.innerHTML = originalContent;
+        showAlert('خطا در به‌روزرسانی تعداد', 'danger');
+    });
+}
+
+function showAlert(message, type) {
+    // Remove existing alerts
+    const existingAlerts = document.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => alert.remove());
+    
+    // Create new alert
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert at top of content
+    const content = document.querySelector('.container');
+    content.insertBefore(alertDiv, content.firstChild);
+    
+    // Auto dismiss after 3 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 3000);
 }
 
 $(document).ready(function() {

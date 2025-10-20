@@ -93,36 +93,8 @@ function refreshInvoices() {
 function viewInvoiceDetails(invoiceId) {
     console.log('Viewing invoice details for ID:', invoiceId);
     
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('invoiceDetailsModal'));
-    modal.show();
-    
-    // Clear previous content
-    $('#invoice-details-content').html(`
-        <div class="text-center py-4">
-            <div class="spinner-border text-danger" role="status">
-                <span class="visually-hidden">در حال بارگذاری...</span>
-            </div>
-            <p class="mt-2">در حال بارگذاری جزئیات فاکتور...</p>
-        </div>
-    `);
-    
-    // Fetch invoice details
-    $.ajax({
-        url: `/api/profile/customer-invoices/${invoiceId}/details`,
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                displayInvoiceDetails(response.invoice);
-            } else {
-                showError('خطا در بارگذاری جزئیات فاکتور: ' + response.error);
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error fetching invoice details:', error);
-            showError('خطا در بارگذاری جزئیات فاکتور');
-        }
-    });
+    // Redirect to invoice detail page
+    window.location.href = `/invoice/${invoiceId}`;
 }
 
 function displayInvoiceDetails(invoice) {

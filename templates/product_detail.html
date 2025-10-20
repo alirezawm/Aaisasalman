@@ -95,6 +95,55 @@
                             <span class="price-value">{{ format_price(product.retail_price_check) }}</span>
                         </div>
                     </div>
+                    
+                    <!-- ISACO Warehouse 15 Pricing for wholesale users -->
+                    {% if can_see_isaco_products(current_user) and product.is_isaco_wh15 %}
+                    <div class="price-section">
+                        <h4 class="text-primary">
+                            <i class="fas fa-warehouse me-2"></i>قیمت‌های انبار ایساکو
+                        </h4>
+                        {% set has_valid_isaco_pricing = (product.isaco_cash and product.isaco_cash > 0) or (product.isaco_1m and product.isaco_1m > 0) or (product.isaco_2m and product.isaco_2m > 0) or (product.isaco_3m and product.isaco_3m > 0) %}
+                        {% if has_valid_isaco_pricing %}
+                        <div class="row g-2">
+                            {% if product.isaco_cash and product.isaco_cash > 0 %}
+                            <div class="col-6">
+                                <div class="price-row">
+                                    <span class="price-label">نقدی:</span>
+                                    <span class="price-value text-success fw-bold">{{ format_price(product.isaco_cash, is_isaco=True) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if product.isaco_1m and product.isaco_1m > 0 %}
+                            <div class="col-6">
+                                <div class="price-row">
+                                    <span class="price-label">یک ماهه:</span>
+                                    <span class="price-value text-info">{{ format_price(product.isaco_1m, is_isaco=True) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if product.isaco_2m and product.isaco_2m > 0 %}
+                            <div class="col-6">
+                                <div class="price-row">
+                                    <span class="price-label">دو ماهه:</span>
+                                    <span class="price-value text-warning">{{ format_price(product.isaco_2m, is_isaco=True) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if product.isaco_3m and product.isaco_3m > 0 %}
+                            <div class="col-6">
+                                <div class="price-row">
+                                    <span class="price-label">سه ماهه:</span>
+                                    <span class="price-value text-secondary">{{ format_price(product.isaco_3m, is_isaco=True) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>قیمت‌های انبار ایساکو برای این محصول در دسترس نیست
+                        </div>
+                        {% endif %}
+                    </div>
                     {% endif %}
                 </div>
                 

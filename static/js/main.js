@@ -505,8 +505,10 @@ function updateCartCount() {
     $.get('/api/cart-count', function(data) {
         if (data.count > 0) {
             $('.cart-count').text(data.count).show();
+            $('.cart-count-text').text('(' + data.count + ')');
         } else {
             $('.cart-count').hide();
+            $('.cart-count-text').text('(0)');
         }
     });
     
