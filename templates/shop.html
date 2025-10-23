@@ -241,7 +241,7 @@
                                             {% if can_see_isaco_products(current_user) and product.is_isaco_wh15 %}
                                             <div class="isaco-pricing-section mt-2">
                                                 <small class="text-primary d-block mb-1">
-                                                    <i class="fas fa-warehouse me-1"></i>انبار ایساکو:
+                                                    <i class="fas fa-warehouse me-1"></i>
                                                 </small>
                                                 {% set has_valid_isaco_pricing = (product.isaco_cash and product.isaco_cash > 0) or (product.isaco_1m and product.isaco_1m > 0) or (product.isaco_2m and product.isaco_2m > 0) or (product.isaco_3m and product.isaco_3m > 0) %}
                                                 {% if has_valid_isaco_pricing %}
@@ -275,8 +275,6 @@
                                                     </label>
                                                     {% endif %}
                                                 </div>
-                                                {% else %}
-                                                <small class="text-muted">قیمت ایساکو در دسترس نیست</small>
                                                 {% endif %}
                                             </div>
                                             {% endif %}
