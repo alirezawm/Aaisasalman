@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block title %}تأیید شماره تلفن - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-mobile-alt me-2"></i>تأیید شماره تلفن
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-sms fa-3x text-primary mb-3"></i>
+                        <p class="text-muted">
+                            کد تأیید به شماره <strong id="phone-display">{{ phone }}</strong> ارسال شد
+                        </p>
+                        <p class="small text-muted">
+                            لطفاً کد 6 رقمی دریافتی را در کادر زیر وارد کنید
+                        </p>
+                    </div>
+                    
+                    <form id="verification-form">
+                        <div class="mb-4">
+                            <label for="otp_code" class="form-label">کد تأیید</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-key"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control text-center" 
+                                       id="otp_code" 
+                                       name="otp_code" 
+                                       maxlength="6" 
+                                       pattern="[0-9]{6}"
+                                       placeholder="000000"
+                                       required>
+                            </div>
+                            <div class="form-text">کد 6 رقمی دریافتی را وارد کنید</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-secondary btn-lg" id="verifyBtn" disabled>
+                                <i class="fas fa-check me-2"></i>تأیید کد
+                            </button>
+                            
+                            <button type="button" class="btn btn-outline-secondary" id="resendBtn" disabled>
+                                <i class="fas fa-redo me-2"></i>ارسال مجدد کد
+                                <span id="countdown" class="ms-2"></span>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <p class="small text-muted mb-0">
+                            کد تأیید را دریافت نکرده‌اید؟
+                        </p>
+                        {% if source == 'register' %}
+                        <a href="{{ url_for('register') }}" class="btn btn-link">
+                            <i class="fas fa-arrow-right me-1"></i>بازگشت به ثبت نام
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-link">
+                            <i class="fas fa-arrow-right me-1"></i>بازگشت به ورود
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">در حال پردازش...</span>
+                </div>
+                <p class="mb-0">در حال تأیید کد...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('verification-form');
+    const otpInput = document.getElementById('otp_code');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const resendBtn = document.getElementById('resendBtn');
+    const countdownSpan = document.getElementById('countdown');
+    const phoneDisplay = document.getElementById('phone-display');
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    
+    let countdownTimer;
+    let countdownSeconds = 120; // 2 minutes
+    
+    // Get phone and source from URL parameter or session
+    const urlParams = new URLSearchParams(window.location.search);
+    const phone = urlParams.get('phone') || '{{ phone }}';
+    const source = urlParams.get('source') || '{{ source }}' || 'login';
+    phoneDisplay.textContent = phone;
+    
+    // Auto-send OTP when page loads (if not already sent)
+    let otpSent = false;
+    
+    // Function to send OTP
+    function sendOTP() {
+        if (otpSent) return;
+        
+        otpSent = true;
+        resendBtn.disabled = true;
+        resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>در حال ارسال...';
+        
+        console.log('Sending OTP request...', { phone, source });
+        
+        fetch('/send_otp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `phone=${encodeURIComponent(phone)}&source=${encodeURIComponent(source)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('OTP send response:', data);
+            if (data.success) {
+                showAlert(data.message, 'success');
+                // Clear OTP input when new code is sent
+                otpInput.value = '';
+                verifyBtn.disabled = true;
+                verifyBtn.classList.remove('btn-primary');
+                verifyBtn.classList.add('btn-secondary');
+                startCountdown();
+            } else {
+                showAlert(data.message, 'danger');
+                otpSent = false;
+                resendBtn.disabled = false;
+                resendBtn.innerHTML = '<i class="fas fa-redo me-2"></i>ارسال مجدد کد';
+            }
+        })
+        .catch(error => {
+            console.error('OTP send error:', error);
+            showAlert('خطا در ارسال کد. لطفاً دوباره تلاش کنید.', 'danger');
+            otpSent = false;
+            resendBtn.disabled = false;
+            resendBtn.innerHTML = '<i class="fas fa-redo me-2"></i>ارسال مجدد کد';
+        });
+    }
+    
+    // Check if there's an error message from previous attempt
+    {% if otp_error %}
+    showAlert('{{ otp_error }}', 'danger');
+    // If there was an error, send OTP again after a short delay
+    setTimeout(() => {
+        sendOTP();
+    }, 1000);
+    {% else %}
+    // Send OTP automatically on page load (if not already sent)
+    // Only send if we don't have verification data in session
+    const hasVerificationData = {{ 'true' if has_verification_data else 'false' }};
+    console.log('Page loaded - hasVerificationData:', hasVerificationData);
+    
+    if (!hasVerificationData) {
+        // No verification data - send OTP
+        console.log('No verification data found, sending OTP...');
+        // Wait a bit to ensure page is fully loaded
+        setTimeout(() => {
+            sendOTP();
+        }, 500);
+    } else {
+        // If we already have verification data, just start countdown
+        console.log('Verification data found in session, starting countdown...');
+        otpSent = true; // Mark as sent so resend button works correctly
+        startCountdown();
+    }
+    {% endif %}
+    
+    function startCountdown() {
+        countdownSeconds = 120;
+        resendBtn.disabled = true;
+        updateCountdown();
+        
+        countdownTimer = setInterval(() => {
+            countdownSeconds--;
+            updateCountdown();
+            
+            if (countdownSeconds <= 0) {
+                clearInterval(countdownTimer);
+                resendBtn.disabled = false;
+                countdownSpan.textContent = '';
+            }
+        }, 1000);
+    }
+    
+    function updateCountdown() {
+        const minutes = Math.floor(countdownSeconds / 60);
+        const seconds = countdownSeconds % 60;
+        countdownSpan.textContent = `(${minutes}:${seconds.toString().padStart(2, '0')})`;
+    }
+    
+    // Auto-format OTP input
+    otpInput.addEventListener('input', function(e) {
+        // Only allow numbers
+        this.value = this.value.replace(/[^0-9]/g, '');
+        
+        // Enable verify button when 6 digits are entered
+        if (this.value.length === 6) {
+            verifyBtn.disabled = false;
+            verifyBtn.classList.remove('btn-secondary');
+            verifyBtn.classList.add('btn-primary');
+        } else {
+            verifyBtn.disabled = true;
+            verifyBtn.classList.remove('btn-primary');
+            verifyBtn.classList.add('btn-secondary');
+        }
+    });
+    
+    // Enable Enter key to submit
+    otpInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && this.value.length === 6) {
+            e.preventDefault();
+            form.dispatchEvent(new Event('submit'));
+        }
+    });
+    
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const otpCode = otpInput.value.trim();
+        
+        if (otpCode.length !== 6) {
+            showAlert('لطفاً کد 6 رقمی را کامل وارد کنید', 'warning');
+            return;
+        }
+        
+        // Show loading modal
+        loadingModal.show();
+        
+        // Disable form
+        verifyBtn.disabled = true;
+        otpInput.disabled = true;
+        
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+        
+        console.log('Sending OTP verification request...', {
+            otpCode: otpCode,
+            phone: phone,
+            source: source
+        });
+        
+        // Send verification request
+        fetch('/verify_otp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `otp_code=${encodeURIComponent(otpCode)}&phone=${encodeURIComponent(phone)}&source=${encodeURIComponent(source)}`,
+            signal: controller.signal
+        })
+        .then(response => {
+            clearTimeout(timeoutId);
+            
+            // Check if response is OK
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Check Content-Type to ensure it's JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                // If not JSON, try to get text and log it
+                return response.text().then(text => {
+                    console.error('Expected JSON but got:', text.substring(0, 200));
+                    throw new Error('پاسخ سرور معتبر نیست. لطفاً صفحه را رفرش کنید و دوباره تلاش کنید.');
+                });
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('OTP verification response:', data);
+            loadingModal.hide();
+            
+            if (data && data.success) {
+                showAlert(data.message, 'success');
+                
+                // Redirect based on action (login or register)
+                setTimeout(() => {
+                    if (data.action === 'login' && data.redirect) {
+                        // User exists - redirect to home page
+                        window.location.href = data.redirect;
+                    } else if (data.action === 'register' && data.redirect) {
+                        // User doesn't exist - redirect to registration
+                        window.location.href = data.redirect;
+                    } else {
+                        // Fallback
+                        if (source === 'register') {
+                            window.location.href = '{{ url_for("register") }}?verified=true';
+                        } else {
+                            window.location.href = '{{ url_for("register") }}?verified=true';
+                        }
+                    }
+                }, 1500);
+            } else {
+                console.error('OTP verification failed:', data);
+                const errorMessage = (data && data.message) || 'خطا در تأیید کد. لطفاً دوباره تلاش کنید.';
+                console.error('Error message:', errorMessage);
+                console.error('Full error data:', JSON.stringify(data, null, 2));
+                showAlert(errorMessage, 'danger');
+                
+                // Re-enable form
+                verifyBtn.disabled = false;
+                verifyBtn.classList.remove('btn-secondary');
+                verifyBtn.classList.add('btn-primary');
+                otpInput.disabled = false;
+                otpInput.focus();
+                
+                // Clear OTP input if error suggests retry
+                if (errorMessage.includes('منقضی') || errorMessage.includes('دوباره') || (data && data.error_type === 'expired')) {
+                    otpInput.value = '';
+                    verifyBtn.disabled = true;
+                    verifyBtn.classList.remove('btn-primary');
+                    verifyBtn.classList.add('btn-secondary');
+                    
+                    // Show message to resend OTP
+                    setTimeout(() => {
+                        showAlert('لطفاً با کلیک روی دکمه "ارسال مجدد کد" کد جدید دریافت کنید', 'info');
+                    }, 2000);
+                }
+            }
+        })
+        .catch(error => {
+            clearTimeout(timeoutId);
+            loadingModal.hide();
+            
+            let errorMessage = 'خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.';
+            
+            if (error.name === 'AbortError') {
+                errorMessage = 'زمان درخواست به پایان رسید. لطفاً دوباره تلاش کنید.';
+            } else if (error.message) {
+                // Use the error message if it's a custom one
+                if (error.message.includes('پاسخ سرور')) {
+                    errorMessage = error.message;
+                } else {
+                    console.error('Verification error:', error);
+                    errorMessage = error.message || errorMessage;
+                }
+            }
+            
+            showAlert(errorMessage, 'danger');
+            
+            // Re-enable form
+            verifyBtn.disabled = false;
+            verifyBtn.classList.remove('btn-secondary');
+            verifyBtn.classList.add('btn-primary');
+            otpInput.disabled = false;
+            otpInput.focus();
+        });
+    });
+    
+    // Handle resend button
+    resendBtn.addEventListener('click', function() {
+        if (this.disabled) return;
+        
+        otpSent = false;
+        sendOTP();
+    });
+    
+    function showAlert(message, type) {
+        // Remove existing alerts
+        const existingAlerts = document.querySelectorAll('.alert');
+        existingAlerts.forEach(alert => alert.remove());
+        
+        // Create new alert
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insert at top of card body
+        const cardBody = document.querySelector('.card-body');
+        cardBody.insertBefore(alertDiv, cardBody.firstChild);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    // Focus on OTP input
+    otpInput.focus();
+});
+</script>
+{% endblock %}
+

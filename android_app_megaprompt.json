@@ -1,0 +1,909 @@
+{
+  "project_name": "Asia Salman Android E-Commerce Application",
+  "version": "1.0.0",
+  "language": "Persian (Farsi)",
+  "target_platform": "Android (API Level 21+)",
+  
+  "overview": {
+    "description": "یک نرم‌افزار اندروید حرفه‌ای برای فروشگاه آنلاین قطعات خودرو که با وب‌سایت Flask موجود همگام‌سازی می‌شود",
+    "backend_url": "https://yoursite.com",
+    "api_base_path": "/api/mobile/v1"
+  },
+  
+  "technical_requirements": {
+    "minimum_android_version": "Android 5.0 (API 21)",
+    "target_android_version": "Android 14 (API 34)",
+    "supported_screen_sizes": ["small", "normal", "large", "xlarge"],
+    "supported_densities": ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"],
+    "architecture": "MVVM (Model-View-ViewModel)",
+    "programming_language": "Kotlin",
+    "ui_framework": "Jetpack Compose",
+    "min_sdk_version": 21,
+    "target_sdk_version": 34,
+    "compile_sdk_version": 34
+  },
+  
+  "authentication": {
+    "method": "Phone Number + OTP",
+    "endpoints": {
+      "send_otp": "/api/mobile/v1/auth/send-otp",
+      "verify_otp": "/api/mobile/v1/auth/verify-otp",
+      "refresh_token": "/api/mobile/v1/auth/refresh-token",
+      "logout": "/api/mobile/v1/auth/logout"
+    },
+    "features": [
+      "ورود با شماره تلفن",
+      "ارسال کد تایید (OTP) از طریق SMS",
+      "تایید کد و ایجاد session",
+      "ذخیره توکن احراز هویت",
+      "مدیریت خودکار refresh token",
+      "خروج از حساب کاربری",
+      "حفظ وضعیت ورود کاربر"
+    ],
+    "phone_validation": {
+      "format": "شروع با 09",
+      "length": "11 رقم",
+      "regex": "^09[0-9]{9}$"
+    },
+    "session_management": {
+      "token_expiry": "7 days",
+      "refresh_token_expiry": "30 days",
+      "auto_refresh": true
+    }
+  },
+  
+  "navigation_structure": {
+    "type": "Bottom Navigation Bar",
+    "items": [
+      {
+        "id": "shop",
+        "label": "فروشگاه",
+        "icon": "shop_icon",
+        "route": "/shop"
+      },
+      {
+        "id": "categories",
+        "label": "دسته‌بندی‌ها",
+        "icon": "categories_icon",
+        "route": "/categories"
+      },
+      {
+        "id": "suggestions",
+        "label": "پیشنهادات روز",
+        "icon": "suggestions_icon",
+        "route": "/suggestions"
+      },
+      {
+        "id": "rewards",
+        "label": "جوایز",
+        "icon": "rewards_icon",
+        "route": "/rewards"
+      },
+      {
+        "id": "orders",
+        "label": "سفارشات",
+        "icon": "orders_icon",
+        "route": "/orders"
+      },
+      {
+        "id": "profile",
+        "label": "پروفایل",
+        "icon": "profile_icon",
+        "route": "/profile"
+      }
+    ]
+  },
+  
+  "data_synchronization": {
+    "strategy": "Real-time + Periodic Sync",
+    "methods": [
+      "WebSocket برای به‌روزرسانی لحظه‌ای قیمت‌ها",
+      "REST API برای دریافت داده‌ها",
+      "Polling هر 5 دقیقه برای بررسی تغییرات",
+      "Cache محلی برای عملکرد بهتر",
+      "Offline mode با استفاده از Room Database"
+    ],
+    "sync_endpoints": {
+      "products": "/api/mobile/v1/products",
+      "categories": "/api/mobile/v1/categories",
+      "brands": "/api/mobile/v1/brands",
+      "vehicle_types": "/api/mobile/v1/vehicle-types",
+      "prices_update": "/api/mobile/v1/prices/sync",
+      "last_update_check": "/api/mobile/v1/sync/last-update"
+    },
+    "sync_priority": [
+      "قیمت‌ها (بالاترین اولویت)",
+      "موجودی کالاها",
+      "دسته‌بندی‌ها",
+      "اطلاعات محصولات",
+      "بنرها و تخفیفات"
+    ]
+  },
+  
+  "shop_page": {
+    "layout": {
+      "sections": [
+        {
+          "type": "header",
+          "components": [
+            {
+              "component": "company_logo",
+              "position": "top",
+              "configurable": true,
+              "admin_panel_path": "/admin/android-app/header"
+            },
+            {
+              "component": "company_name",
+              "position": "below_logo",
+              "configurable": true
+            }
+          ]
+        },
+        {
+          "type": "search",
+          "component": "advanced_product_search",
+          "features": [
+            "جستجوی پیشرفته محصولات",
+            "فیلتر بر اساس برند",
+            "فیلتر بر اساس خودرو",
+            "فیلتر بر اساس دسته‌بندی",
+            "فیلتر بر اساس قیمت",
+            "فیلتر بر اساس موجودی",
+            "جستجو بر اساس کد OEM",
+            "جستجو بر اساس SKU",
+            "ذخیره فیلترهای مورد علاقه",
+            "تاریخچه جستجو"
+          ],
+          "filters": [
+            "برند",
+            "نوع خودرو",
+            "دسته‌بندی",
+            "رنج قیمت (نقدی/چکی)",
+            "فقط موجود",
+            "تخفیف دار",
+            "پیشنهاد ویژه"
+          ]
+        },
+        {
+          "type": "banners",
+          "component": "promotion_banners",
+          "features": [
+            "بنرهای تخفیفات",
+            "بنرهای جوایز",
+            "اسلایدر خودکار",
+            "قابلیت کلیک و هدایت به صفحه محصول",
+            "مدیریت از پنل ادمین"
+          ],
+          "admin_panel_path": "/admin/android-app/banners"
+        },
+        {
+          "type": "discounted_products",
+          "component": "product_grid",
+          "title": "محصولات تخفیف دار",
+          "layout": "grid",
+          "columns": 2,
+          "features": [
+            "نمایش درصد تخفیف",
+            "قیمت قبل و بعد از تخفیف",
+            "افزودن به سبد خرید",
+            "افزودن به علاقه‌مندی‌ها"
+          ]
+        },
+        {
+          "type": "about_company",
+          "component": "company_info",
+          "sections": [
+            "درباره شرکت",
+            "شماره تلفن‌ها",
+            "آدرس شرکت",
+            "شرکت‌های نمایندگی شده",
+            "ساعات کاری"
+          ],
+          "configurable": true,
+          "admin_panel_path": "/admin/android-app/company-info"
+        }
+      ]
+    }
+  },
+  
+  "categories_page": {
+    "dual_categorization": true,
+    "categories": [
+      {
+        "type": "vehicle_based",
+        "label": "دسته‌بندی بر اساس خودرو",
+        "display": "tab_or_section",
+        "categories": [
+          "سواری",
+          "ون",
+          "کامیون",
+          "موتورسیکلت"
+        ],
+        "sub_categories": "بر اساس برند و مدل خودرو"
+      },
+      {
+        "type": "brand_based",
+        "label": "دسته‌بندی بر اساس برند کالا",
+        "display": "tab_or_section",
+        "structure": "سلسله مراتبی: برند > دسته‌بندی > زیردسته"
+      }
+    ],
+    "features": [
+      "تغییر آسان بین دو نوع دسته‌بندی",
+      "نمایش تعداد محصولات در هر دسته",
+      "جستجو در دسته‌بندی‌ها",
+      "فیلتر سریع",
+      "نمایش عکس دسته‌بندی"
+    ]
+  },
+  
+  "splash_screen": {
+    "type": "configurable",
+    "admin_panel_path": "/admin/android-app/splash-screen",
+    "configurable_elements": [
+      "لوگوی شرکت",
+      "متن خوش‌آمدگویی",
+      "رنگ پس‌زمینه",
+      "انیمیشن",
+      "زمان نمایش"
+    ],
+    "default_duration": "2 seconds"
+  },
+  
+  "profile_page": {
+    "sections": [
+      {
+        "section": "user_info",
+        "fields": [
+          "نام و نام خانوادگی",
+          "شماره تلفن",
+          "ایمیل (اختیاری)",
+          "عکس پروفایل"
+        ]
+      },
+      {
+        "section": "bulk_buyer_section",
+        "title": "اطلاعات خریدار عمده",
+        "toggle": "من خریدار عمده هستم",
+        "fields": [
+          "نام شرکت",
+          "شناسه ملی",
+          "شماره ثبت",
+          "کد اقتصادی",
+          "آدرس شرکت",
+          "تلفن ثابت",
+          "کد پستی",
+          "نام کارشناس فروش",
+          "توضیحات"
+        ],
+        "workflow": {
+          "step1": "کاربر گزینه 'من خریدار عمده هستم' را فعال می‌کند",
+          "step2": "اطلاعات مورد نیاز را تکمیل می‌کند",
+          "step3": "درخواست ارسال می‌شود",
+          "step4": "اعلان به پنل مدیریت ارسال می‌شود",
+          "step5": "مدیریت درخواست را بررسی و تایید/رد می‌کند",
+          "step6": "کاربر از طریق اعلان از نتیجه مطلع می‌شود",
+          "step7": "در صورت تایید، کاربر به قیمت‌های عمده دسترسی پیدا می‌کند"
+        },
+        "notification": {
+          "to_admin": true,
+          "endpoint": "/api/mobile/v1/bulk-buyer/request",
+          "admin_panel_path": "/admin/users/bulk-buyer-requests"
+        }
+      },
+      {
+        "section": "settings",
+        "items": [
+          "تنظیمات اعلان‌ها",
+          "زبان برنامه",
+          "تم برنامه (روز/شب)",
+          "درباره برنامه",
+          "خروج از حساب کاربری"
+        ]
+      },
+      {
+        "section": "order_history",
+        "link": "مشاهده سفارشات",
+        "route": "/orders"
+      }
+    ],
+    "admin_view": {
+      "endpoint": "/admin/users/android-app-users",
+      "features": [
+        "مشاهده تمام کاربران نرم‌افزار اندروید",
+        "مشاهده پروفایل کامل کاربر",
+        "حذف کاربر",
+        "تعیین نقش کاربر",
+        "تغییر وضعیت خریدار عمده",
+        "مشاهده تاریخچه سفارشات کاربر",
+        "فیلتر و جستجوی کاربران"
+      ]
+    }
+  },
+  
+  "orders_page": {
+    "features": [
+      "مشاهده تمام سفارشات",
+      "مشاهده جزئیات هر سفارش",
+      "ادامه سفارش ناتمام",
+      "ردیابی وضعیت سفارش",
+      "تاریخچه سفارشات"
+    ],
+    "cart_management": {
+      "separate_carts": true,
+      "cart_types": [
+        {
+          "type": "cash",
+          "label": "سبد خرید نقدی",
+          "color": "green"
+        },
+        {
+          "type": "check",
+          "label": "سبد خرید چکی",
+          "color": "blue"
+        }
+      ],
+      "features": [
+        "افزودن محصول به سبد",
+        "تغییر تعداد",
+        "حذف از سبد",
+        "ذخیره برای بعد",
+        "ادامه سبد خرید قبلی",
+        "پاک کردن سبد",
+        "محاسبه خودکار قیمت کل"
+      ]
+    },
+    "checkout_process": {
+      "steps": [
+        {
+          "step": 1,
+          "title": "بررسی سبد خرید",
+          "actions": [
+            "نمایش محصولات انتخابی",
+            "تایید یا تغییر تعداد",
+            "انتخاب نوع پرداخت (نقدی/چکی)"
+          ]
+        },
+        {
+          "step": 2,
+          "title": "انتخاب نوع پرداخت",
+          "options": [
+            {
+              "type": "cash",
+              "label": "پرداخت نقدی",
+              "payment_methods": [
+                {
+                  "method": "card_to_card",
+                  "label": "کارت به کارت",
+                  "features": [
+                    "نمایش شماره کارت‌های شرکت",
+                    "انتخاب کارت مورد نظر",
+                    "آپلود فیش واریزی",
+                    "تایید نهایی پرداخت"
+                  ]
+                },
+                {
+                  "method": "payment_gateway",
+                  "label": "درگاه پرداخت",
+                  "status": "آماده برای راه‌اندازی آینده",
+                  "features": [
+                    "اتصال به درگاه پرداخت",
+                    "پرداخت آنلاین",
+                    "تایید خودکار"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "check",
+              "label": "پرداخت چکی",
+              "features": [
+                "انتخاب تاریخ سررسید چک",
+                "آپلود تصویر چک",
+                "تایید نهایی"
+              ]
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "title": "تایید نهایی و ثبت سفارش",
+          "actions": [
+            "بررسی نهایی",
+            "ثبت سفارش",
+            "نمایش شماره سفارش",
+            "ارسال اعلان تایید"
+          ]
+        }
+      ],
+      "resume_order": {
+        "enabled": true,
+        "feature": "اگر کاربر در هر مرحله از فرآیند خارج شود، سفارش ذخیره می‌شود و در قسمت سفارشات با عنوان 'ادامه سفارش' نمایش داده می‌شود"
+      }
+    }
+  },
+  
+  "rewards_page": {
+    "features": [
+      "نمایش جوایز موجود",
+      "مشاهده جزئیات هر جایزه",
+      "نحوه کسب جوایز",
+      "جوایز کسب شده",
+      "نزدیک به کسب جایزه"
+    ],
+    "admin_management": {
+      "endpoint": "/admin/android-app/rewards",
+      "features": [
+        "افزودن جایزه جدید",
+        "ویرایش جایزه",
+        "حذف جایزه",
+        "تعیین شرایط کسب جایزه",
+        "تعیین تعداد موجود",
+        "افزودن عکس جایزه"
+      ]
+    }
+  },
+  
+  "suggestions_page": {
+    "type": "daily_suggestions",
+    "features": [
+      "پیشنهادات روزانه",
+      "محصولات پرفروش",
+      "محصولات جدید",
+      "محصولات مرتبط با جستجوی کاربر",
+      "محصولات بر اساس تاریخچه خرید"
+    ],
+    "personalization": {
+      "enabled": true,
+      "factors": [
+        "تاریخچه جستجو",
+        "تاریخچه خرید",
+        "علاقه‌مندی‌ها",
+        "دسته‌بندی‌های مورد علاقه",
+        "برندهای مورد علاقه"
+      ]
+    }
+  },
+  
+  "admin_panel_integration": {
+    "section_name": "نرم‌افزار اندروید",
+    "route": "/admin/android-app",
+    "subsections": [
+      {
+        "name": "تنظیمات عمومی",
+        "route": "/admin/android-app/settings",
+        "features": [
+          "تنظیم لوگو و نام شرکت",
+          "تنظیم صفحه ابتدایی (Splash Screen)",
+          "تنظیم اطلاعات شرکت",
+          "تنظیم شماره تلفن‌ها و آدرس",
+          "تنظیم شرکت‌های نمایندگی"
+        ]
+      },
+      {
+        "name": "مدیریت بنرها",
+        "route": "/admin/android-app/banners",
+        "features": [
+          "افزودن بنر جدید",
+          "ویرایش بنر",
+          "حذف بنر",
+          "تعیین ترتیب نمایش",
+          "تعیین لینک بنر",
+          "آپلود عکس بنر"
+        ]
+      },
+      {
+        "name": "مدیریت جوایز",
+        "route": "/admin/android-app/rewards",
+        "features": [
+          "افزودن جایزه",
+          "ویرایش جایزه",
+          "حذف جایزه",
+          "تعیین شرایط کسب",
+          "مشاهده برندگان"
+        ]
+      },
+      {
+        "name": "مدیریت کاربران",
+        "route": "/admin/users/android-app-users",
+        "features": [
+          "مشاهده لیست کاربران",
+          "جستجو و فیلتر",
+          "مشاهده پروفایل کامل",
+          "حذف کاربر",
+          "تعیین نقش",
+          "تغییر وضعیت خریدار عمده",
+          "مشاهده تاریخچه فعالیت"
+        ]
+      },
+      {
+        "name": "درخواست‌های خریدار عمده",
+        "route": "/admin/users/bulk-buyer-requests",
+        "features": [
+          "مشاهده درخواست‌های جدید",
+          "بررسی اطلاعات کاربر",
+          "تایید درخواست",
+          "رد درخواست",
+          "ارسال پیام به کاربر"
+        ]
+      },
+      {
+        "name": "گزارشات و آمار",
+        "route": "/admin/android-app/analytics",
+        "features": [
+          "تعداد کاربران فعال",
+          "تعداد سفارشات",
+          "محصولات پرفروش",
+          "نمودار فروش",
+          "گزارش استفاده از اپ"
+        ]
+      }
+    ]
+  },
+  
+  "role_based_access": {
+    "roles": [
+      {
+        "role": "کارشناس فروش",
+        "permissions": [
+          "ویرایش محصولات",
+          "آپلود عکس محصول",
+          "مشاهده فاکتورهای مشتریان",
+          "مدیریت موجودی",
+          "دسترسی به پنل شخصی"
+        ],
+        "panel_route": "/admin/sales-expert"
+      },
+      {
+        "role": "مدیر فروش",
+        "permissions": [
+          "تمام دسترسی‌های کارشناس فروش",
+          "مشاهده فعالیت‌های کارشناسان فروش",
+          "گزارشات فروش",
+          "مدیریت کارشناسان",
+          "دسترسی به پنل شخصی"
+        ],
+        "panel_route": "/admin/sales-manager"
+      },
+      {
+        "role": "مدیر سیستم",
+        "permissions": [
+          "تمام دسترسی‌ها",
+          "مدیریت کاربران و نقش‌ها",
+          "تنظیمات سیستم",
+          "گزارشات کامل",
+          "مدیریت نرم‌افزار اندروید"
+        ],
+        "panel_route": "/admin"
+      }
+    ]
+  },
+  
+  "ui_design_requirements": {
+    "design_system": {
+      "name": "Material Design 3",
+      "language": "RTL (Persian)",
+      "primary_color": "#1E88E5",
+      "secondary_color": "#43A047",
+      "accent_color": "#FF6F00",
+      "background_color": "#FFFFFF",
+      "text_color": "#212121"
+    },
+    "typography": {
+      "font_family": "Vazir یا Shabnam",
+      "sizes": {
+        "h1": "24sp",
+        "h2": "20sp",
+        "h3": "18sp",
+        "body": "14sp",
+        "caption": "12sp"
+      },
+      "weights": ["Regular", "Medium", "Bold"]
+    },
+    "animations": {
+      "page_transitions": "Smooth slide animations",
+      "button_clicks": "Ripple effect",
+      "loading": "Professional loading indicators",
+      "list_items": "Stagger animation",
+      "image_loading": "Shimmer effect",
+      "cart_animations": "Add to cart animation",
+      "success_animations": "Confetti on order success"
+    },
+    "color_psychology": {
+      "primary_blue": "اعتماد و اطمینان",
+      "green": "موفقیت و تایید",
+      "orange": "توجه و اقدام",
+      "red": "هشدار و حذف",
+      "gray": "خنثی و اطلاعات"
+    },
+    "responsive_design": {
+      "phone": "Portrait and Landscape",
+      "tablet": "Optimized layout",
+      "foldable": "Adaptive layout"
+    }
+  },
+  
+  "performance_requirements": {
+    "targets": {
+      "app_startup_time": "< 2 seconds",
+      "page_load_time": "< 1 second",
+      "image_load_time": "< 500ms",
+      "smooth_scrolling": "60 FPS",
+      "offline_mode": "Full functionality"
+    },
+    "optimization": [
+      "Lazy loading برای تصاویر",
+      "Caching هوشمند",
+      "Database indexing",
+      "Network request batching",
+      "Image compression",
+      "Code obfuscation",
+      "ProGuard/R8 optimization"
+    ],
+    "compatibility": {
+      "old_devices": {
+        "min_ram": "2GB",
+        "optimization": "Lighter animations, smaller images"
+      },
+      "new_devices": {
+        "features": "Full animations, high-res images"
+      }
+    }
+  },
+  
+  "api_endpoints_required": {
+    "authentication": {
+      "POST /api/mobile/v1/auth/send-otp": "ارسال کد تایید",
+      "POST /api/mobile/v1/auth/verify-otp": "تایید کد و دریافت توکن",
+      "POST /api/mobile/v1/auth/refresh-token": "تازه‌سازی توکن",
+      "POST /api/mobile/v1/auth/logout": "خروج از حساب"
+    },
+    "products": {
+      "GET /api/mobile/v1/products": "لیست محصولات با pagination",
+      "GET /api/mobile/v1/products/{id}": "جزئیات محصول",
+      "GET /api/mobile/v1/products/search": "جستجوی محصولات",
+      "GET /api/mobile/v1/products/filters": "دریافت فیلترها"
+    },
+    "categories": {
+      "GET /api/mobile/v1/categories": "لیست دسته‌بندی‌ها",
+      "GET /api/mobile/v1/categories/vehicle-based": "دسته‌بندی بر اساس خودرو",
+      "GET /api/mobile/v1/categories/brand-based": "دسته‌بندی بر اساس برند",
+      "GET /api/mobile/v1/categories/{id}/products": "محصولات یک دسته"
+    },
+    "cart": {
+      "GET /api/mobile/v1/cart": "دریافت سبد خرید",
+      "POST /api/mobile/v1/cart": "افزودن به سبد",
+      "PUT /api/mobile/v1/cart/{id}": "تغییر تعداد",
+      "DELETE /api/mobile/v1/cart/{id}": "حذف از سبد",
+      "GET /api/mobile/v1/cart/cash": "سبد خرید نقدی",
+      "GET /api/mobile/v1/cart/check": "سبد خرید چکی"
+    },
+    "orders": {
+      "GET /api/mobile/v1/orders": "لیست سفارشات",
+      "GET /api/mobile/v1/orders/{id}": "جزئیات سفارش",
+      "POST /api/mobile/v1/orders": "ثبت سفارش جدید",
+      "GET /api/mobile/v1/orders/pending": "سفارشات ناتمام"
+    },
+    "payment": {
+      "POST /api/mobile/v1/payment/card-to-card": "ثبت پرداخت کارت به کارت",
+      "POST /api/mobile/v1/payment/upload-receipt": "آپلود فیش واریزی",
+      "GET /api/mobile/v1/payment/company-cards": "شماره کارت‌های شرکت"
+    },
+    "user": {
+      "GET /api/mobile/v1/user/profile": "دریافت پروفایل",
+      "PUT /api/mobile/v1/user/profile": "به‌روزرسانی پروفایل",
+      "POST /api/mobile/v1/user/bulk-buyer-request": "درخواست خریدار عمده",
+      "GET /api/mobile/v1/user/bulk-buyer-status": "وضعیت درخواست"
+    },
+    "rewards": {
+      "GET /api/mobile/v1/rewards": "لیست جوایز",
+      "GET /api/mobile/v1/rewards/user": "جوایز کاربر"
+    },
+    "suggestions": {
+      "GET /api/mobile/v1/suggestions/daily": "پیشنهادات روزانه",
+      "GET /api/mobile/v1/suggestions/personalized": "پیشنهادات شخصی‌سازی شده"
+    },
+    "sync": {
+      "GET /api/mobile/v1/sync/check": "بررسی به‌روزرسانی",
+      "POST /api/mobile/v1/sync/products": "همگام‌سازی محصولات",
+      "GET /api/mobile/v1/sync/last-update": "آخرین زمان به‌روزرسانی"
+    },
+    "app_config": {
+      "GET /api/mobile/v1/config": "تنظیمات اپلیکیشن",
+      "GET /api/mobile/v1/config/splash": "تنظیمات صفحه ابتدایی",
+      "GET /api/mobile/v1/config/company-info": "اطلاعات شرکت",
+      "GET /api/mobile/v1/config/banners": "بنرها"
+    }
+  },
+  
+  "database_schema_mobile": {
+    "local_database": "Room Database",
+    "tables": [
+      {
+        "name": "products",
+        "columns": [
+          "id, sku, name_fa, description_fa",
+          "brand_id, category_id, subcategory_id",
+          "retail_price_cash, retail_price_check",
+          "bulk_price_cash, bulk_price_check",
+          "stock_quantity, primary_image, images",
+          "is_active, is_featured, last_synced_at"
+        ]
+      },
+      {
+        "name": "categories",
+        "columns": [
+          "id, name_fa, parent_id, image_url",
+          "category_type (vehicle/brand), last_synced_at"
+        ]
+      },
+      {
+        "name": "cart_items",
+        "columns": [
+          "id, product_id, quantity, price_type",
+          "unit_price, cart_type (cash/check)",
+          "created_at, updated_at"
+        ]
+      },
+      {
+        "name": "orders",
+        "columns": [
+          "id, order_number, total_amount",
+          "payment_type, status, created_at",
+          "synced_with_server"
+        ]
+      },
+      {
+        "name": "user_profile",
+        "columns": [
+          "user_id, full_name, phone, email",
+          "is_bulk_buyer, bulk_buyer_status",
+          "profile_data_json, last_synced_at"
+        ]
+      }
+    ]
+  },
+  
+  "additional_features": {
+    "notifications": {
+      "push_notifications": true,
+      "types": [
+        "اعلان سفارش",
+        "تغییر قیمت محصولات",
+        "موجود شدن محصول",
+        "تایید درخواست خریدار عمده",
+        "جایزه جدید",
+        "پیام از پشتیبانی"
+      ],
+      "implementation": "Firebase Cloud Messaging (FCM)"
+    },
+    "offline_mode": {
+      "enabled": true,
+      "features": [
+        "مشاهده محصولات ذخیره شده",
+        "مدیریت سبد خرید",
+        "مشاهده سفارشات قبلی",
+        "جستجو در cache محلی"
+      ]
+    },
+    "wishlist": {
+      "enabled": true,
+      "features": [
+        "افزودن به علاقه‌مندی‌ها",
+        "حذف از علاقه‌مندی‌ها",
+        "مشاهده لیست",
+        "افزودن مستقیم از علاقه‌مندی‌ها به سبد"
+      ]
+    },
+    "product_comparison": {
+      "enabled": true,
+      "max_items": 3,
+      "features": [
+        "مقایسه قیمت",
+        "مقایسه مشخصات",
+        "مقایسه موجودی"
+      ]
+    },
+    "recently_viewed": {
+      "enabled": true,
+      "max_items": 20,
+      "storage": "Local database"
+    },
+    "share_product": {
+      "enabled": true,
+      "methods": [
+        "اشتراک از طریق پیامک",
+        "اشتراک از طریق واتساپ",
+        "کپی لینک"
+      ]
+    }
+  },
+  
+  "security_requirements": {
+    "data_encryption": [
+      "SSL/TLS برای تمام ارتباطات",
+      "رمزنگاری داده‌های حساس در دیتابیس محلی",
+      "Secure storage برای توکن‌ها"
+    ],
+    "authentication": [
+      "JWT tokens با expiration",
+      "Refresh token rotation",
+      "Biometric authentication (اختیاری)"
+    ],
+    "privacy": [
+      "رعایت قوانین حریم خصوصی",
+      "عدم ذخیره اطلاعات حساس غیرضروری",
+      "امکان حذف حساب کاربری"
+    ]
+  },
+  
+  "testing_requirements": {
+    "unit_tests": "> 70% coverage",
+    "integration_tests": "All API endpoints",
+    "ui_tests": "Critical user flows",
+    "performance_tests": [
+      "App startup time",
+      "Memory usage",
+      "Battery consumption",
+      "Network usage"
+    ]
+  },
+  
+  "deployment": {
+    "release_channels": [
+      {
+        "channel": "Internal Testing",
+        "distribution": "Firebase App Distribution"
+      },
+      {
+        "channel": "Beta",
+        "distribution": "Google Play Internal Testing"
+      },
+      {
+        "channel": "Production",
+        "distribution": "Google Play Store"
+      }
+    ],
+    "version_management": "Semantic Versioning",
+    "update_strategy": "Automatic updates with user consent"
+  },
+  
+  "monitoring_and_analytics": {
+    "tools": [
+      "Firebase Analytics",
+      "Firebase Crashlytics",
+      "Custom analytics endpoint"
+    ],
+    "metrics": [
+      "User engagement",
+      "App crashes",
+      "Performance metrics",
+      "Feature usage",
+      "Conversion rates"
+    ]
+  },
+  
+  "documentation_requirements": {
+    "user_manual": "راهنمای کاربری فارسی",
+    "admin_manual": "راهنمای پنل مدیریت",
+    "api_documentation": "مستندات کامل API",
+    "developer_docs": "مستندات فنی برای توسعه‌دهندگان"
+  },
+  
+  "future_enhancements": {
+    "phase_2": [
+      "چت زنده با پشتیبانی",
+      "سیستم امتیازدهی و نظر",
+      "برنامه وفاداری پیشرفته",
+      "پرداخت اقساطی",
+      "قابلیت رزرو محصول"
+    ],
+    "phase_3": [
+      "هوش مصنوعی برای پیشنهاد محصولات",
+      "واقعیت افزوده برای مشاهده محصول",
+      "یکپارچه‌سازی با سیستم‌های دیگر",
+      "اپ iOS"
+    ]
+  }
+}
+

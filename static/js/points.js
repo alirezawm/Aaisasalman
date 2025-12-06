@@ -3,6 +3,26 @@
  * مدیریت تعاملات کاربری مربوط به امتیازات و جوایز
  */
 
+/**
+ * Helper function برای بررسی JSON بودن response
+ */
+async function safeJsonResponse(response) {
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+        // احتمالاً redirect به صفحه login شده است
+        return null;
+    }
+    try {
+        return await response.json();
+    } catch (error) {
+        if (error instanceof SyntaxError && error.message.includes('JSON')) {
+            // احتمالاً HTML دریافت شده (redirect به login)
+            return null;
+        }
+        throw error;
+    }
+}
+
 class PointsSystem {
     constructor() {
         this.init();
@@ -35,9 +55,9 @@ class PointsSystem {
     async loadUserPoints() {
         try {
             const response = await fetch('/api/points/user');
-            const data = await response.json();
+            const data = await safeJsonResponse(response);
             
-            if (data.success) {
+            if (data && data.success) {
                 this.updatePointsDisplay(data.data);
             }
         } catch (error) {
@@ -128,7 +148,11 @@ class PointsSystem {
                 })
             });
 
-            const data = await response.json();
+            const data = await safeJsonResponse(response);
+            if (!data) {
+                this.showErrorMessage('لطفاً ابتدا وارد حساب کاربری خود شوید');
+                return;
+            }
 
             if (data.success) {
                 this.showSuccessMessage(data.message);
@@ -149,9 +173,9 @@ class PointsSystem {
     async loadAvailableRewards() {
         try {
             const response = await fetch('/api/rewards');
-            const data = await response.json();
+            const data = await safeJsonResponse(response);
             
-            if (data.success) {
+            if (data && data.success) {
                 this.updateRewardsDisplay(data.data);
             }
         } catch (error) {
@@ -197,9 +221,9 @@ class PointsSystem {
     async showTransactionDetails(transactionId) {
         try {
             const response = await fetch(`/api/points/transactions/${transactionId}`);
-            const data = await response.json();
+            const data = await safeJsonResponse(response);
             
-            if (data.success) {
+            if (data && data.success) {
                 this.showTransactionModal(data.data);
             }
         } catch (error) {

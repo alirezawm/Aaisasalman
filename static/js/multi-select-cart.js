@@ -3,6 +3,26 @@
  * Advanced cart functionality with multi-select products
  */
 
+/**
+ * Helper function برای بررسی JSON بودن response
+ */
+async function safeJsonResponse(response) {
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+        // احتمالاً redirect به صفحه login شده است
+        return null;
+    }
+    try {
+        return await response.json();
+    } catch (error) {
+        if (error instanceof SyntaxError && error.message.includes('JSON')) {
+            // احتمالاً HTML دریافت شده (redirect به login)
+            return null;
+        }
+        throw error;
+    }
+}
+
 class MultiSelectCartSystem {
     constructor() {
         this.selectedProducts = new Set();
@@ -220,7 +240,11 @@ class MultiSelectCartSystem {
                 body: JSON.stringify({ products: products })
             });
             
-            const result = await response.json();
+            const result = await safeJsonResponse(response);
+            if (!result) {
+                this.showNotification('لطفاً ابتدا وارد حساب کاربری خود شوید', 'error');
+                return;
+            }
             
             if (result.success) {
                 this.showNotification(result.message, 'success');
@@ -338,9 +362,9 @@ class MultiSelectCartSystem {
     async loadCartData() {
         try {
             const response = await fetch('/api/cart');
-            const result = await response.json();
+            const result = await safeJsonResponse(response);
             
-            if (result.success) {
+            if (result && result.success) {
                 this.cartItems = result.items;
                 this.updateCartDisplay();
             }
@@ -358,9 +382,9 @@ class MultiSelectCartSystem {
     async updateCartCount() {
         try {
             const response = await fetch('/api/cart/count');
-            const result = await response.json();
+            const result = await safeJsonResponse(response);
             
-            if (result.success) {
+            if (result && result.success) {
                 const count = result.count;
                 $('.cart-count').text(count).toggle(count > 0);
                 $('.cart-count-text').text('(' + count + ')');
@@ -373,9 +397,9 @@ class MultiSelectCartSystem {
     async updateCartTotals() {
         try {
             const response = await fetch('/api/cart/totals');
-            const result = await response.json();
+            const result = await safeJsonResponse(response);
             
-            if (result.success) {
+            if (result && result.success) {
                 this.updateCartTotalsDisplay(result);
             }
         } catch (error) {
@@ -423,9 +447,9 @@ class MultiSelectCartSystem {
     async updateCartItems() {
         try {
             const response = await fetch('/api/cart');
-            const result = await response.json();
+            const result = await safeJsonResponse(response);
             
-            if (result.success) {
+            if (result && result.success) {
                 this.cartItems = result.items;
                 this.renderCartItems();
             }
@@ -577,8 +601,12 @@ class MultiSelectCartSystem {
                     cart_id: cartId
                 })
             });
-
-            const result = await response.json();
+            
+            const result = await safeJsonResponse(response);
+            if (!result) {
+                this.showNotification('لطفاً ابتدا وارد حساب کاربری خود شوید', 'error');
+                return;
+            }
             
             if (result.success) {
                 this.removeCartItem(cartId);
@@ -620,8 +648,12 @@ class MultiSelectCartSystem {
                     quantity: quantity
                 })
             });
-
-            const result = await response.json();
+            
+            const result = await safeJsonResponse(response);
+            if (!result) {
+                this.showNotification('لطفاً ابتدا وارد حساب کاربری خود شوید', 'error');
+                return;
+            }
             
             if (result.success) {
                 this.updateCartDisplay();

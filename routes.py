@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file, abort
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file, abort, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -143,10 +143,9 @@ def shop():
     category_id = request.args.get('category_id', type=int)
     vehicle_type_id = request.args.get('vehicle_type_id', type=int)
     search_query = request.args.get('search', '')
-    in_stock_only = request.args.get('in_stock_only', type=bool)
     
-    # Build query
-    query = Product.query.filter_by(is_active=True)
+    # Build query - only show products with stock available
+    query = Product.query.filter_by(is_active=True).filter(Product.stock_quantity > 0)
 
     # Filter out Isaco products if user doesn't have permission to see them
     from app import can_see_isaco_products
@@ -194,9 +193,6 @@ def shop():
                 )
             )
     
-    if in_stock_only:
-        query = query.filter(Product.stock_quantity > 0)
-    
     products = query.paginate(
         page=page, per_page=per_page, error_out=False
     )
@@ -211,8 +207,7 @@ def shop():
         'search': search_query,
         'brand_id': brand_id,
         'category_id': category_id,
-        'vehicle_type_id': vehicle_type_id,
-        'in_stock_only': in_stock_only
+        'vehicle_type_id': vehicle_type_id
     }
     
     return render_template('shop.html', 
@@ -265,10 +260,9 @@ def brand_products(brand_id):
     # Get filter parameters
     category_id = request.args.get('category_id', type=int)
     search_query = request.args.get('search', '')
-    in_stock_only = request.args.get('in_stock_only', type=bool)
     
-    # Build query for products of this brand
-    query = Product.query.filter_by(brand_id=brand_id, is_active=True)
+    # Build query for products of this brand - only show products with stock available
+    query = Product.query.filter_by(brand_id=brand_id, is_active=True).filter(Product.stock_quantity > 0)
 
     # If ISACO brand, only show ISACO WH15 or items with ISACO prices
     # But only if user has permission to see Isaco products
@@ -320,9 +314,6 @@ def brand_products(brand_id):
                 )
             )
     
-    if in_stock_only:
-        query = query.filter(Product.stock_quantity > 0)
-    
     products = query.paginate(
         page=page, per_page=per_page, error_out=False
     )
@@ -331,14 +322,14 @@ def brand_products(brand_id):
     categories = models.db.session.query(PartCategory).join(Product).filter(
         Product.brand_id == brand_id,
         Product.is_active == True,
+        Product.stock_quantity > 0,
         PartCategory.is_active == True
     ).distinct().all()
     
     # Create current_filters object for template
     current_filters = {
         'search': search_query,
-        'category_id': category_id,
-        'in_stock_only': in_stock_only
+        'category_id': category_id
     }
     
     return render_template('brand_products.html', 
@@ -427,52 +418,126 @@ def bulk_conditions():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """User login"""
+    """User login with phone number and OTP"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        user = User.query.filter_by(username=username).first()
-        
-        if user and check_password_hash(user.password_hash, password):
-            if user.is_active:
-                login_user(user)
+        # Check if this is a phone submission
+        if request.form.get('action') == 'send_otp':
+            from sms_service import sms_service
+            
+            phone = request.form.get('phone')
+            if not phone:
+                flash('شماره تلفن الزامی است.', 'error')
+                return render_template('login.html')
+            
+            # Clean phone number
+            clean_phone = ''.join(filter(str.isdigit, phone))
+            if not clean_phone.startswith('09'):
+                if clean_phone.startswith('9'):
+                    clean_phone = '0' + clean_phone
+                else:
+                    flash('شماره تلفن باید با 09 شروع شود', 'error')
+                    return render_template('login.html')
+            
+            # Send OTP immediately
+            result = sms_service.send_otp(clean_phone)
+            
+            if result['success']:
+                # Delete any existing OTP for this phone
+                OTPVerification.query.filter_by(phone=clean_phone, verified=False).delete()
                 
-                # Use retry mechanism for database operations
-                from database_utils import retry_on_database_lock, database_transaction
+                # Store verification data in database
+                expires_at = sms_service.get_expiration_time()
+                otp_record = OTPVerification(
+                    phone=clean_phone,
+                    code=result['code'],
+                    source='login',
+                    expires_at=expires_at
+                )
+                models.db.session.add(otp_record)
+                models.db.session.commit()
                 
-                @retry_on_database_lock(max_retries=3, delay=0.5, backoff=2)
-                def update_last_login():
-                    with database_transaction(models.db.session):
-                        user.last_login = datetime.utcnow()
-                
-                try:
-                    update_last_login()
-                except Exception as e:
-                    # Log the error but don't fail the login
-                    from database_utils import logger
-                    logger.error(f"Failed to update last_login: {e}")
-                    # Continue with login even if last_login update fails
-                
-                next_page = request.args.get('next')
-                return redirect(next_page) if next_page else redirect(url_for('index'))
+                current_app.logger.info(f"OTP sent and stored in database - Phone: {clean_phone}, Code: {result['code']}")
             else:
-                flash('حساب کاربری شما غیرفعال است.', 'error')
-        else:
-            flash('نام کاربری یا رمز عبور اشتباه است.', 'error')
+                # Even if OTP sending fails, redirect to verification page
+                # The page will try to send OTP again automatically
+                # Store error message in session to show on verification page
+                session['otp_error'] = result['message']
+            
+            # Always redirect to phone verification page
+            return redirect(url_for('phone_verification', phone=clean_phone, source='login'))
     
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    """User registration"""
+    """User registration with phone verification"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
+    # Check if phone is verified (from session)
+    phone_verified = session.get('phone_verified', False)
+    verified_phone = session.get('verified_phone')
+    
     if request.method == 'POST':
+        # Check if this is a phone verification request
+        if request.form.get('action') == 'send_otp':
+            from sms_service import sms_service
+            
+            phone = request.form.get('phone')
+            if not phone:
+                flash('شماره تلفن الزامی است.', 'error')
+                return render_template('register.html')
+            
+            # Clean phone number
+            clean_phone = ''.join(filter(str.isdigit, phone))
+            if not clean_phone.startswith('09'):
+                if clean_phone.startswith('9'):
+                    clean_phone = '0' + clean_phone
+                else:
+                    flash('شماره تلفن باید با 09 شروع شود', 'error')
+                    return render_template('register.html')
+            
+            # Check if phone is already registered
+            if User.query.filter_by(phone=clean_phone).first():
+                flash('این شماره تلفن قبلاً ثبت شده است.', 'error')
+                return render_template('register.html')
+            
+            # Send OTP immediately
+            result = sms_service.send_otp(clean_phone)
+            
+            if result['success']:
+                # Delete any existing OTP for this phone
+                OTPVerification.query.filter_by(phone=clean_phone, verified=False).delete()
+                
+                # Store verification data in database
+                expires_at = sms_service.get_expiration_time()
+                otp_record = OTPVerification(
+                    phone=clean_phone,
+                    code=result['code'],
+                    source='register',
+                    expires_at=expires_at
+                )
+                models.db.session.add(otp_record)
+                models.db.session.commit()
+                
+                current_app.logger.info(f"OTP sent and stored in database - Phone: {clean_phone}, Code: {result['code']}")
+            else:
+                # Even if OTP sending fails, redirect to verification page
+                # The page will try to send OTP again automatically
+                # Store error message in session to show on verification page
+                session['otp_error'] = result['message']
+            
+            # Always redirect to phone verification page
+            return redirect(url_for('phone_verification', phone=clean_phone, source='register'))
+        
+        # If this is the final registration form submission
+        if not phone_verified:
+            flash('لطفاً ابتدا شماره تلفن خود را تأیید کنید.', 'error')
+            return render_template('register.html')
+        
         username = request.form.get('username')
         email = request.form.get('email')
         password = request.form.get('password')
@@ -482,12 +547,31 @@ def register():
         company_name = request.form.get('company_name')
         is_bulk_buyer_request = request.form.get('is_bulk_buyer') == 'on'
         
+        # Additional fields
+        national_id = request.form.get('national_id')
+        birth_date = request.form.get('birth_date')
+        address = request.form.get('address')
+        landline_phone = request.form.get('landline_phone')
+        secondary_phone = request.form.get('secondary_phone')
+        
         # Normalize optional fields
         username = username.strip() if isinstance(username, str) else username
-        email = (email.strip() if isinstance(email, str) else None) or None  # store NULL instead of ''
+        email = (email.strip() if isinstance(email, str) else None) or None
         full_name = full_name.strip() if isinstance(full_name, str) else full_name
         phone = phone.strip() if isinstance(phone, str) else phone
         company_name = company_name.strip() if isinstance(company_name, str) else company_name
+        national_id = national_id.strip() if isinstance(national_id, str) else None
+        address = address.strip() if isinstance(address, str) else None
+        landline_phone = landline_phone.strip() if isinstance(landline_phone, str) else None
+        secondary_phone = secondary_phone.strip() if isinstance(secondary_phone, str) else None
+        
+        # Parse birth date
+        birth_date_obj = None
+        if birth_date:
+            try:
+                birth_date_obj = datetime.strptime(birth_date, '%Y-%m-%d').date()
+            except:
+                pass
         
         # Validation
         if password != confirm_password:
@@ -502,6 +586,11 @@ def register():
             flash('ایمیل قبلاً استفاده شده است.', 'error')
             return render_template('register.html')
         
+        # Verify phone matches the verified phone
+        if phone != verified_phone:
+            flash('شماره تلفن با شماره تأیید شده مطابقت ندارد.', 'error')
+            return render_template('register.html')
+        
         # Create user
         user = User(
             username=username,
@@ -510,13 +599,23 @@ def register():
             full_name=full_name,
             phone=phone,
             company_name=company_name,
-            is_bulk_buyer=is_bulk_buyer_request,  # Set based on checkbox
+            national_id=national_id,
+            birth_date=birth_date_obj,
+            address=address,
+            landline_phone=landline_phone,
+            secondary_phone=secondary_phone,
+            is_bulk_buyer=is_bulk_buyer_request,
             user_type='bulk_buyer' if is_bulk_buyer_request else 'regular',
-            bulk_buyer_approval_status='pending' if is_bulk_buyer_request else 'approved'  # Regular users are auto-approved
+            bulk_buyer_approval_status='pending' if is_bulk_buyer_request else 'approved',
+            phone_verified=True  # Mark phone as verified
         )
         
         models.db.session.add(user)
         models.db.session.commit()
+        
+        # Clear verification session data
+        session.pop('phone_verified', None)
+        session.pop('verified_phone', None)
         
         # Send notification to admin if bulk buyer request
         if is_bulk_buyer_request:
@@ -534,11 +633,280 @@ def register():
             
             flash('ثبت نام با موفقیت انجام شد. درخواست خریدار عمده شما در انتظار تایید مدیریت است.', 'success')
         else:
-            flash('ثبت نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.', 'success')
+            flash('ثبت نام با موفقیت انجام شد.', 'success')
         
-        return redirect(url_for('login'))
+        # Auto-login user after registration
+        login_user(user)
+        
+        # Update last login
+        try:
+            from database_utils import retry_on_database_lock, database_transaction
+            @retry_on_database_lock(max_retries=3, delay=0.5, backoff=2)
+            def update_last_login():
+                with database_transaction(models.db.session):
+                    user.last_login = datetime.utcnow()
+            update_last_login()
+        except Exception as e:
+            from database_utils import logger
+            logger.error(f"Failed to update last_login: {e}")
+        
+        # Send welcome SMS after successful registration (if enabled)
+        if current_app.config.get('ENABLE_WELCOME_SMS', True):
+            try:
+                from sms_service import sms_service
+                if user.phone:
+                    user_type = 'admin' if user.is_admin else ('bulk_buyer' if user.is_bulk_buyer else 'regular')
+                    welcome_result = sms_service.send_welcome_message(user.phone, user.full_name, user_type)
+                    if welcome_result['success']:
+                        current_app.logger.info(f"Welcome SMS sent to {user.full_name} ({user.phone}): {welcome_result.get('welcome_text', '')}")
+                    else:
+                        current_app.logger.warning(f"Failed to send welcome SMS to {user.full_name}: {welcome_result['message']}")
+            except Exception as e:
+                current_app.logger.error(f"Failed to send welcome SMS: {e}")
+        
+        return redirect(url_for('index'))
     
-    return render_template('register.html')
+    return render_template('register.html', phone_verified=phone_verified, verified_phone=verified_phone)
+
+@app.route('/phone_verification')
+def phone_verification():
+    """Phone verification page (for both login and registration)"""
+    phone = request.args.get('phone')
+    source = request.args.get('source', 'login')  # 'login' or 'register'
+    
+    if not phone:
+        flash('شماره تلفن الزامی است.', 'error')
+        if source == 'register':
+            return redirect(url_for('register'))
+        else:
+            return redirect(url_for('login'))
+    
+    # Check if there's an error message from previous attempt
+    otp_error = session.pop('otp_error', None)
+    
+    # Check if we already have verification data in database
+    clean_phone = ''.join(filter(str.isdigit, phone))
+    if not clean_phone.startswith('09'):
+        if clean_phone.startswith('9'):
+            clean_phone = '0' + clean_phone
+    
+    otp_record = OTPVerification.query.filter_by(
+        phone=clean_phone, 
+        verified=False,
+        source=source
+    ).filter(OTPVerification.expires_at > datetime.utcnow()).first()
+    
+    has_verification_data = otp_record is not None
+    
+    # Log state for debugging
+    current_app.logger.info(f"Phone verification page - Phone: {clean_phone}, Has verification data: {has_verification_data}")
+    
+    return render_template('phone_verification.html', 
+                         phone=phone, 
+                         source=source,
+                         otp_error=otp_error,
+                         has_verification_data=has_verification_data)
+
+@app.route('/send_otp', methods=['POST'])
+def send_otp():
+    """Send OTP to phone number for verification (works for both login and registration)"""
+    from sms_service import sms_service
+    
+    phone = request.form.get('phone')
+    source = request.form.get('source', 'login')  # 'login' or 'register'
+    
+    if not phone:
+        return jsonify({'success': False, 'message': 'شماره تلفن الزامی است'})
+    
+    # Clean phone number
+    clean_phone = ''.join(filter(str.isdigit, phone))
+    if not clean_phone.startswith('09'):
+        if clean_phone.startswith('9'):
+            clean_phone = '0' + clean_phone
+        else:
+            return jsonify({'success': False, 'message': 'شماره تلفن باید با 09 شروع شود'})
+    
+    # For registration, check if phone is already registered
+    if source == 'register':
+        existing_user = User.query.filter_by(phone=clean_phone).first()
+        if existing_user:
+            return jsonify({'success': False, 'message': 'این شماره تلفن قبلاً ثبت شده است'})
+    
+    # Send OTP
+    result = sms_service.send_otp(clean_phone)
+    
+    if result['success']:
+        # Delete any existing OTP for this phone
+        OTPVerification.query.filter_by(phone=clean_phone, verified=False).delete()
+        
+        # Store verification data in database
+        expires_at = sms_service.get_expiration_time()
+        otp_record = OTPVerification(
+            phone=clean_phone,
+            code=result['code'],
+            source=source,
+            expires_at=expires_at
+        )
+        models.db.session.add(otp_record)
+        models.db.session.commit()
+        
+        current_app.logger.info(f"OTP sent via API and stored in database - Phone: {clean_phone}, Code: {result['code']}")
+        
+        return jsonify({
+            'success': True, 
+            'message': result['message']
+        })
+    else:
+        return jsonify({
+            'success': False, 
+            'message': result['message']
+        })
+
+@app.route('/verify_otp', methods=['POST'])
+def verify_otp():
+    """Verify OTP code and either log in user or redirect to registration"""
+    try:
+        from sms_service import sms_service
+        from database_utils import retry_on_database_lock, database_transaction
+        
+        user_code = request.form.get('otp_code')
+        phone = request.form.get('phone')
+        source = request.form.get('source', 'login')
+        
+        # Clean up expired OTPs first
+        try:
+            expired_count = OTPVerification.query.filter(
+                OTPVerification.expires_at <= datetime.utcnow(),
+                OTPVerification.verified == False
+            ).delete()
+            if expired_count > 0:
+                models.db.session.commit()
+                current_app.logger.info(f"Cleaned up {expired_count} expired OTP records")
+        except Exception as e:
+            current_app.logger.error(f"Error cleaning up expired OTPs: {e}")
+            models.db.session.rollback()
+        
+        if not user_code or not phone:
+            return jsonify({'success': False, 'message': 'کد تأیید و شماره تلفن الزامی است'})
+        
+        # Clean phone number
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        if not clean_phone.startswith('09'):
+            if clean_phone.startswith('9'):
+                clean_phone = '0' + clean_phone
+        
+        # Get stored verification data from database
+        otp_record = OTPVerification.query.filter_by(
+            phone=clean_phone,
+            verified=False,
+            source=source
+        ).filter(OTPVerification.expires_at > datetime.utcnow()).first()
+        
+        # Log for debugging
+        current_app.logger.info(f"OTP verification attempt - Phone: {clean_phone}, Source: {source}, Has OTP record: {otp_record is not None}")
+        
+        if not otp_record:
+            # Clean up expired OTPs
+            OTPVerification.query.filter(
+                OTPVerification.phone == clean_phone,
+                OTPVerification.expires_at <= datetime.utcnow()
+            ).delete()
+            models.db.session.commit()
+            
+            current_app.logger.warning(f"OTP verification failed: No valid OTP found. Phone: {clean_phone}")
+            return jsonify({
+                'success': False, 
+                'message': 'کد تأیید منقضی شده است. لطفاً دوباره درخواست کنید',
+                'error_type': 'expired'
+            })
+        
+        # Verify OTP
+        current_app.logger.info(f"Verifying OTP - User code: {user_code}, Stored code: {otp_record.code}, Expires at: {otp_record.expires_at}")
+        result = sms_service.verify_otp(user_code, otp_record.code, otp_record.expires_at)
+        current_app.logger.info(f"OTP verification result: {result}")
+        
+        if result['success']:
+            # Check if user exists
+            try:
+                user = User.query.filter_by(phone=clean_phone).first()
+            except Exception as e:
+                current_app.logger.error(f"Database error while checking user: {e}")
+                return jsonify({'success': False, 'message': 'خطا در بررسی اطلاعات کاربر. لطفاً دوباره تلاش کنید.'})
+            
+            if user:
+                # User exists - log them in
+                if not user.is_active:
+                    return jsonify({'success': False, 'message': 'حساب کاربری شما غیرفعال است.'})
+                
+                try:
+                    login_user(user)
+                except Exception as e:
+                    current_app.logger.error(f"Login error: {e}")
+                    return jsonify({'success': False, 'message': 'خطا در ورود به سیستم. لطفاً دوباره تلاش کنید.'})
+                
+                # Update last login
+                @retry_on_database_lock(max_retries=3, delay=0.5, backoff=2)
+                def update_last_login():
+                    with database_transaction(models.db.session):
+                        user.last_login = datetime.utcnow()
+                
+                try:
+                    update_last_login()
+                except Exception as e:
+                    from database_utils import logger
+                    logger.error(f"Failed to update last_login: {e}")
+                
+                # Send welcome SMS after successful login (if enabled)
+                if current_app.config.get('ENABLE_WELCOME_SMS', True):
+                    try:
+                        if user.phone:
+                            user_type = 'admin' if user.is_admin else ('bulk_buyer' if user.is_bulk_buyer else 'regular')
+                            welcome_result = sms_service.send_welcome_message(user.phone, user.full_name, user_type)
+                            if welcome_result['success']:
+                                current_app.logger.info(f"Welcome SMS sent to {user.full_name} ({user.phone}): {welcome_result.get('welcome_text', '')}")
+                            else:
+                                current_app.logger.warning(f"Failed to send welcome SMS to {user.full_name}: {welcome_result['message']}")
+                    except Exception as e:
+                        current_app.logger.error(f"Failed to send welcome SMS: {e}")
+                
+                # Mark OTP as verified
+                otp_record.verified = True
+                otp_record.verified_at = datetime.utcnow()
+                models.db.session.commit()
+                
+                return jsonify({
+                    'success': True, 
+                    'message': 'ورود با موفقیت انجام شد',
+                    'action': 'login',
+                    'redirect': url_for('index')
+                })
+            else:
+                # User doesn't exist - mark phone as verified and redirect to registration
+                session['phone_verified'] = True
+                session['verified_phone'] = clean_phone
+                
+                # Mark OTP as verified
+                otp_record.verified = True
+                otp_record.verified_at = datetime.utcnow()
+                models.db.session.commit()
+                
+                return jsonify({
+                    'success': True, 
+                    'message': 'کد تأیید صحیح است. لطفاً اطلاعات ثبت نام را تکمیل کنید',
+                    'action': 'register',
+                    'redirect': url_for('register')
+                })
+        else:
+            return jsonify({
+                'success': False, 
+                'message': result['message']
+            })
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error in verify_otp: {e}", exc_info=True)
+        return jsonify({
+            'success': False, 
+            'message': 'خطای غیرمنتظره رخ داد. لطفاً دوباره تلاش کنید.'
+        })
 
 @app.route('/logout')
 @login_required
@@ -679,6 +1047,29 @@ def mark_all_notifications_read():
     models.db.session.commit()
     
     return jsonify({'success': True})
+
+# ==================== WALLET ROUTES ====================
+
+@app.route('/wallet')
+@login_required
+def wallet():
+    """صفحه کیف پول کاربر"""
+    # اطمینان از وجود کیف پول
+    if not current_user.wallet:
+        wallet = Wallet(user_id=current_user.id, balance=0)
+        models.db.session.add(wallet)
+        models.db.session.commit()
+    else:
+        wallet = current_user.wallet
+    
+    # دریافت تراکنش‌ها
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    transactions = WalletTransaction.query.filter_by(wallet_id=wallet.id)\
+        .order_by(WalletTransaction.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('wallet.html', wallet=wallet, transactions=transactions)
 
 # ==================== CART ROUTES ====================
 
@@ -4044,6 +4435,129 @@ def admin_adjust_user_points():
         flash(result['message'], 'error')
     
     return redirect(url_for('admin_points_users'))
+
+# ==================== ADMIN WALLET SYSTEM ROUTES ====================
+
+@app.route('/admin/wallets')
+@login_required
+def admin_wallets():
+    """مدیریت کیف پول کاربران"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # فیلترها
+    search = request.args.get('search', '')
+    min_balance = request.args.get('min_balance', type=float)
+    max_balance = request.args.get('max_balance', type=float)
+    
+    # ساخت کوئری
+    query = db.session.query(Wallet, User).join(User, Wallet.user_id == User.id)
+    
+    if search:
+        query = query.filter(
+            models.db.or_(
+                User.username.contains(search),
+                User.full_name.contains(search),
+                User.company_name.contains(search),
+                User.phone.contains(search)
+            )
+        )
+    
+    if min_balance is not None:
+        query = query.filter(Wallet.balance >= min_balance)
+    
+    if max_balance is not None:
+        query = query.filter(Wallet.balance <= max_balance)
+    
+    wallets = query.order_by(Wallet.balance.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('admin/wallets/list.html', wallets=wallets)
+
+@app.route('/admin/wallets/<int:wallet_id>')
+@login_required
+def admin_wallet_detail(wallet_id):
+    """جزئیات کیف پول کاربر"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    wallet = Wallet.query.get_or_404(wallet_id)
+    
+    # دریافت تراکنش‌ها
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    transactions = WalletTransaction.query.filter_by(wallet_id=wallet_id)\
+        .order_by(WalletTransaction.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('admin/wallets/detail.html', 
+                         wallet=wallet, 
+                         transactions=transactions)
+
+@app.route('/admin/wallets/<int:wallet_id>/adjust', methods=['POST'])
+@login_required
+def admin_adjust_wallet(wallet_id):
+    """تنظیم موجودی کیف پول"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    wallet = Wallet.query.get_or_404(wallet_id)
+    
+    action = request.form.get('action')  # 'add' or 'set'
+    amount = request.form.get('amount', type=float)
+    description = request.form.get('description', '').strip()
+    
+    if not amount or amount < 0:
+        flash('مبلغ باید بیشتر از صفر باشد.', 'error')
+        return redirect(url_for('admin_wallet_detail', wallet_id=wallet_id))
+    
+    try:
+        if action == 'add':
+            # افزودن موجودی
+            transaction = wallet.add_balance(
+                amount=amount,
+                transaction_type='admin_adjustment',
+                description=description or 'افزودن موجودی توسط مدیر',
+                admin_id=current_user.id
+            )
+            flash(f'مبلغ {amount:,.0f} ریال به کیف پول اضافه شد.', 'success')
+        elif action == 'set':
+            # تنظیم موجودی به مقدار مشخص
+            difference = amount - float(wallet.balance)
+            if difference > 0:
+                transaction = wallet.add_balance(
+                    amount=difference,
+                    transaction_type='admin_adjustment',
+                    description=description or f'تنظیم موجودی به {amount:,.0f} ریال توسط مدیر',
+                    admin_id=current_user.id
+                )
+            elif difference < 0:
+                transaction = wallet.deduct_balance(
+                    amount=abs(difference),
+                    transaction_type='admin_adjustment',
+                    description=description or f'تنظیم موجودی به {amount:,.0f} ریال توسط مدیر',
+                    admin_id=current_user.id
+                )
+            else:
+                flash('موجودی قبلاً در این مقدار است.', 'info')
+                return redirect(url_for('admin_wallet_detail', wallet_id=wallet_id))
+            flash(f'موجودی کیف پول به {amount:,.0f} ریال تنظیم شد.', 'success')
+        else:
+            flash('عملیات نامعتبر است.', 'error')
+            return redirect(url_for('admin_wallet_detail', wallet_id=wallet_id))
+        
+        models.db.session.commit()
+    except ValueError as e:
+        models.db.session.rollback()
+        flash(str(e), 'error')
+    except Exception as e:
+        models.db.session.rollback()
+        flash(f'خطا در تنظیم موجودی: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_wallet_detail', wallet_id=wallet_id))
 
 @app.route('/admin/rewards')
 @login_required

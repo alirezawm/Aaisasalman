@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from sqlalchemy import event, text
 from datetime import datetime, timedelta
+from decimal import Decimal
 import json
 
 # Create SQLAlchemy instance
@@ -55,6 +56,11 @@ class User(UserMixin, db.Model):
     current_debt = db.Column(db.Float, default=0)
     current_credit = db.Column(db.Float, default=0)
     
+    # SMS Verification fields
+    phone_verified = db.Column(db.Boolean, default=False)
+    verification_code = db.Column(db.String(10), nullable=True)
+    verification_expires = db.Column(db.DateTime, nullable=True)
+    
     # Metadata
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
@@ -65,6 +71,7 @@ class User(UserMixin, db.Model):
     documents = db.relationship('UserDocument', backref='user', lazy=True)
     search_history = db.relationship('UserSearchHistory', backref='user', lazy=True)
     bulk_buyer_approver = db.relationship('User', foreign_keys=[bulk_buyer_approved_by], backref='approved_bulk_buyers', remote_side='User.id')
+    wallet = db.relationship('Wallet', backref='user', uselist=False, lazy=True)
     
     def get_preferred_brands(self):
         """Get preferred brands as list"""
@@ -199,6 +206,12 @@ class User(UserMixin, db.Model):
     def set_notification_preferences(self, preferences):
         """Set notification preferences"""
         self.notification_preferences = json.dumps(preferences)
+    
+    def get_wallet_balance(self):
+        """دریافت موجودی کیف پول به صورت امن"""
+        if self.wallet and self.wallet.balance is not None:
+            return float(self.wallet.balance)
+        return 0.0
 
 class Brand(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1362,3 +1375,142 @@ class InvoiceDocumentApproval(db.Model):
     
     def __repr__(self):
         return f'<InvoiceDocumentApproval {self.document_id} - {self.approval_status}>'
+
+class Wallet(db.Model):
+    """کیف پول کاربران"""
+    __tablename__ = 'wallet'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    balance = db.Column(db.Numeric(15, 2), default=0, nullable=False)  # موجودی به ریال
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    transactions = db.relationship('WalletTransaction', backref='wallet', lazy=True, order_by='WalletTransaction.created_at.desc()')
+    
+    def add_balance(self, amount, transaction_type='deposit', description='', admin_id=None):
+        """افزودن موجودی به کیف پول"""
+        # تبدیل amount به Decimal برای سازگاری با balance
+        amount = Decimal(str(amount))
+        if amount <= 0:
+            raise ValueError("مبلغ باید بیشتر از صفر باشد")
+        
+        self.balance += amount
+        transaction = WalletTransaction(
+            wallet_id=self.id,
+            amount=amount,
+            transaction_type=transaction_type,
+            description=description,
+            admin_id=admin_id,
+            balance_after=self.balance
+        )
+        db.session.add(transaction)
+        return transaction
+    
+    def deduct_balance(self, amount, transaction_type='withdrawal', description='', admin_id=None):
+        """کسر موجودی از کیف پول"""
+        # تبدیل amount به Decimal برای سازگاری با balance
+        amount = Decimal(str(amount))
+        if amount <= 0:
+            raise ValueError("مبلغ باید بیشتر از صفر باشد")
+        if self.balance < amount:
+            raise ValueError("موجودی کافی نیست")
+        
+        self.balance -= amount
+        transaction = WalletTransaction(
+            wallet_id=self.id,
+            amount=-amount,
+            transaction_type=transaction_type,
+            description=description,
+            admin_id=admin_id,
+            balance_after=self.balance
+        )
+        db.session.add(transaction)
+        return transaction
+    
+    def get_formatted_balance(self):
+        """دریافت موجودی فرمت شده"""
+        return f"{float(self.balance):,.0f} ریال"
+    
+    def __repr__(self):
+        return f'<Wallet {self.user.username} - {self.balance} ریال>'
+
+class WalletTransaction(db.Model):
+    """تراکنش‌های کیف پول"""
+    __tablename__ = 'wallet_transaction'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    wallet_id = db.Column(db.Integer, db.ForeignKey('wallet.id'), nullable=False)
+    amount = db.Column(db.Numeric(15, 2), nullable=False)  # مبلغ (مثبت برای واریز، منفی برای برداشت)
+    transaction_type = db.Column(db.String(50), nullable=False)  # deposit, withdrawal, purchase, refund, admin_adjustment
+    description = db.Column(db.Text, nullable=True)
+    balance_after = db.Column(db.Numeric(15, 2), nullable=False)  # موجودی پس از تراکنش
+    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # در صورت تغییر توسط ادمین
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=True)  # در صورت ارتباط با فاکتور
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    admin = db.relationship('User', foreign_keys=[admin_id], backref='wallet_transactions')
+    invoice = db.relationship('Invoice', backref='wallet_transactions')
+    
+    def is_deposit(self):
+        """بررسی اینکه آیا تراکنش واریز است"""
+        return self.amount > 0
+    
+    def is_withdrawal(self):
+        """بررسی اینکه آیا تراکنش برداشت است"""
+        return self.amount < 0
+    
+    def get_formatted_amount(self):
+        """دریافت مبلغ فرمت شده"""
+        sign = "+" if self.amount > 0 else ""
+        return f"{sign}{float(self.amount):,.0f} ریال"
+    
+    def get_transaction_type_fa(self):
+        """دریافت نوع تراکنش به فارسی"""
+        types = {
+            'deposit': 'واریز',
+            'withdrawal': 'برداشت',
+            'purchase': 'خرید',
+            'refund': 'بازگشت وجه',
+            'admin_adjustment': 'تغییر توسط مدیر'
+        }
+        return types.get(self.transaction_type, self.transaction_type)
+    
+    def __repr__(self):
+        return f'<WalletTransaction {self.id} - {self.amount} ریال - {self.transaction_type}>'
+
+class OTPVerification(db.Model):
+    """جدول ذخیره کدهای OTP برای تأیید شماره تلفن"""
+    __tablename__ = 'otp_verification'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    phone = db.Column(db.String(20), nullable=False, index=True)
+    code = db.Column(db.String(10), nullable=False)
+    source = db.Column(db.String(20), default='login')  # 'login' or 'register'
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    verified = db.Column(db.Boolean, default=False)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    
+    # Indexes
+    __table_args__ = (
+        db.Index('idx_otp_phone_expires', 'phone', 'expires_at'),
+    )
+    
+    def is_expired(self):
+        """بررسی انقضای کد"""
+        return datetime.utcnow() > self.expires_at
+    
+    def __repr__(self):
+        return f'<OTPVerification {self.phone} - {self.code} - Expires: {self.expires_at}>'
+
+# Event listener to auto-create wallet for new users
+@event.listens_for(User, 'after_insert')
+def create_wallet_for_user(mapper, connection, target):
+    """ایجاد خودکار کیف پول برای کاربر جدید"""
+    wallet = Wallet(user_id=target.id, balance=0)
+    db.session.add(wallet)
+    db.session.flush()

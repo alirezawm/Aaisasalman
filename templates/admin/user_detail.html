@@ -183,6 +183,11 @@
                                     <i class="fas fa-user-shield me-1"></i>نقش‌ها و مجوزها
                                 </button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab">
+                                    <i class="fas fa-file-alt me-1"></i>مدارک
+                                </button>
+                            </li>
                         </ul>
                     </div>
                     <div class="card-body">
@@ -520,6 +525,75 @@
                                 <div class="text-center py-4">
                                     <i class="fas fa-user-shield fa-3x text-muted mb-3"></i>
                                     <p class="text-muted">هیچ نقشی تخصیص داده نشده</p>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Documents Tab -->
+                            <div class="tab-pane fade" id="documents" role="tabpanel">
+                                {% if documents %}
+                                <div class="row">
+                                    {% for document in documents %}
+                                    <div class="col-md-6 col-lg-4 mb-4">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center mb-3">
+                                                    <div class="document-icon me-3">
+                                                        {% if document.file_type == 'pdf' %}
+                                                            <i class="fas fa-file-pdf fa-2x text-danger"></i>
+                                                        {% elif document.file_type in ['jpg', 'jpeg', 'png', 'gif'] %}
+                                                            <i class="fas fa-file-image fa-2x text-success"></i>
+                                                        {% elif document.file_type in ['doc', 'docx'] %}
+                                                            <i class="fas fa-file-word fa-2x text-primary"></i>
+                                                        {% elif document.file_type in ['xls', 'xlsx'] %}
+                                                            <i class="fas fa-file-excel fa-2x text-success"></i>
+                                                        {% else %}
+                                                            <i class="fas fa-file fa-2x text-secondary"></i>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="card-title mb-1">{{ document.document_type or 'مدرک' }}</h6>
+                                                        <small class="text-muted">{{ document.original_filename }}</small>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-calendar me-1"></i>
+                                                        آپلود شده: {{ document.uploaded_at | persian_date_pretty }}
+                                                    </small>
+                                                </div>
+                                                
+                                                {% if document.description %}
+                                                <p class="card-text text-muted small">{{ document.description }}</p>
+                                                {% endif %}
+                                                
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-weight me-1"></i>
+                                                        {{ "%.1f"|format(document.file_size / 1024) }} KB
+                                                    </small>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <a href="{{ url_for('uploaded_file', filename=document.file_path) }}" 
+                                                           class="btn btn-outline-primary" target="_blank" title="مشاهده">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ url_for('uploaded_file', filename=document.file_path) }}" 
+                                                           class="btn btn-outline-success" download title="دانلود">
+                                                            <i class="fas fa-download"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
+                                    <h5 class="text-muted">هیچ مدرکی آپلود نشده</h5>
+                                    <p class="text-muted">این کاربر هنوز هیچ مدرکی در پروفایل خود آپلود نکرده است.</p>
                                 </div>
                                 {% endif %}
                             </div>

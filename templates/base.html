@@ -124,6 +124,7 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#dc3545">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="آسیا سلمان">
@@ -280,6 +281,19 @@
                         </div>
                     </div>
                     
+                    <!-- Wallet Button -->
+                    <div class="wallet-container me-3">
+                        <a class="btn btn-success position-relative modern-wallet-btn" href="{{ url_for('wallet') }}" aria-label="کیف پول">
+                            <i class="fas fa-wallet me-2"></i>
+                            <span class="d-none d-sm-inline">کیف پول</span>
+                            {% if wallet_balance and wallet_balance > 0 %}
+                            <span class="wallet-balance-badge ms-2">
+                                {{ wallet_balance|format_number }} ریال
+                            </span>
+                            {% endif %}
+                        </a>
+                    </div>
+                    
                     <!-- Enhanced User Menu -->
                     <div class="dropdown">
                         <a class="btn btn-outline-danger dropdown-toggle modern-user-btn" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -292,6 +306,9 @@
                         <ul class="dropdown-menu dropdown-menu-end modern-dropdown">
                             <li><a class="dropdown-item" href="{{ url_for('profile') }}">
                                 <i class="fas fa-user-circle me-2"></i>پروفایل
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('wallet') }}">
+                                <i class="fas fa-wallet me-2"></i>کیف پول
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('profile_invoices') }}">
                                 <i class="fas fa-file-invoice me-2"></i>فاکتورهای من
@@ -483,10 +500,11 @@
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/static/sw.js')
                     .then(function(registration) {
-                        console.log('ServiceWorker registration successful');
+                        console.log('ServiceWorker registration successful with scope:', registration.scope);
                     })
                     .catch(function(err) {
-                        console.log('ServiceWorker registration failed');
+                        console.log('ServiceWorker registration failed:', err.message);
+                        // Silently fail - Service Worker is optional
                     });
             });
         }

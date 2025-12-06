@@ -1,19 +1,48 @@
 from flask import Flask
 from flask_login import LoginManager
+from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
+
+# JWT Configuration for Mobile API
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', app.config['SECRET_KEY'])
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 604800  # 7 days in seconds
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000  # 30 days in seconds
+app.config['JWT_ALGORITHM'] = 'HS256'
+
+# Initialize JWT
+jwt = JWTManager(app)
+
+# CORS Configuration for Mobile API
+CORS(app, resources={
+    r"/api/mobile/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///asia_salman.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Session configuration to work with Tracking Prevention
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Lax instead of Strict to work with redirects
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['PERMANENT_SESSION_LIFETIME'] = 600  # 10 minutes for OTP verification
 
 # ISACO Warehouse 15 feature flags and constants
 app.config['ENABLE_ISACO_WH15'] = True
 app.config['ISACO_BRAND_ID'] = 63
 app.config['ISACO_WAREHOUSE_ID'] = 15
 app.config['ISACO_ALLOWED_PLANS'] = ['isaco_cash', 'isaco_1m', 'isaco_2m', 'isaco_3m']
+
+# SMS Configuration
+app.config['ENABLE_WELCOME_SMS'] = True  # Enable/disable welcome SMS after login
 
 # SQLite-specific settings for better concurrency handling
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
@@ -73,10 +102,12 @@ models.db.init_app(app)
 # Set up user loader
 @login_manager.user_loader
 def load_user(user_id):
-    from sqlalchemy.orm import joinedload
-    # Load user with notifications to avoid lazy loading issues
+    from sqlalchemy.orm import joinedload, selectinload
+    # Load user with notifications and wallet to avoid lazy loading issues
+    # Use selectinload for wallet since it's a one-to-one relationship
     return models.User.query.options(
-        joinedload(models.User.notifications)
+        joinedload(models.User.notifications),
+        selectinload(models.User.wallet)
     ).get(int(user_id))
 
 # Import routes after models are defined
@@ -96,6 +127,15 @@ if 'tadbir_monitoring' not in app.blueprints:
 from sync_api import sync_api_bp
 if 'sync_api' not in app.blueprints:
     app.register_blueprint(sync_api_bp)
+
+# Register Mobile API Blueprint
+try:
+    from mobile_api import mobile_api_bp
+    if 'mobile_api' not in app.blueprints:
+        app.register_blueprint(mobile_api_bp)
+        print("Mobile API blueprint registered successfully")
+except Exception as e:
+    print(f"Warning: Could not register Mobile API blueprint: {e}")
 
 # Define format_price function here to avoid circular import
 def format_price(price, is_isaco=False):
@@ -177,11 +217,24 @@ app.jinja_env.filters['persian_datetime'] = persian_datetime_filter
 app.jinja_env.filters['persian_date_pretty'] = persian_date_pretty_filter
 app.jinja_env.filters['persian_datetime_pretty'] = persian_datetime_pretty_filter
 
+# Format number with thousand separators
+def format_number(value):
+    """Format number with thousand separators"""
+    if value is None:
+        return "0"
+    try:
+        return f"{float(value):,.0f}"
+    except (ValueError, TypeError):
+        return "0"
+
+app.jinja_env.filters['format_number'] = format_number
+
 # Context processor to provide unread notifications count
 @app.context_processor
 def inject_unread_notifications_count():
     """Make unread notifications count available in all templates"""
     from flask_login import current_user
+    result = {'unread_notifications_count': 0, 'wallet_balance': 0}
     if current_user.is_authenticated:
         try:
             # Query directly instead of using lazy-loaded relationship
@@ -189,10 +242,16 @@ def inject_unread_notifications_count():
                 user_id=current_user.id, 
                 is_read=False
             ).count()
-            return {'unread_notifications_count': unread_count}
+            result['unread_notifications_count'] = unread_count
+            
+            # Get wallet balance safely
+            try:
+                result['wallet_balance'] = current_user.get_wallet_balance()
+            except Exception:
+                result['wallet_balance'] = 0
         except Exception:
-            return {'unread_notifications_count': 0}
-    return {'unread_notifications_count': 0}
+            pass
+    return result
 
 if __name__ == '__main__':
     with app.app_context():
