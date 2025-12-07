@@ -1,0 +1,772 @@
+{% extends "base.html" %}
+
+{% block title %}آسیا سلمان - قطعات خودرو اصل با کیفیت جهانی | فروشگاه آنلاین{% endblock %}
+
+{% block description %}شرکت بازرگانی قطعات خودرو آسیا سلمان - ارائه بهترین قطعات خودرو با کیفیت جهانی، قیمت‌های رقابتی و خدمات پس از فروش عالی. لنت ترمز، فیلتر روغن، شمع و قطعات موتور اصل. خرید عمده و تکی.{% endblock %}
+
+{% block keywords %}قطعات خودرو, لنت ترمز, فیلتر روغن, شمع خودرو, قطعات موتور, خرید عمده قطعات, قطعات اصل, آسیا سلمان, مشهد, خراسان رضوی, تعمیرگاه, مکانیک, فروشگاه آنلاین{% endblock %}
+
+{% block extra_css %}
+<!-- Additional structured data for homepage -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "شرکت بازرگانی قطعات خودرو آسیا سلمان",
+    "image": "{{ url_for('static', filename='images/logo.png', _external=True) }}",
+    "description": "ارائه بهترین قطعات خودرو با کیفیت جهانی و قیمت‌های رقابتی",
+    "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "رباط طرق 2",
+        "addressLocality": "مشهد",
+        "addressRegion": "خراسان رضوی",
+        "addressCountry": "IR"
+    },
+    "telephone": "+98-51-33338881",
+    "openingHours": "Mo-Fr 08:00-18:00",
+    "priceRange": "$$",
+    "currenciesAccepted": "IRR",
+    "paymentAccepted": "Cash, Check",
+    "areaServed": {
+        "@type": "Country",
+        "name": "Iran"
+    },
+    "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "قطعات خودرو",
+        "itemListElement": [
+            {
+                "@type": "Offer",
+                "itemOffered": {
+                    "@type": "Product",
+                    "name": "لنت ترمز"
+                }
+            },
+            {
+                "@type": "Offer",
+                "itemOffered": {
+                    "@type": "Product",
+                    "name": "فیلتر روغن"
+                }
+            },
+            {
+                "@type": "Offer",
+                "itemOffered": {
+                    "@type": "Product",
+                    "name": "شمع خودرو"
+                }
+            }
+        ]
+    }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Enhanced Hero Section -->
+<section class="hero-section text-white">
+    <div class="container">
+        <div class="row align-items-center min-vh-80">
+            <div class="col-lg-6 hero-content">
+                <div class="fade-in">
+                    <h1 class="display-4 fw-bold mb-4 text-white">
+                        <i class="fas fa-car me-3"></i>آسیا سلمان
+                    </h1>
+                    <h2 class="h3 mb-4 text-white-50">
+                        قطعات خودرو اصل با کیفیت جهانی
+                    </h2>
+                    <p class="lead mb-4 text-white-75">
+                        ارائه بهترین قطعات خودرو با قیمت‌های رقابتی و خدمات پس از فروش عالی
+                    </p>
+                    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>توجه:</strong> فقط در صورت ثبت نام می‌توانید سفارش خود را ثبت کنید
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3 mb-4">
+                        {% if not current_user.is_authenticated %}
+                        <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>ثبت نام رایگان
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>ورود
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('brands') }}" class="btn btn-light btn-lg">
+                            <i class="fas fa-industry me-2"></i>انتخاب برند
+                        </a>
+                        <a href="{{ url_for('shop') }}" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-store me-2"></i>فروشگاه
+                        </a>
+                        {% endif %}
+                    </div>
+                    <div class="row text-center text-white-75">
+                        <div class="col-4">
+                            <div class="h4 text-white"><i class="fas fa-calendar-alt me-2"></i>۱۰+</div>
+                            <small>سال تجربه</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h4 text-white"><i class="fas fa-tools me-2"></i>۵۰۰+</div>
+                            <small>نوع قطعه</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h4 text-white"><i class="fas fa-users me-2"></i>۱۰۰۰+</div>
+                            <small>مشتری راضی</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="search-container slide-in-right">
+                    <h3 class="text-center mb-4 text-dark">
+                        <i class="fas fa-search me-2"></i>جستجوی قطعات
+                    </h3>
+                    <form action="{{ url_for('shop') }}" method="GET" class="mb-3">
+                        <div class="input-group mb-3">
+                            <input type="text" name="search" class="form-control search-input" 
+                                   placeholder="کد قطعه، نام قطعه، برند یا نوع خودرو را وارد کنید...">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <a href="{{ url_for('shop') }}?in_stock_only=1" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-check me-2"></i>موجود
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ url_for('bulk_conditions') }}" class="btn btn-outline-success w-100">
+                                <i class="fas fa-handshake me-2"></i>خرید عمده
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Categories Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="section-title">
+            <h2 class="display-5 fw-bold">دسته‌بندی محصولات محبوب</h2>
+            <p class="lead text-muted">انواع قطعات خودرو با کیفیت بالا و قیمت مناسب</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-3 col-sm-6">
+                <div class="card category-card h-100 text-center">
+                    <div class="card-body p-4">
+                        <div class="category-icon mb-3">
+                            <i class="fas fa-stop-circle fa-3x text-danger"></i>
+                        </div>
+                        <h5 class="card-title">لنت ترمز</h5>
+                        <p class="card-text text-muted mb-3">۲۵۰+ نوع</p>
+                        <a href="{{ url_for('shop') }}?search=لنت" class="btn btn-outline-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card category-card h-100 text-center">
+                    <div class="card-body p-4">
+                        <div class="category-icon mb-3">
+                            <i class="fas fa-cog fa-3x text-primary"></i>
+                        </div>
+                        <h5 class="card-title">قطعات موتور</h5>
+                        <p class="card-text text-muted mb-3">۱۸۰+ نوع</p>
+                        <a href="{{ url_for('shop') }}?search=موتور" class="btn btn-outline-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card category-card h-100 text-center">
+                    <div class="card-body p-4">
+                        <div class="category-icon mb-3">
+                            <i class="fas fa-bolt fa-3x text-warning"></i>
+                        </div>
+                        <h5 class="card-title">شمع</h5>
+                        <p class="card-text text-muted mb-3">۱۲۰+ نوع</p>
+                        <a href="{{ url_for('shop') }}?search=شمع" class="btn btn-outline-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card category-card h-100 text-center">
+                    <div class="card-body p-4">
+                        <div class="category-icon mb-3">
+                            <i class="fas fa-filter fa-3x text-info"></i>
+                        </div>
+                        <h5 class="card-title">فیلتر روغن</h5>
+                        <p class="card-text text-muted mb-3">۹۵+ نوع</p>
+                        <a href="{{ url_for('shop') }}?search=فیلتر" class="btn btn-outline-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card category-card h-100 text-center">
+                    <div class="card-body p-4">
+                        <div class="category-icon mb-3">
+                            <i class="fas fa-plug fa-3x text-success"></i>
+                        </div>
+                        <h5 class="card-title">قطعات برقی</h5>
+                        <p class="card-text text-muted mb-3">۱۵۰+ نوع</p>
+                        <a href="{{ url_for('shop') }}?search=برقی" class="btn btn-outline-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card category-card h-100 text-center">
+                    <div class="card-body p-4">
+                        <div class="category-icon mb-3">
+                            <i class="fas fa-car-side fa-3x text-secondary"></i>
+                        </div>
+                        <h5 class="card-title">قطعات تعلیق</h5>
+                        <p class="card-text text-muted mb-3">۲۰۰+ نوع</p>
+                        <a href="{{ url_for('shop') }}?search=تعلیق" class="btn btn-outline-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card category-card h-100 text-center">
+                    <div class="card-body p-4">
+                        <div class="category-icon mb-3">
+                            <i class="fas fa-thermometer-half fa-3x text-info"></i>
+                        </div>
+                        <h5 class="card-title">سیستم خنک‌کننده</h5>
+                        <p class="card-text text-muted mb-3">۸۰+ نوع</p>
+                        <a href="{{ url_for('shop') }}?search=خنک" class="btn btn-outline-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card category-card h-100 text-center">
+                    <div class="card-body p-4">
+                        <div class="category-icon mb-3">
+                            <i class="fas fa-tools fa-3x text-warning"></i>
+                        </div>
+                        <h5 class="card-title">لوازم جانبی</h5>
+                        <p class="card-text text-muted mb-3">۳۰۰+ نوع</p>
+                        <a href="{{ url_for('shop') }}?search=لوازم" class="btn btn-outline-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Company About Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="section-title">
+            <h2 class="display-5 fw-bold">درباره شرکت آسیا سلمان</h2>
+            <p class="lead text-muted">شرکت بازرگانی قطعات خودرو آسیا سلمان</p>
+        </div>
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body p-4">
+                        <p class="lead mb-3">
+                            شرکت بازرگانی قطعات خودرو اسیاسلمان در سال 1402 به ثبت رسیده و پیش از ان به مدت ۴ سال با نام تجاری بازرگانی فاضلی فعالیت خود را اغاز کرده بود پس از تلاش های فراوان ماهیت کلی این شرکت از حقیقی به حقوقی تغییر یافت.
+                        </p>
+                        <p class="mb-3">
+                            شرکت پخش قطعات خودرو اسیاسلمان با مدیریت عامل جناب مهندس سلمان یزد فاضلی در طی پنج سال گذشته حجم بسیار گسترده ای را از بازار قطعات خودرو در شرق کشور به خود اختصاص داده است.
+                        </p>
+                        <p class="mb-3">
+                            یکی از دلایل موفقیت این شرکت بکار گیری تیمی جوان پویا و توانمند است. همیشه بران بودیم که با بهترین برند ها و پایین ترین قیمت ها خدمت گذاری شما عزیزان را انجام دهیم.
+                        </p>
+                        <p class="mb-0">
+                            <strong>اسیاسلمان نماینده بیش از بیست برند مطرح در شرق کشور.</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-body p-4 text-center">
+                        <h5 class="card-title text-danger mb-3">
+                            <i class="fas fa-user-tie me-2"></i>مدیر عامل
+                        </h5>
+                        <div class="ceo-image-container mb-3">
+                            <img src="{{ url_for('static', filename='images/photo_5460656944265162587_w.jpg') }}" 
+                                 alt="مهندس سلمان یزد فاضلی - مدیر عامل" 
+                                 class="img-fluid rounded-circle shadow" 
+                                 style="width: 200px; height: 200px; object-fit: cover;"
+                                 onerror="this.src='{{ url_for('static', filename='images/logo.png') }}'; this.style.background='#f8f9fa'; this.style.border='2px solid #dc3545';">
+                        </div>
+                        <h6 class="text-primary mb-1">مهندس سلمان یزد فاضلی</h6>
+                        <p class="text-muted small">مدیر عامل شرکت آسیا سلمان</p>
+                        <div class="row text-center mt-3">
+                            <div class="col-6">
+                                <div class="h6 text-danger">۵+</div>
+                                <small class="text-muted">سال تجربه</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="h6 text-danger">۲۰+</div>
+                                <small class="text-muted">برند نمایندگی</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Why Choose Us Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="section-title">
+            <h2 class="display-5 fw-bold">چرا آسیا سلمان را انتخاب کنیم؟</h2>
+            <p class="lead text-muted">مزایای رقابتی ما در ارائه خدمات</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card trust-card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start">
+                            <div class="text-primary me-3">
+                                <i class="fas fa-award fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-primary">کیفیت تضمین شده</h5>
+                                <p class="card-text text-muted">
+                                    قطعات اصل و با کیفیت از برندهای معتبر جهانی
+                                </p>
+                                <ul class="list-unstyled text-muted">
+                                    <li><i class="fas fa-check text-success me-2"></i>گارانتی کیفیت</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>تأیید اصالت</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>تست کیفیت</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card trust-card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start">
+                            <div class="text-success me-3">
+                                <i class="fas fa-tag fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-success">قیمت‌های رقابتی</h5>
+                                <p class="card-text text-muted">
+                                    بهترین قیمت‌ها در بازار با تخفیفات ویژه
+                                </p>
+                                <ul class="list-unstyled text-muted">
+                                    <li><i class="fas fa-check text-success me-2"></i>قیمت عمده</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>تخفیف نقدی</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>مقایسه قیمت</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card trust-card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start">
+                            <div class="text-info me-3">
+                                <i class="fas fa-shipping-fast fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-info">ارسال سریع و امن</h5>
+                                <p class="card-text text-muted">
+                                    ارسال سریع و امن به سراسر کشور
+                                </p>
+                                <ul class="list-unstyled text-muted">
+                                    <li><i class="fas fa-check text-success me-2"></i>ارسال ۲۴ ساعته</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>بسته‌بندی مناسب</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>ردیابی سفارش</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card trust-card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start">
+                            <div class="text-warning me-3">
+                                <i class="fas fa-headset fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-warning">پشتیبانی تخصصی</h5>
+                                <p class="card-text text-muted">
+                                    پشتیبانی تخصصی و مشاوره رایگان
+                                </p>
+                                <ul class="list-unstyled text-muted">
+                                    <li><i class="fas fa-check text-success me-2"></i>مشاوره فنی</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>پشتیبانی ۲۴/۷</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>راهنمای نصب</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="section-title">
+            <h2 class="display-5 fw-bold">نظرات مشتریان راضی</h2>
+            <p class="lead text-muted">تجربه مشتریان ما از خدمات آسیا سلمان</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="testimonial-card">
+                    <div class="star-rating mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="card-text mb-3">
+                        "کیفیت قطعات عالی و قیمت مناسب. پشتیبانی خوبی دارند. برای خرید عمده بهترین انتخاب است."
+                    </p>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-user-circle fa-2x text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">محمد احمدی</h6>
+                            <small class="text-muted">مدیر تعمیرگاه مشهد</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card">
+                    <div class="star-rating mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="card-text mb-3">
+                        "ارسال سریع و بسته‌بندی مناسب. قطعات اصل و با کیفیت. حتماً دوباره خرید می‌کنم."
+                    </p>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-user-circle fa-2x text-success"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">فاطمه رضایی</h6>
+                            <small class="text-muted">صاحب تعمیرگاه اصفهان</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card">
+                    <div class="star-rating mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="card-text mb-3">
+                        "مشاوره فنی عالی و راهنمایی کامل. قطعات با کیفیت و قیمت مناسب. توصیه می‌کنم."
+                    </p>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-user-circle fa-2x text-info"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">علی محمدی</h6>
+                            <small class="text-muted">مکانیک خودرو مشهد</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Announcements Section -->
+{% if announcements %}
+<section class="py-5">
+    <div class="container">
+        <div class="section-title">
+            <h2 class="display-5 fw-bold">آخرین اطلاعیه‌ها</h2>
+            <p class="lead text-muted">اخبار و اطلاعیه‌های مهم شرکت</p>
+        </div>
+        <div class="row g-4">
+            {% for announcement in announcements %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-info-circle me-2"></i>{{ announcement.title }}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ announcement.content[:150] }}{% if announcement.content|length > 150 %}...{% endif %}</p>
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ announcement.created_at | persian_date }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Festivals Section -->
+{% if festivals %}
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="display-6 fw-bold text-danger mb-4">
+                    <i class="fas fa-gift me-3"></i>جشنواره‌ها و تخفیفات
+                </h2>
+            </div>
+        </div>
+        <div class="row g-4">
+            {% for festival in festivals %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-tag me-2"></i>{{ festival.title }}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ festival.description[:150] }}{% if festival.description|length > 150 %}...{% endif %}</p>
+                        {% if festival.discount_percentage > 0 %}
+                        <div class="alert alert-success mb-3">
+                            <strong>{{ festival.discount_percentage }}% تخفیف ویژه</strong>
+                        </div>
+                        {% endif %}
+                        {% if festival.end_date %}
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>
+                            تا {{ festival.end_date | persian_date }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Pricing Information Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="display-6 fw-bold text-danger mb-4">
+                    <i class="fas fa-tags me-3"></i>تعرفه‌های همکاری
+                </h2>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-industry me-2"></i>خریداران عمده
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                قیمت‌های ویژه عمده
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                امکان خرید چکی با شرایط مناسب
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                تخفیفات ویژه نقدی
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                ارسال رایگان
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                پشتیبانی ویژه
+                            </li>
+                        </ul>
+                        <a href="{{ url_for('bulk_conditions') }}" class="btn btn-success">
+                            <i class="fas fa-info-circle me-2"></i>شرایط خرید عمده
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-user me-2"></i>خریداران تکی
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-info me-2"></i>
+                                قیمت‌های رقابتی
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-info me-2"></i>
+                                امکان خرید نقدی و چکی
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-info me-2"></i>
+                                ارسال سریع
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-info me-2"></i>
+                                ضمانت کیفیت
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-info me-2"></i>
+                                پشتیبانی مشتریان
+                            </li>
+                        </ul>
+                        <a href="{{ url_for('register') }}" class="btn btn-info">
+                            <i class="fas fa-user-plus me-2"></i>ثبت نام
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Enhanced CTA Banner -->
+<section class="py-5">
+    <div class="container">
+        <div class="cta-banner text-center">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h2 class="display-6 fw-bold mb-3">آماده شروع خرید هستید؟</h2>
+                    <p class="lead mb-4">
+                        برای خریداران عمده: تخفیفات ویژه تا ۱۵٪ | برای خریداران تکی: قیمت‌های رقابتی
+                    </p>
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        {% if not current_user.is_authenticated %}
+                        <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>ثبت نام رایگان
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>ورود
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('shop') }}" class="btn btn-light btn-lg">
+                            <i class="fas fa-store me-2"></i>ورود به فروشگاه
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('bulk_conditions') }}" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-handshake me-2"></i>شرایط خرید عمده
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-center">
+                    <div class="h3 mb-2">
+                        <i class="fas fa-phone me-2"></i>مشاوره رایگان
+                    </div>
+                    <div class="h4 mb-0">۰۵۱۳۳۳۳۸۸۸۱-۶ - ۰۵۱۳۵۰۹۳۱۷۴-۸</div>
+                    <small class="opacity-75">پشتیبانی ۲۴ ساعته</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Blog & Industry Insights Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="section-title">
+            <h2 class="display-5 fw-bold">آخرین مقالات و راهنماها</h2>
+            <p class="lead text-muted">راهنمای خرید و نگهداری قطعات خودرو</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="blog-card">
+                    <div class="blog-image">
+                        <i class="fas fa-newspaper fa-3x text-white"></i>
+                    </div>
+                    <div class="card-body p-4">
+                        <h5 class="card-title">راهنمای انتخاب فیلتر روغن</h5>
+                        <p class="card-text text-muted">
+                            نکات مهم در انتخاب فیلتر روغن مناسب برای خودروی شما
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>۱۴۰۳/۰۱/۱۵
+                            </small>
+                            <a href="#" class="btn btn-outline-primary btn-sm">ادامه مطلب</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="blog-card">
+                    <div class="blog-image">
+                        <i class="fas fa-tools fa-3x text-white"></i>
+                    </div>
+                    <div class="card-body p-4">
+                        <h5 class="card-title">نحوه تعویض لنت ترمز</h5>
+                        <p class="card-text text-muted">
+                            آموزش گام به گام تعویض لنت ترمز در خانه
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>۱۴۰۳/۰۱/۱۰
+                            </small>
+                            <a href="#" class="btn btn-outline-primary btn-sm">ادامه مطلب</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="blog-card">
+                    <div class="blog-image">
+                        <i class="fas fa-chart-line fa-3x text-white"></i>
+                    </div>
+                    <div class="card-body p-4">
+                        <h5 class="card-title">آخرین اخبار بازار قطعات</h5>
+                        <p class="card-text text-muted">
+                            بررسی قیمت‌ها و روند بازار قطعات خودرو
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>۱۴۰۳/۰۱/۰۵
+                            </small>
+                            <a href="#" class="btn btn-outline-primary btn-sm">ادامه مطلب</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="#" class="btn btn-primary">
+                <i class="fas fa-newspaper me-2"></i>مشاهده همه مقالات
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

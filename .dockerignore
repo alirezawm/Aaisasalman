@@ -1,0 +1,131 @@
+# Git directory and version control
+.git
+.gitignore
+.gitattributes
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+logs/
+*.tmp
+*.temp
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Backup files
+backups/
+*.bak
+*.backup
+
+# Archive files
+archive/
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Documentation and markdown files (optional - remove if needed)
+*.md
+README*
+LICENSE*
+CHANGELOG*
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Development and configuration files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+config.local.py
+settings.local.py
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Large files that shouldn't be in container
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.iso
+*.dmg
+
+# Development scripts and utilities
+scripts/
+*.sh
+*.bat
+*.cmd
+
+# Temporary uploads and user content
+uploads/
+temp/
+tmp/

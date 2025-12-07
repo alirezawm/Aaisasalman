@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    آیکون Launcher اپلیکیشن Asia Salman
+    طراحی: مینیمال و هندسی با حرف A سفید بر روی پس‌زمینه قرمز
+    بر اساس مگاپرامپت icon_megaprompt.json
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!--
+        لایه 1: پس‌زمینه قرمز با گوشه‌های بسیار گرد (squircle)
+        Position: (18,12) to (90,96)
+        Corner Radius: 6dp (Q12,12)
+    -->
+    <path
+        android:fillColor="#D92027"
+        android:pathData="M18,12 Q12,12 12,18 L12,90 Q12,96 18,96 L90,96 Q96,96 96,90 L96,18 Q96,12 90,12 Z"/>
+    
+    <!--
+        لایه 2: نوار مورب سفید (بدنه اصلی حرف A)
+        Position: از (26,24) به (86,84)
+        Rounded Corner: گوشه بالا-چپ گرد (Q24,20)
+    -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M26,24 Q24,20 28,20 L46,20 L86,84 L64,84 Z"/>
+    
+    <!--
+        لایه 3: نوار افقی سفید پایین (پایه حرف A)
+        Position: از (22,54) به (64,86)
+        Rounded Corners: گوشه‌های چپ (بالا و پایین) گرد
+    -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,54 Q18,54 18,58 L18,82 Q18,86 22,86 L64,86 L54,54 L22,54 Z"/>
+    
+    <!--
+        لایه 4: برش مثلثی قرمز (سوراخ بالایی حرف A)
+        Position: مثلث با رأس در (40,28)
+        Rounded Vertex: رأس بالایی گرد (Q40,28)
+    -->
+    <path
+        android:fillColor="#D92027"
+        android:pathData="M34,32 Q40,28 44,32 L50,32 L34,50 Z"/>
+    
+    <!--
+        لایه 5: برش ذوزنقه‌ای قرمز (سوراخ پایینی حرف A)
+        Position: ذوزنقه از (28,64) به (54,78)
+        All Corners: همه گوشه‌ها تیز و زاویه‌دار
+    -->
+    <path
+        android:fillColor="#D92027"
+        android:pathData="M28,64 L48,64 L54,78 L28,78 Z"/>
+
+</vector>

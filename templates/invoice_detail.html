@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+
+{% block title %}فاکتور {{ invoice.invoice_number }} - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Invoice Header -->
+            <div class="invoice-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h2 class="mb-0 text-white">
+                            <i class="fas fa-file-invoice me-3"></i>
+                            فاکتور فروش
+                        </h2>
+                        <p class="mb-0 mt-2">شماره: {{ invoice.invoice_number }}</p>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <h4 class="mb-0">{{ invoice.user.full_name }}</h4>
+                        <p class="mb-0">{{ invoice.user.company_name or '' }}</p>
+                        <p class="mb-0">{{ invoice.user.phone }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Invoice Body -->
+            <div class="invoice-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-danger mb-3">اطلاعات فاکتور</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td>تاریخ صدور:</td>
+                                <td>{{ invoice.created_at | persian_date }}</td>
+                            </tr>
+                            <tr>
+                                <td>نوع پرداخت:</td>
+                                <td>
+                                    {% if invoice.payment_type == 'cash' %}
+                                        <span class="badge bg-success">پرداخت نقدی (کارت به کارت)</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">چکی (ارسال تصویر چک ثبت شده)</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if invoice.due_date %}
+                            <tr>
+                                <td>تاریخ سررسید:</td>
+                                <td>{{ invoice.due_date | persian_date }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td>وضعیت:</td>
+                                <td>
+                                    {% if invoice.status == 'pending' %}
+                                        <span class="badge bg-warning">در انتظار</span>
+                                    {% elif invoice.status == 'paid' %}
+                                        <span class="badge bg-success">پرداخت شده</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">لغو شده</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-danger mb-3">اطلاعات شرکت</h6>
+                        <div class="bg-light p-3 rounded">
+                            <strong>شرکت بازرگانی قطعات خودرو آسیا سلمان</strong><br>
+                            آدرس: خراسان رضوی - مشهد - رباط طرق 2<br>
+                            تلفن: 05133338881-6 - 05135093174-8<br>
+                            ایمیل: info@asiasalman.com
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Invoice Items -->
+                <div class="mb-4">
+                    <h6 class="text-danger mb-3">جزئیات کالاها</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-danger">
+                                <tr>
+                                    <th>ردیف</th>
+                                    <th>کد کالا</th>
+                                    <th>نام کالا</th>
+                                    <th>تعداد</th>
+                                    <th>قیمت واحد</th>
+                                    <th>مبلغ کل</th>
+                                    {% if invoice.status == 'pending' %}
+                                    <th>عملیات</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in invoice.items %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td><code>{{ item.product.code or item.product.sku }}</code></td>
+                                    <td>{{ item.product.name }}</td>
+                                    <td>
+                                        {% if invoice.status == 'pending' %}
+                                        <div class="input-group input-group-sm" style="width: 120px;">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="decreaseQuantity({{ item.id }})">-</button>
+                                            <input type="number" class="form-control text-center" 
+                                                   id="quantity-{{ item.id }}" 
+                                                   value="{{ item.quantity }}" 
+                                                   min="1" 
+                                                   onchange="updateQuantity({{ item.id }})">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="increaseQuantity({{ item.id }})">+</button>
+                                        </div>
+                                        {% else %}
+                                        {{ item.quantity }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ format_price(item.unit_price) }}</td>
+                                    <td id="total-{{ item.id }}">{{ format_price(item.total_price) }}</td>
+                                    {% if invoice.status == 'pending' %}
+                                    <td>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteInvoiceItem({{ item.id }}, '{{ item.product.name }}')"
+                                                title="حذف محصول از فاکتور">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-danger">
+                                <tr>
+                                    <td colspan="{% if invoice.status == 'pending' %}6{% else %}5{% endif %}" class="text-end fw-bold">مجموع کل:</td>
+                                    <td class="fw-bold">{{ format_price(invoice.total_amount) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Static Payment Instructions -->
+                <div class="mb-4">
+                    <h6 class="text-danger mb-3">راهنمای پرداخت</h6>
+                    {% if invoice.payment_type == 'cash' %}
+                    <div class="alert alert-info">
+                        <div class="mb-2 fw-bold">پرداخت نقدی (کارت به کارت)</div>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <div class="p-3 bg-light rounded h-100">
+                                    <div class="fw-bold">بانک رفاه - آسیا سلمان</div>
+                                    <div>شبا: <code>IR240130100000000377665423</code></div>
+                                    <div>کارت: <code>5894 6370 0029 0152</code></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <div class="p-3 bg-light rounded h-100">
+                                    <div class="fw-bold">بانک سینا - آسیا سلمان</div>
+                                    <div>شبا: <code>IR180590017900447040300001</code></div>
+                                    <div>کارت: <code>6393 4670 0010 4540</code></div>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">پس از واریز، رسید پرداخت را از همین صفحه بارگذاری کنید.</small>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <div class="mb-2 fw-bold">پرداخت چکی</div>
+                        <div>شماره ملی جهت ثبت چک: <code>14013123782</code></div>
+                        <div>نام حقوقی: <strong>شرکت بازرگانی قطعات خودرو آسیا سلمان</strong></div>
+                        <small class="text-muted d-block mt-2">لطفاً تصویر چک ثبت‌شده را بارگذاری کنید.</small>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Payment Documents -->
+                {% if invoice.documents %}
+                <div class="mb-4">
+                    <h6 class="text-danger mb-3">مدارک پرداخت</h6>
+                    <div class="row">
+                        {% for document in invoice.documents %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    {% if document.document_type == 'check' %}
+                                        <i class="fas fa-file-invoice fa-2x text-warning mb-2"></i>
+                                        <h6>چک</h6>
+                                    {% else %}
+                                        <i class="fas fa-receipt fa-2x text-success mb-2"></i>
+                                        <h6>رسید پرداخت</h6>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        {{ document.uploaded_at | persian_datetime }}
+                                    </small>
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('static', filename=document.file_path) }}" 
+                                           class="btn btn-sm btn-outline-primary" target="_blank">
+                                            <i class="fas fa-download me-1"></i>دانلود
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Upload Documents Section -->
+                {% if invoice.status == 'pending' %}
+                <div class="mb-4">
+                    <h6 class="text-danger mb-3">بارگذاری مدارک پرداخت</h6>
+                    <div class="row">
+                        {% if invoice.payment_type == 'cash' %}
+                        <div class="col-md-12">
+                            <button class="btn btn-success w-100 upload-document" 
+                                    data-invoice-id="{{ invoice.id }}" 
+                                    data-document-type="receipt">
+                                <i class="fas fa-receipt me-2"></i>بارگذاری رسید پرداخت نقدی (کارت به کارت)
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="col-md-12">
+                            <button class="btn btn-warning w-100 upload-document" 
+                                    data-invoice-id="{{ invoice.id }}" 
+                                    data-document-type="check">
+                                <i class="fas fa-file-invoice me-2"></i>بارگذاری تصویر چک ثبت شده
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Actions -->
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <a href="{{ url_for('invoice_print', invoice_id=invoice.id) }}" target="_blank" class="btn btn-danger me-2">
+                            <i class="fas fa-print me-2"></i>چاپ فاکتور
+                        </a>
+                        <!-- Excel export temporarily disabled -->
+                        <a href="{{ url_for('invoice_print', invoice_id=invoice.id) }}" target="_blank" class="btn btn-info me-2">
+                            <i class="fas fa-download me-2"></i>دانلود فاکتور
+                        </a>
+                        {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-danger">
+                            <i class="fas fa-arrow-right me-2"></i>بازگشت به داشبورد
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Upload Modal -->
+<div class="modal fade" id="document-upload-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">بارگذاری مدرک پرداخت</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="document-upload-form" enctype="multipart/form-data">
+                    <input type="hidden" id="invoice-id" name="invoice_id">
+                    <input type="hidden" id="document-type" name="document_type">
+                    
+                    <div class="mb-3">
+                        <label for="file" class="form-label">انتخاب فایل</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <div class="form-text">فرمت‌های مجاز: PDF, JPG, PNG (حداکثر 5 مگابایت)</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="submit" form="document-upload-form" class="btn btn-danger">
+                    <i class="fas fa-upload me-2"></i>بارگذاری
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Print function removed - now using separate print page
+
+function deleteInvoiceItem(itemId, productName) {
+    if (confirm('آیا از حذف محصول "' + productName + '" از فاکتور اطمینان دارید؟\nاین عمل قابل بازگشت نیست.')) {
+        // Create a form to submit the delete request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/delete_invoice_item/' + itemId;
+        
+        // Add CSRF token if available
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = csrfToken.getAttribute('content');
+            form.appendChild(csrfInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function increaseQuantity(itemId) {
+    const input = document.getElementById('quantity-' + itemId);
+    const currentValue = parseInt(input.value) || 0;
+    input.value = currentValue + 1;
+    updateQuantity(itemId);
+}
+
+function decreaseQuantity(itemId) {
+    const input = document.getElementById('quantity-' + itemId);
+    const currentValue = parseInt(input.value) || 0;
+    if (currentValue > 1) {
+        input.value = currentValue - 1;
+        updateQuantity(itemId);
+    }
+}
+
+function updateQuantity(itemId) {
+    const input = document.getElementById('quantity-' + itemId);
+    const newQuantity = parseInt(input.value) || 1;
+    
+    if (newQuantity < 1) {
+        input.value = 1;
+        return;
+    }
+    
+    // Show loading state
+    const totalCell = document.getElementById('total-' + itemId);
+    const originalContent = totalCell.innerHTML;
+    totalCell.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('item_id', itemId);
+    formData.append('quantity', newQuantity);
+    
+    // Add CSRF token if available
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken.getAttribute('content'));
+    }
+    
+    // Send request
+    fetch('/update_invoice_item_quantity', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the total for this item
+            totalCell.innerHTML = data.formatted_item_total;
+            
+            // Update the grand total
+            const grandTotalCell = document.querySelector('tfoot .fw-bold:last-child');
+            if (grandTotalCell) {
+                grandTotalCell.textContent = data.formatted_total;
+            }
+            
+            // Show success message
+            showAlert(data.message, 'success');
+        } else {
+            // Restore original content
+            totalCell.innerHTML = originalContent;
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating quantity:', error);
+        // Restore original content
+        totalCell.innerHTML = originalContent;
+        showAlert('خطا در به‌روزرسانی تعداد', 'danger');
+    });
+}
+
+function showAlert(message, type) {
+    // Remove existing alerts
+    const existingAlerts = document.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => alert.remove());
+    
+    // Create new alert
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert at top of content
+    const content = document.querySelector('.container');
+    content.insertBefore(alertDiv, content.firstChild);
+    
+    // Auto dismiss after 3 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 3000);
+}
+
+$(document).ready(function() {
+    $('.upload-document').on('click', function(e) {
+        e.preventDefault();
+        var invoiceId = $(this).data('invoice-id');
+        var documentType = $(this).data('document-type');
+        
+        $('#document-type').val(documentType);
+        $('#invoice-id').val(invoiceId);
+        $('#document-upload-modal').modal('show');
+    });
+    
+    $('#document-upload-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(this);
+        
+        $.ajax({
+            url: '/upload_invoice_document',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    $('#document-upload-modal').modal('hide');
+                    location.reload();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                alert('خطا در بارگذاری فایل');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}دسترسی غیرمجاز - 403 | آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-page">
+                <h1 class="error-code">403</h1>
+                <h2 class="error-title">دسترسی غیرمجاز</h2>
+                <p class="error-message">
+                    شما مجوز دسترسی به این صفحه را ندارید. لطفاً با مدیر سیستم تماس بگیرید.
+                </p>
+                <div class="error-actions">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-home"></i> بازگشت به خانه
+                    </a>
+                    {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-tachometer-alt"></i> داشبورد
+                    </a>
+                    {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-sign-in-alt"></i> ورود
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page {
+    padding: 3rem 0;
+}
+
+.error-code {
+    font-size: 8rem;
+    font-weight: bold;
+    color: #ffc107;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.error-title {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    color: #6c757d;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+
+.error-actions .btn {
+    margin: 0 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .error-code {
+        font-size: 6rem;
+    }
+    
+    .error-actions .btn {
+        display: block;
+        margin: 0.5rem 0;
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name_fa }} - {{ product.sku }} | آسیا سلمان{% endblock %}
+
+{% block description %}{{ product.description_fa or product.description or product.name_fa }} - {{ product.sku }} - قیمت: {{ format_price(product.retail_price_cash) }}{% endblock %}
+
+{% block keywords %}{{ product.name_fa }}, {{ product.sku }}, {{ product.brand.name_fa if product.brand else '' }}, قطعات خودرو{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">خانه</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('shop') }}">فروشگاه</a></li>
+            {% if product.brand %}
+            <li class="breadcrumb-item"><a href="{{ url_for('brand_models', brand_id=product.brand.id) }}">{{ product.brand.name_fa }}</a></li>
+            {% endif %}
+            {% if product.category %}
+            <li class="breadcrumb-item"><a href="{{ url_for('category_products', category_id=product.category.id) }}">{{ product.category.category_name_fa }}</a></li>
+            {% endif %}
+            <li class="breadcrumb-item active" aria-current="page">{{ product.name_fa }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="product-image">
+                {% if product.primary_image %}
+                <img src="{{ url_for('uploaded_file', filename='products/' + product.primary_image) }}" 
+                     class="img-fluid rounded" alt="{{ product.name_fa }}">
+                {% else %}
+                <img src="{{ url_for('static', filename='images/products/product_1.jpg') }}" 
+                     class="img-fluid rounded" alt="{{ product.name_fa }}">
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="product-info">
+                <h1 class="product-title">{{ product.name_fa }}</h1>
+                <p class="product-sku">کد محصول: {{ product.sku }}</p>
+                
+                {% if product.oem_code %}
+                <p class="product-oem">کد OEM: {{ product.oem_code }}</p>
+                {% endif %}
+                
+                {% if product.brand %}
+                <p class="product-brand">برند: {{ product.brand.name_fa }}</p>
+                {% endif %}
+                
+                <div class="product-pricing">
+                    {% if can_see_bulk_prices(current_user) %}
+                    <!-- Approved bulk buyer sees both bulk and retail prices -->
+                    <div class="price-section">
+                        <h4>قیمت نقدی</h4>
+                        <div class="price-row">
+                            <span class="price-label">عمده (شما):</span>
+                            <span class="price-value text-success fw-bold">{{ format_price(product.bulk_price_cash) }}</span>
+                        </div>
+                        <div class="price-row">
+                            <span class="price-label">خرده:</span>
+                            <span class="price-value text-muted">{{ format_price(product.retail_price_cash) }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="price-section">
+                        <h4>قیمت چکی</h4>
+                        <div class="price-row">
+                            <span class="price-label">عمده (شما):</span>
+                            <span class="price-value text-success fw-bold">{{ format_price(product.bulk_price_check) }}</span>
+                        </div>
+                        <div class="price-row">
+                            <span class="price-label">خرده:</span>
+                            <span class="price-value text-muted">{{ format_price(product.retail_price_check) }}</span>
+                        </div>
+                    </div>
+                    {% elif current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'pending' %}
+                    <!-- Pending bulk buyer sees retail prices with notice -->
+                    <div class="alert alert-warning">
+                        <i class="fas fa-clock me-2"></i>درخواست خریدار عمده شما در انتظار تایید است
+                    </div>
+                    <div class="price-section">
+                        <h4>قیمت چکی</h4>
+                        <div class="price-row">
+                            <span class="price-label">فعلی:</span>
+                            <span class="price-value">{{ format_price(product.retail_price_check) }}</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Regular user sees only check price (خریدار تکی فقط چکی) -->
+                    <div class="price-section">
+                        <h4>قیمت چکی</h4>
+                        <div class="price-row">
+                            <span class="price-label">قیمت:</span>
+                            <span class="price-value">{{ format_price(product.retail_price_check) }}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- ISACO Warehouse 15 Pricing for wholesale users -->
+                    {% if can_see_isaco_products(current_user) and product.is_isaco_wh15 %}
+                    <div class="price-section">
+                        <h4 class="text-primary">
+                            <i class="fas fa-warehouse me-2"></i>
+                        </h4>
+                        {% set has_valid_isaco_pricing = (product.isaco_cash and product.isaco_cash > 0) or (product.isaco_1m and product.isaco_1m > 0) or (product.isaco_2m and product.isaco_2m > 0) or (product.isaco_3m and product.isaco_3m > 0) %}
+                        {% if has_valid_isaco_pricing %}
+                        <div class="row g-2">
+                            {% if product.isaco_cash and product.isaco_cash > 0 %}
+                            <div class="col-6">
+                                <div class="price-row">
+                                    <span class="price-label">نقدی:</span>
+                                    <span class="price-value text-success fw-bold">{{ format_price(product.isaco_cash, is_isaco=True) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if product.isaco_1m and product.isaco_1m > 0 %}
+                            <div class="col-6">
+                                <div class="price-row">
+                                    <span class="price-label">یک ماهه:</span>
+                                    <span class="price-value text-info">{{ format_price(product.isaco_1m, is_isaco=True) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if product.isaco_2m and product.isaco_2m > 0 %}
+                            <div class="col-6">
+                                <div class="price-row">
+                                    <span class="price-label">دو ماهه:</span>
+                                    <span class="price-value text-warning">{{ format_price(product.isaco_2m, is_isaco=True) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if product.isaco_3m and product.isaco_3m > 0 %}
+                            <div class="col-6">
+                                <div class="price-row">
+                                    <span class="price-label">سه ماهه:</span>
+                                    <span class="price-value text-secondary">{{ format_price(product.isaco_3m, is_isaco=True) }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="product-stock">
+                    <p class="stock-info">
+                        {% if product.stock_quantity > 0 %}
+                        <span class="text-success">موجود ({{ product.stock_quantity }} عدد)</span>
+                        {% else %}
+                        <span class="text-danger">ناموجود</span>
+                        {% endif %}
+                    </p>
+                </div>
+                
+                {% if current_user.is_authenticated and product.stock_quantity > 0 %}
+                <div class="add-to-cart-container">
+                    <div class="form-group mb-3">
+                        <label for="quantity_{{ product.id }}">تعداد:</label>
+                        <div class="input-group" style="width: 150px;">
+                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="-1">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <input type="number" name="quantity" id="quantity_{{ product.id }}" value="1" min="1" max="{{ product.stock_quantity }}" class="form-control text-center">
+                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="1">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {% if can_see_bulk_prices(current_user) %}
+                    <!-- Price type selection for approved bulk buyers -->
+                    <div class="form-group mb-3">
+                        <label>نوع قیمت:</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="price_type" id="cash_price" value="cash" checked>
+                            <label class="btn btn-outline-success" for="cash_price">
+                                <i class="fas fa-money-bill-wave me-1"></i>نقدی عمده
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="price_type" id="check_price" value="check">
+                            <label class="btn btn-outline-warning" for="check_price">
+                                <i class="fas fa-file-invoice me-1"></i>چکی عمده
+                            </label>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Price type selection for regular users -->
+                    <div class="form-group mb-3">
+                        <label>نوع قیمت:</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="price_type" id="cash_price" value="cash" checked>
+                            <label class="btn btn-outline-success" for="cash_price">
+                                <i class="fas fa-money-bill-wave me-1"></i>نقدی
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="price_type" id="check_price" value="check">
+                            <label class="btn btn-outline-warning" for="check_price">
+                                <i class="fas fa-file-invoice me-1"></i>چکی
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="POST" action="{{ url_for('add_to_cart') }}" class="add-to-cart-form">
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <input type="hidden" name="quantity" id="hidden_quantity_{{ product.id }}" value="1">
+                        <input type="hidden" name="price_type" id="hidden_price_type_{{ product.id }}" value="cash">
+                        
+                        <button type="submit" class="btn btn-danger btn-lg w-100">
+                            <i class="fas fa-cart-plus me-2"></i>افزودن به سبد خرید
+                        </button>
+                    </form>
+                {% elif not current_user.is_authenticated %}
+                <p class="text-muted">برای خرید باید وارد شوید.</p>
+                <a href="{{ url_for('login') }}" class="btn btn-primary">ورود</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="product-details">
+                <ul class="nav nav-tabs" id="productTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab">
+                            توضیحات
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="specs-tab" data-bs-toggle="tab" data-bs-target="#specs" type="button" role="tab">
+                            مشخصات فنی
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="compatibility-tab" data-bs-toggle="tab" data-bs-target="#compatibility" type="button" role="tab">
+                            سازگاری
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="productTabsContent">
+                    <div class="tab-pane fade show active" id="description" role="tabpanel">
+                        <div class="p-3">
+                            {% if product.description_fa %}
+                            <p>{{ product.description_fa }}</p>
+                            {% elif product.description %}
+                            <p>{{ product.description }}</p>
+                            {% else %}
+                            <p>توضیحاتی برای این محصول موجود نیست.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="specs" role="tabpanel">
+                        <div class="p-3">
+                            {% if product.technical_specs %}
+                            <div class="specs-list">
+                                {% for key, value in product.get_technical_specs().items() %}
+                                <div class="spec-item">
+                                    <strong>{{ key }}:</strong> {{ value }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p>مشخصات فنی برای این محصول موجود نیست.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="compatibility" role="tabpanel">
+                        <div class="p-3">
+                            {% if product.vehicle_models %}
+                            <div class="compatibility-list">
+                                {% for model in product.vehicle_models %}
+                                <div class="compatibility-item">
+                                    <strong>{{ model.brand.name_fa }} {{ model.model_name_fa }}</strong>
+                                    {% if model.year_from and model.year_to %}
+                                    ({{ model.year_from }} - {{ model.year_to }})
+                                    {% elif model.year_from %}
+                                    ({{ model.year_from }} به بعد)
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p>اطلاعات سازگاری برای این محصول موجود نیست.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if related_products %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3>محصولات مرتبط</h3>
+            <div class="row">
+                {% for related_product in related_products %}
+                <div class="col-md-3 mb-3">
+                    <div class="card product-card">
+                        {% if related_product.primary_image %}
+                        <img src="{{ url_for('uploaded_file', filename='products/' + related_product.primary_image) }}" 
+                             class="card-img-top" alt="{{ related_product.name_fa }}">
+                        {% else %}
+                        <img src="{{ url_for('static', filename='images/products/product_1.jpg') }}" 
+                             class="card-img-top" alt="{{ related_product.name_fa }}">
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title">{{ related_product.name_fa }}</h5>
+                            <p class="card-text">{{ related_product.sku }}</p>
+                            <p class="price">{{ format_price(related_product.retail_price_cash) }}</p>
+                            <a href="{{ url_for('product_detail', product_id=related_product.id) }}" class="btn btn-primary btn-sm">مشاهده</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.product-image img {
+    max-height: 400px;
+    object-fit: contain;
+}
+
+.product-title {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.product-sku, .product-oem, .product-brand {
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.product-pricing {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+}
+
+.price-section {
+    margin-bottom: 1rem;
+}
+
+.price-section h4 {
+    color: #495057;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+.price-label {
+    font-weight: 500;
+}
+
+.price-value {
+    font-weight: bold;
+    color: #28a745;
+}
+
+.add-to-cart-form {
+    margin-top: 1rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const quantityInput = document.getElementById('quantity_{{ product.id }}');
+    const hiddenQuantity = document.getElementById('hidden_quantity_{{ product.id }}');
+    const hiddenPriceType = document.getElementById('hidden_price_type_{{ product.id }}');
+    const priceTypeRadios = document.querySelectorAll('input[name="price_type"]');
+    const form = document.querySelector('.add-to-cart-form');
+    
+    // Update hidden quantity when quantity input changes
+    quantityInput.addEventListener('input', function() {
+        hiddenQuantity.value = this.value;
+    });
+    
+    // Update hidden price type when radio buttons change
+    priceTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            hiddenPriceType.value = this.value;
+        });
+    });
+    
+    // Handle quantity buttons
+    document.querySelectorAll('.quantity-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const change = parseInt(this.dataset.change);
+            const currentValue = parseInt(quantityInput.value);
+            const newValue = Math.max(1, Math.min({{ product.stock_quantity }}, currentValue + change));
+            quantityInput.value = newValue;
+            hiddenQuantity.value = newValue;
+        });
+    });
+    
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        // Ensure hidden fields are updated
+        hiddenQuantity.value = quantityInput.value;
+        const selectedPriceType = document.querySelector('input[name="price_type"]:checked');
+        if (selectedPriceType) {
+            hiddenPriceType.value = selectedPriceType.value;
+        }
+    });
+});
+</script>
+
+.spec-item, .compatibility-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.spec-item:last-child, .compatibility-item:last-child {
+    border-bottom: none;
+}
+
+.product-card {
+    transition: transform 0.2s;
+}
+
+.product-card:hover {
+    transform: translateY(-2px);
+}
+</style>
+{% endblock %}

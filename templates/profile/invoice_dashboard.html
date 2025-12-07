@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}داشبورد فاکتورها - پروفایل{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/customer-invoice-management.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-file-invoice me-2"></i>
+                        داشبورد فاکتورها
+                    </h2>
+                    <p class="text-muted mb-0">
+                        {% if current_user.customer_type == 'bulk' %}
+                            <span class="badge bg-primary me-2">مشتری عمده</span>
+                            <span class="badge bg-warning">{{ current_user.bulk_customer_level|title }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">مشتری تکی</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        بروزرسانی
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4" id="statistics-cards">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="stat-icon bg-primary">
+                                    <i class="fas fa-file-invoice"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h6 class="stat-title">کل فاکتورها</h6>
+                                    <h3 class="stat-value" id="total-invoices">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="stat-icon bg-warning">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h6 class="stat-title">در انتظار تایید</h6>
+                                    <h3 class="stat-value" id="pending-invoices">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="stat-icon bg-success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h6 class="stat-title">تایید شده</h6>
+                                    <h3 class="stat-value" id="approved-invoices">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="stat-icon bg-info">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h6 class="stat-title">مجموع مبلغ</h6>
+                                    <h3 class="stat-value" id="total-amount">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Customer Benefits (Only for bulk customers) -->
+            {% if current_user.customer_type == 'bulk' %}
+            <div class="row mb-4" id="bulk-benefits-section" style="display: none;">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-star me-2"></i>
+                                مزایای مشتریان عمده
+                            </h5>
+                        </div>
+                        <div class="card-body" id="bulk-benefits-content">
+                            <!-- Benefits will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">وضعیت فاکتور</label>
+                            <select class="form-select" id="status-filter">
+                                <option value="">همه وضعیت‌ها</option>
+                                <option value="pending">در انتظار تایید</option>
+                                <option value="auto_approved">تایید خودکار</option>
+                                <option value="manual_approved">تایید دستی</option>
+                                <option value="rejected">رد شده</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">نوع مشتری</label>
+                            <select class="form-select" id="customer-type-filter">
+                                <option value="">همه انواع</option>
+                                <option value="individual">تکی</option>
+                                <option value="bulk">عمده</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">تاریخ از</label>
+                            <input type="date" class="form-control" id="date-from-filter">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">تاریخ تا</label>
+                            <input type="date" class="form-control" id="date-to-filter">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button class="btn btn-primary" onclick="applyFilters()">
+                                <i class="fas fa-filter me-1"></i>
+                                اعمال فیلتر
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                                <i class="fas fa-times me-1"></i>
+                                پاک کردن فیلترها
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoices Table -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">لیست فاکتورها</h5>
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-3" id="invoices-count">0 فاکتور</span>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary btn-sm" onclick="loadInvoices(1)">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="invoices-table">
+                            <thead>
+                                <tr>
+                                    <th>شماره فاکتور</th>
+                                    <th>مبلغ</th>
+                                    <th>نوع پرداخت</th>
+                                    <th>وضعیت</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th>مدارک</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoices-tbody">
+                                <!-- Invoices will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <nav aria-label="صفحه‌بندی فاکتورها" id="pagination-nav" style="display: none;">
+                        <ul class="pagination justify-content-center" id="pagination-ul">
+                            <!-- Pagination will be generated here -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoice Detail Modal -->
+<div class="modal fade" id="invoiceDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">جزئیات فاکتور</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="invoice-detail-content">
+                <!-- Invoice details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Upload Modal -->
+<div class="modal fade" id="documentUploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">بارگذاری مدرک</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="document-upload-form" enctype="multipart/form-data">
+                    <input type="hidden" id="upload-invoice-id">
+                    <div class="mb-3">
+                        <label class="form-label">نوع مدرک</label>
+                        <select class="form-select" id="document-type" required>
+                            <option value="">انتخاب کنید</option>
+                            <option value="check">چک</option>
+                            <option value="receipt">رسید</option>
+                            <option value="bank_transfer">فیش بانکی</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">فایل</label>
+                        <input type="file" class="form-control" id="document-file" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <div class="form-text">فرمت‌های مجاز: PDF, JPG, PNG (حداکثر 5 مگابایت)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">توضیحات (اختیاری)</label>
+                        <textarea class="form-control" id="document-description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="uploadDocument()">بارگذاری</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approval Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approval-modal-title">تایید فاکتور</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="approval-form">
+                    <input type="hidden" id="approval-invoice-id">
+                    <div class="mb-3">
+                        <label class="form-label" id="approval-label">یادداشت تایید</label>
+                        <textarea class="form-control" id="approval-notes" rows="3" placeholder="یادداشت خود را وارد کنید..."></textarea>
+                    </div>
+                    <div class="mb-3" id="rejection-reason-div" style="display: none;">
+                        <label class="form-label">دلیل رد <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejection-reason" rows="3" placeholder="دلیل رد فاکتور را وارد کنید..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-success" id="approve-btn" onclick="approveInvoice()">تایید</button>
+                <button type="button" class="btn btn-danger" id="reject-btn" onclick="rejectInvoice()" style="display: none;">رد</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/customer-invoice-management.js') }}"></script>
+<script>
+    // Initialize dashboard when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboard();
+        loadInvoices();
+        {% if current_user.customer_type == 'bulk' %}
+        loadBulkBenefits();
+        {% endif %}
+    });
+</script>
+{% endblock %}

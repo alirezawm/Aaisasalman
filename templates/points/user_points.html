@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}امتیازات من{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">امتیازات من</h2>
+        </div>
+    </div>
+
+    <!-- نمایش امتیازات و سطح کاربر -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ user_points.current_points }}</h3>
+                    <p class="card-text">امتیاز فعلی</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ user_points.total_earned }}</h3>
+                    <p class="card-text">مجموع امتیازات کسب شده</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ user_points.total_spent }}</h3>
+                    <p class="card-text">مجموع امتیازات خرج شده</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نمایش سطح کاربر -->
+    {% if user_points.user_level %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">سطح فعلی شما</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            {% if user_points.user_level.name == 'Bronze' %}
+                                <i class="fas fa-medal text-warning fa-2x"></i>
+                            {% elif user_points.user_level.name == 'Silver' %}
+                                <i class="fas fa-medal text-secondary fa-2x"></i>
+                            {% elif user_points.user_level.name == 'Gold' %}
+                                <i class="fas fa-medal text-warning fa-2x"></i>
+                            {% elif user_points.user_level.name == 'Platinum' %}
+                                <i class="fas fa-crown text-primary fa-2x"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h4 class="mb-1">{{ user_points.user_level.name_fa }}</h4>
+                            {% if user_points.user_level.discount_percentage > 0 %}
+                                <p class="text-success mb-0">تخفیف ویژه: {{ user_points.user_level.discount_percentage }}%</p>
+                            {% else %}
+                                <p class="text-muted mb-0">بدون تخفیف ویژه</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- جوایز قابل استفاده -->
+    {% if available_rewards %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4>جوایز قابل استفاده</h4>
+            <div class="row">
+                {% for reward in available_rewards %}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ reward.name_fa }}</h5>
+                            <p class="card-text">{{ reward.description_fa }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-primary">{{ reward.points_required }} امتیاز</span>
+                                <button class="btn btn-success btn-sm" onclick="redeemReward({{ reward.id }})">
+                                    استفاده
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- تاریخچه تراکنش‌ها -->
+    <div class="row">
+        <div class="col-12">
+            <h4>تاریخچه تراکنش‌های امتیازی</h4>
+            <div class="card">
+                <div class="card-body">
+                    {% if transactions.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>تاریخ</th>
+                                    <th>نوع تراکنش</th>
+                                    <th>مقدار امتیاز</th>
+                                    <th>توضیحات</th>
+                                    <th>انقضا</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions.items %}
+                                <tr>
+                                    <td>{{ transaction.created_at.strftime('%Y/%m/%d %H:%M') if transaction.created_at }}</td>
+                                    <td>
+                                        {% if transaction.transaction_type == 'earn' %}
+                                            <span class="badge bg-success">کسب امتیاز</span>
+                                        {% elif transaction.transaction_type == 'spend' %}
+                                            <span class="badge bg-danger">خرج امتیاز</span>
+                                        {% elif transaction.transaction_type == 'expire' %}
+                                            <span class="badge bg-warning">انقضا</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ transaction.transaction_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.points_amount > 0 %}
+                                            <span class="text-success">+{{ transaction.points_amount }}</span>
+                                        {% else %}
+                                            <span class="text-danger">{{ transaction.points_amount }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ transaction.description }}</td>
+                                    <td>
+                                        {% if transaction.expires_at %}
+                                            {{ transaction.expires_at.strftime('%Y/%m/%d') if transaction.expires_at }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if transactions.pages > 1 %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if transactions.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('user_points', page=transactions.prev_num) }}">قبلی</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in transactions.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != transactions.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('user_points', page=page_num) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if transactions.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('user_points', page=transactions.next_num) }}">بعدی</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">هنوز تراکنش امتیازی ندارید.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function redeemReward(rewardId) {
+    if (confirm('آیا مطمئن هستید که می‌خواهید از این جایزه استفاده کنید؟')) {
+        fetch('/api/rewards/redeem', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                reward_id: rewardId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('خطا: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('خطا در استفاده از جایزه');
+        });
+    }
+}
+</script>
+{% endblock %}
+
+

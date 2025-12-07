@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت درخواست‌های خریدار عمده - پنل مدیریت{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-handshake me-2"></i>مدیریت درخواست‌های خریدار عمده</h2>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-right me-2"></i>بازگشت به داشبورد
+                </a>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.total_requests }}</h4>
+                                    <p class="mb-0">کل درخواست‌ها</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-users fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.pending_requests }}</h4>
+                                    <p class="mb-0">در انتظار تایید</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-clock fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.approved_requests }}</h4>
+                                    <p class="mb-0">تایید شده</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4>{{ stats.rejected_requests }}</h4>
+                                    <p class="mb-0">رد شده</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-times-circle fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-filter me-2"></i>فیلترها</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="approval_status" class="form-label">وضعیت تایید</label>
+                            <select class="form-select" id="approval_status" name="approval_status">
+                                <option value="">همه</option>
+                                <option value="pending" {% if current_filters.approval_status == 'pending' %}selected{% endif %}>در انتظار</option>
+                                <option value="approved" {% if current_filters.approval_status == 'approved' %}selected{% endif %}>تایید شده</option>
+                                <option value="rejected" {% if current_filters.approval_status == 'rejected' %}selected{% endif %}>رد شده</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="user_search" class="form-label">جستجو کاربر</label>
+                            <input type="text" class="form-control" id="user_search" name="user_search" 
+                                   value="{{ current_filters.user_search }}" placeholder="نام، نام کاربری یا شرکت">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-search me-2"></i>جستجو
+                            </button>
+                            <a href="{{ url_for('admin_bulk_buyer_requests') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>پاک کردن
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Requests Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list me-2"></i>لیست درخواست‌ها</h5>
+                </div>
+                <div class="card-body">
+                    {% if requests.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>نام کاربر</th>
+                                    <th>نام کاربری</th>
+                                    <th>شرکت</th>
+                                    <th>تلفن</th>
+                                    <th>تاریخ درخواست</th>
+                                    <th>وضعیت</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in requests.items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                {{ request.full_name[0] if request.full_name else request.username[0] }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ request.full_name or 'نامشخص' }}</strong>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ request.username }}</td>
+                                    <td>{{ request.company_name or '-' }}</td>
+                                    <td>{{ request.phone }}</td>
+                                    <td>{{ request.created_at | persian_date }}</td>
+                                    <td>
+                                        {% if request.bulk_buyer_approval_status == 'pending' %}
+                                            <span class="badge bg-warning">در انتظار</span>
+                                        {% elif request.bulk_buyer_approval_status == 'approved' %}
+                                            <span class="badge bg-success">تایید شده</span>
+                                        {% elif request.bulk_buyer_approval_status == 'rejected' %}
+                                            <span class="badge bg-danger">رد شده</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            {% if request.bulk_buyer_approval_status == 'pending' %}
+                                            <form method="POST" action="{{ url_for('admin_approve_bulk_buyer', user_id=request.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-success btn-sm" 
+                                                        onclick="return confirm('آیا از تایید این درخواست اطمینان دارید؟')">
+                                                    <i class="fas fa-check"></i> تایید
+                                                </button>
+                                            </form>
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    onclick="showRejectModal({{ request.id }}, '{{ request.full_name }}')">
+                                                <i class="fas fa-times"></i> رد
+                                            </button>
+                                            {% endif %}
+                                            <a href="{{ url_for('admin_user_roles') }}?user_id={{ request.id }}" 
+                                               class="btn btn-info btn-sm">
+                                                <i class="fas fa-user-cog"></i> مدیریت نقش
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if requests.pages > 1 %}
+                    <nav aria-label="صفحه‌بندی">
+                        <ul class="pagination justify-content-center">
+                            {% if requests.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_bulk_buyer_requests', page=requests.prev_num, **current_filters) }}">قبلی</a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in requests.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != requests.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_bulk_buyer_requests', page=page_num, **current_filters) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if requests.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_bulk_buyer_requests', page=requests.next_num, **current_filters) }}">بعدی</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">هیچ درخواستی یافت نشد</h5>
+                        <p class="text-muted">در حال حاضر هیچ درخواست خریدار عمده‌ای وجود ندارد.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">رد درخواست خریدار عمده</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="rejectForm">
+                <div class="modal-body">
+                    <p>آیا از رد این درخواست اطمینان دارید؟</p>
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">دلیل رد (اختیاری)</label>
+                        <textarea id="rejection_reason" name="rejection_reason" class="form-control" rows="3" 
+                                  placeholder="دلیل رد درخواست را وارد کنید..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                    <button type="submit" class="btn btn-danger">رد درخواست</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showRejectModal(userId, userName) {
+    document.getElementById('rejectForm').action = "{{ url_for('admin_reject_bulk_buyer', user_id=0) }}".replace('0', userId);
+    document.querySelector('#rejectModal .modal-title').textContent = `رد درخواست خریدار عمده - ${userName}`;
+    new bootstrap.Modal(document.getElementById('rejectModal')).show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پیش‌نمایش آیکون استخراج شده</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        .info {
+            color: #aaa;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 600px;
+        }
+        .icons-container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        .icon-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .icon-label {
+            color: #aaa;
+            font-size: 14px;
+        }
+        .icon-preview {
+            background: #fff;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .icon-circle {
+            border-radius: 50%;
+            overflow: hidden;
+        }
+        .icon-rounded {
+            border-radius: 22%;
+            overflow: hidden;
+        }
+        img {
+            display: block;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        .size-info {
+            color: #888;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 پیش‌نمایش آیکون استخراج شده</h1>
+    <div class="info">
+        این تصویر از فایل SVG شما استخراج شده است. می‌توانید از این آیکون در اپلیکیشن Android استفاده کنید.
+    </div>
+    
+    <div class="icons-container">
+        <!-- Large Square Icon -->
+        <div class="icon-wrapper">
+            <div class="icon-preview">
+                <img src="app_icon.png" width="192" height="192" alt="App Icon">
+            </div>
+            <span class="icon-label">۱۹۲×۱۹۲ پیکسل</span>
+            <span class="size-info">اندازه پیشنهادی برای آیکون اصلی</span>
+        </div>
+
+        <!-- Medium Rounded Icon -->
+        <div class="icon-wrapper">
+            <div class="icon-preview icon-rounded">
+                <img src="app_icon.png" width="96" height="96" alt="App Icon">
+            </div>
+            <span class="icon-label">۹۶×۹۶ (گوشه گرد)</span>
+            <span class="size-info">نمایش با گوشه‌های گرد</span>
+        </div>
+
+        <!-- Small Circle Icon -->
+        <div class="icon-wrapper">
+            <div class="icon-preview icon-circle">
+                <img src="app_icon.png" width="72" height="72" alt="App Icon">
+            </div>
+            <span class="icon-label">۷۲×۷۲ (دایره)</span>
+            <span class="size-info">نمایش دایره‌ای</span>
+        </div>
+
+        <!-- Extra Small -->
+        <div class="icon-wrapper">
+            <div class="icon-preview">
+                <img src="app_icon.png" width="48" height="48" alt="App Icon">
+            </div>
+            <span class="icon-label">۴۸×۴۸ (کوچک)</span>
+            <span class="size-info">اندازه کوچک</span>
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; color: #888; text-align: center; max-width: 600px;">
+        <p><strong>راهنمای استفاده:</strong></p>
+        <p style="margin-top: 10px; font-size: 14px;">
+            برای استفاده از این آیکون در اپلیکیشن Android، می‌توانید از ابزارهای تبدیل SVG به Vector Drawable استفاده کنید 
+            یا فایل PNG را در اندازه‌های مختلف در پوشه‌های mipmap قرار دهید.
+        </p>
+    </div>
+</body>
+</html>
+

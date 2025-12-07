@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.AsiaSalmanApp" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Status bar with primary red color -->
+        <item name="android:statusBarColor">@color/primary</item>
+        <!-- Navigation bar with white -->
+        <item name="android:navigationBarColor">@color/white</item>
+        <!-- Dark icons on light navigation bar -->
+        <item name="android:windowLightNavigationBar">true</item>
+        <!-- Light icons on dark status bar -->
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- Background -->
+        <item name="android:windowBackground">@color/background</item>
+        <!-- Accent color -->
+        <item name="android:colorAccent">@color/primary</item>
+        <!-- Force RTL layout direction -->
+        <item name="android:layoutDirection">rtl</item>
+        <item name="android:textDirection">rtl</item>
+        <item name="android:textAlignment">viewStart</item>
+    </style>
+
+    <!-- Splash Screen Theme -->
+    <style name="Theme.AsiaSalmanApp.Splash" parent="Theme.AsiaSalmanApp">
+        <item name="android:windowBackground">@color/primary</item>
+        <item name="android:layoutDirection">rtl</item>
+    </style>
+
+</resources>

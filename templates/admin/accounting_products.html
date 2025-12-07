@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت کالاهای تدبیر{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">مدیریت کالاهای تدبیر</h1>
+                <div>
+                    <a href="{{ url_for('admin_accounting_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-right"></i> بازگشت به داشبورد
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.total_products }}</h4>
+                            <p class="card-text">کل کالاها</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-box fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.active_products }}</h4>
+                            <p class="card-text">کالاهای فعال</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ stats.inactive_products }}</h4>
+                            <p class="card-text">کالاهای غیرفعال</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-times-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">فیلترها</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin_accounting_products') }}">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="search" class="form-label">جستجو</label>
+                                <input type="text" class="form-control" id="search" name="search" 
+                                       value="{{ current_filters.search }}" placeholder="کد کالا، شرح، نام مستعار...">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="is_active" class="form-label">وضعیت</label>
+                                <select class="form-select" id="is_active" name="is_active">
+                                    <option value="">همه</option>
+                                    <option value="true" {% if current_filters.is_active == 'true' %}selected{% endif %}>فعال</option>
+                                    <option value="false" {% if current_filters.is_active == 'false' %}selected{% endif %}>غیرفعال</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="last_update_from" class="form-label">از تاریخ</label>
+                                <input type="date" class="form-control" id="last_update_from" name="last_update_from" 
+                                       value="{{ current_filters.last_update_from }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="last_update_to" class="form-label">تا تاریخ</label>
+                                <input type="date" class="form-control" id="last_update_to" name="last_update_to" 
+                                       value="{{ current_filters.last_update_to }}">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> جستجو
+                                </button>
+                                <a href="{{ url_for('admin_accounting_products') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> پاک کردن فیلترها
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">لیست کالاها</h5>
+                    <span class="badge bg-info">{{ products.total }} کالا</span>
+                </div>
+                <div class="card-body">
+                    {% if products.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>کد کالا</th>
+                                    <th>شرح</th>
+                                    <th>نام مستعار</th>
+                                    <th>واحد</th>
+                                    <th>کد فنی</th>
+                                    <th>بارکد</th>
+                                    <th>وضعیت</th>
+                                    <th>آخرین بروزرسانی</th>
+                                    <th>کش شده در</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products.items %}
+                                <tr>
+                                    <td>
+                                        <code>{{ product.item_code }}</code>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 200px;" title="{{ product.description }}">
+                                            {{ product.description or '-' }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 200px;" title="{{ product.alias }}">
+                                            {{ product.alias or '-' }}
+                                        </div>
+                                    </td>
+                                    <td>{{ product.unit or '-' }}</td>
+                                    <td>{{ product.techspec or '-' }}</td>
+                                    <td>{{ product.barcode or '-' }}</td>
+                                    <td>
+                                        {% if product.is_active %}
+                                            <span class="badge bg-success">فعال</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">غیرفعال</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if product.last_update %}
+                                            {{ product.last_update | persian_datetime }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ product.cached_at | persian_datetime }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if products.pages > 1 %}
+                    <nav aria-label="صفحه‌بندی کالاها">
+                        <ul class="pagination justify-content-center">
+                            {% if products.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_accounting_products', page=products.prev_num, **current_filters) }}">
+                                    قبلی
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in products.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != products.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_accounting_products', page=page_num, **current_filters) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if products.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_accounting_products', page=products.next_num, **current_filters) }}">
+                                    بعدی
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-box fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">هیچ کالایی یافت نشد</h5>
+                        <p class="text-muted">لطفاً فیلترهای جستجو را تغییر دهید یا همگام‌سازی انجام دهید.</p>
+                        <a href="{{ url_for('admin_accounting_dashboard') }}" class="btn btn-primary">
+                            <i class="fas fa-sync"></i> همگام‌سازی کالاها
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

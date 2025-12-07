@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت امتیازات کاربران{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">مدیریت امتیازات کاربران</h2>
+        </div>
+    </div>
+
+    <!-- فیلترها -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">جستجو</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ request.args.get('search', '') }}" 
+                                   placeholder="نام کاربری، نام کامل یا شرکت">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="min_points" class="form-label">حداقل امتیاز</label>
+                            <input type="number" class="form-control" id="min_points" name="min_points" 
+                                   value="{{ request.args.get('min_points', '') }}" 
+                                   placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="max_points" class="form-label">حداکثر امتیاز</label>
+                            <input type="number" class="form-control" id="max_points" name="max_points" 
+                                   value="{{ request.args.get('max_points', '') }}" 
+                                   placeholder="1">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">فیلتر</button>
+                                <a href="{{ url_for('admin_points_users') }}" class="btn btn-secondary">پاک کردن</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- لیست کاربران -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">لیست کاربران و امتیازات</h5>
+                    {% if users.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>نام کاربری</th>
+                                    <th>نام کامل</th>
+                                    <th>شرکت</th>
+                                    <th>امتیاز فعلی</th>
+                                    <th>مجموع کسب شده</th>
+                                    <th>مجموع خرج شده</th>
+                                    <th>آخرین به‌روزرسانی</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user_points, user in users.items %}
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.full_name }}</td>
+                                    <td>{{ user.company_name or '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ "{:,}".format(user_points.current_points) }}</span>
+                                    </td>
+                                    <td>{{ "{:,}".format(user_points.total_earned_points) }}</td>
+                                    <td>{{ "{:,}".format(user_points.total_spent_points) }}</td>
+                                    <td>
+                                        {% if user_points.last_updated %}
+                                            {{ user_points.last_updated.strftime('%Y/%m/%d %H:%M') }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning" 
+                                                onclick="showAdjustModal({{ user.id }}, '{{ user.username }}', {{ user_points.current_points }})">
+                                            <i class="fas fa-edit"></i> تنظیم
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if users.pages > 1 %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if users.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_points_users', page=users.prev_num, **request.args) }}">قبلی</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in users.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != users.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin_points_users', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if users.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_points_users', page=users.next_num, **request.args) }}">بعدی</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">هیچ کاربری یافت نشد.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal تنظیم امتیاز -->
+<div class="modal fade" id="adjustPointsModal" tabindex="-1" aria-labelledby="adjustPointsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adjustPointsModalLabel">تنظیم امتیاز کاربر</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_adjust_user_points') }}">
+                <div class="modal-body">
+                    <input type="hidden" id="adjust_user_id" name="user_id">
+                    
+                    <div class="mb-3">
+                        <label for="adjust_username" class="form-label">نام کاربری</label>
+                        <input type="text" class="form-control" id="adjust_username" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="adjust_current_points" class="form-label">امتیاز فعلی</label>
+                        <input type="text" class="form-control" id="adjust_current_points" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="adjust_points_amount" class="form-label">تغییر امتیاز</label>
+                        <input type="number" class="form-control" id="adjust_points_amount" name="points_amount" required>
+                        <div class="form-text">مقدار مثبت برای اضافه کردن، مقدار منفی برای کم کردن</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="adjust_description" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="adjust_description" name="description" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showAdjustModal(userId, username, currentPoints) {
+    document.getElementById('adjust_user_id').value = userId;
+    document.getElementById('adjust_username').value = username;
+    document.getElementById('adjust_current_points').value = currentPoints.toLocaleString();
+    document.getElementById('adjust_points_amount').value = '';
+    document.getElementById('adjust_description').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('adjustPointsModal'));
+    modal.show();
+}
+</script>
+{% endblock %}
+
+

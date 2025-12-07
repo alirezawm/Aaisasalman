@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}بازسازی فایل اکسل{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-file-excel"></i>
+                        بازسازی فایل اکسل
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <form id="excelReconstructionForm" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <label for="excelFile">انتخاب فایل اکسل:</label>
+                                    <div class="input-group">
+                                        <div class="custom-file">
+                                            <input type="file" class="custom-file-input" id="excelFile" name="file" accept=".xlsx,.xls" required>
+                                            <label class="custom-file-label" for="excelFile">فایل اکسل را انتخاب کنید</label>
+                                        </div>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        فرمت‌های پشتیبانی شده: .xlsx, .xls
+                                    </small>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="missingValueStrategy">استراتژی مقادیر گم‌شده:</label>
+                                            <select class="form-control" id="missingValueStrategy" name="missing_value_strategy">
+                                                <option value="leave_blank">خالی بگذار</option>
+                                                <option value="infer_from_rules">استنتاج از قوانین</option>
+                                                <option value="use_default_0">استفاده از مقدار پیش‌فرض (0)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="duplicateStrategy">استراتژی ردیف‌های تکراری:</label>
+                                            <select class="form-control" id="duplicateStrategy" name="duplicate_strategy">
+                                                <option value="merge_sum_inventory">ادغام و جمع موجودی</option>
+                                                <option value="keep_first">نگه داشتن اولین</option>
+                                                <option value="keep_most_complete">نگه داشتن کامل‌ترین</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="outputFormat">فرمت خروجی:</label>
+                                            <select class="form-control" id="outputFormat" name="output_format">
+                                                <option value="xlsx">Excel (.xlsx)</option>
+                                                <option value="csv">CSV (.csv)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="importToDatabase">واردات به دیتابیس:</label>
+                                            <select class="form-control" id="importToDatabase" name="import_to_database">
+                                                <option value="false">فقط بازسازی فایل</option>
+                                                <option value="true">بازسازی + واردات محصولات</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" id="processBtn">
+                                    <i class="fas fa-cogs"></i>
+                                    شروع بازسازی
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-info">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">ستون‌های هدف</span>
+                                    <span class="info-box-number">6 ستون</span>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-info" style="width: 100%"></div>
+                                    </div>
+                                    <span class="progress-description">
+                                        کد کالا، شرح کالا، قیمت تکی، قیمت نقدی عمده، قیمت چکی عمده، موجودی
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Section -->
+    <div class="row" id="progressSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        در حال پردازش...
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <p class="text-center mt-3" id="progressText">آماده‌سازی فایل...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="row" id="resultsSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-check-circle text-success"></i>
+                        نتیجه بازسازی
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-box bg-success">
+                                <span class="info-box-icon">
+                                    <i class="fas fa-file-excel"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">فایل خروجی</span>
+                                    <span class="info-box-number" id="outputFileName">-</span>
+                                    <div class="progress">
+                                        <div class="progress-bar" style="width: 100%"></div>
+                                    </div>
+                                    <span class="progress-description">
+                                        <a href="#" id="downloadOutput" class="btn btn-sm btn-success">
+                                            <i class="fas fa-download"></i>
+                                            دانلود
+                                        </a>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-box bg-warning" id="errorReportBox" style="display: none;">
+                                <span class="info-box-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">گزارش خطا</span>
+                                    <span class="info-box-number" id="errorReportName">-</span>
+                                    <div class="progress">
+                                        <div class="progress-bar" style="width: 100%"></div>
+                                    </div>
+                                    <span class="progress-description">
+                                        <a href="#" id="downloadErrorReport" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-download"></i>
+                                            دانلود
+                                        </a>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>آمار پردازش:</h5>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="small-box bg-info">
+                                        <div class="inner">
+                                            <h3 id="inputRows">0</h3>
+                                            <p>ردیف‌های ورودی</p>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-file-import"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="small-box bg-success">
+                                        <div class="inner">
+                                            <h3 id="successfulRows">0</h3>
+                                            <p>ردیف‌های موفق</p>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-check"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="small-box bg-warning">
+                                        <div class="inner">
+                                            <h3 id="errorRows">0</h3>
+                                            <p>ردیف‌های خطا</p>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="small-box bg-secondary">
+                                        <div class="inner">
+                                            <h3 id="duplicateRows">0</h3>
+                                            <p>ردیف‌های تکراری</p>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-copy"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Import Results -->
+                    <div class="row mt-4" id="importResultsSection" style="display: none;">
+                        <div class="col-12">
+                            <h5>نتیجه واردات به دیتابیس:</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="small-box bg-primary">
+                                        <div class="inner">
+                                            <h3 id="importedCount">0</h3>
+                                            <p>محصولات وارد شده</p>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-database"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small-box bg-danger">
+                                        <div class="inner">
+                                            <h3 id="importErrorCount">0</h3>
+                                            <p>خطاهای واردات</p>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-times"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="importErrors" class="mt-3" style="display: none;">
+                                <div class="alert alert-danger">
+                                    <h6>خطاهای واردات:</h6>
+                                    <ul id="importErrorsList"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column Mapping -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>نگاشت ستون‌ها:</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ستون ورودی</th>
+                                            <th>ستون هدف</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="columnMappingTable">
+                                        <!-- Dynamic content -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Section -->
+    <div class="row" id="errorSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-times-circle text-danger"></i>
+                        خطا در پردازش
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h5><i class="icon fas fa-ban"></i> خطا!</h5>
+                        <p id="errorMessage">خطای نامشخص رخ داده است.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // File input change handler
+    $('#excelFile').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').html(fileName);
+    });
+
+    // Form submission
+    $('#excelReconstructionForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(this);
+        var fileInput = $('#excelFile')[0];
+        
+        if (!fileInput.files[0]) {
+            alert('لطفاً فایل اکسل را انتخاب کنید');
+            return;
+        }
+        
+        // Show progress section
+        $('#progressSection').show();
+        $('#resultsSection').hide();
+        $('#errorSection').hide();
+        $('#processBtn').prop('disabled', true);
+        
+        // Simulate progress
+        var progress = 0;
+        var progressInterval = setInterval(function() {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            $('.progress-bar').css('width', progress + '%');
+        }, 500);
+        
+        // Update progress text
+        var progressTexts = [
+            'آماده‌سازی فایل...',
+            'خواندن داده‌ها...',
+            'نگاشت ستون‌ها...',
+            'پردازش ردیف‌ها...',
+            'مدیریت تکراری‌ها...',
+            'ذخیره فایل خروجی...'
+        ];
+        var textIndex = 0;
+        var textInterval = setInterval(function() {
+            if (textIndex < progressTexts.length) {
+                $('#progressText').text(progressTexts[textIndex]);
+                textIndex++;
+            }
+        }, 1000);
+        
+        // Send request
+        $.ajax({
+            url: '/api/v1/excel-reconstruction',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                clearInterval(progressInterval);
+                clearInterval(textInterval);
+                $('.progress-bar').css('width', '100%');
+                $('#progressText').text('تکمیل شد!');
+                
+                setTimeout(function() {
+                    $('#progressSection').hide();
+                    
+                    if (response.success) {
+                        showResults(response.data);
+                    } else {
+                        showError(response.message);
+                    }
+                    
+                    $('#processBtn').prop('disabled', false);
+                }, 1000);
+            },
+            error: function(xhr) {
+                clearInterval(progressInterval);
+                clearInterval(textInterval);
+                $('#progressSection').hide();
+                
+                var errorMessage = 'خطا در ارتباط با سرور';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                
+                showError(errorMessage);
+                $('#processBtn').prop('disabled', false);
+            }
+        });
+    });
+    
+    function showResults(data) {
+        // Update file names
+        $('#outputFileName').text(data.output_file);
+        $('#downloadOutput').attr('href', '/download/' + data.output_file);
+        
+        if (data.error_report) {
+            $('#errorReportBox').show();
+            $('#errorReportName').text(data.error_report.split('/').pop());
+            $('#downloadErrorReport').attr('href', '/download/' + data.error_report.split('/').pop());
+        }
+        
+        // Update statistics
+        var stats = data.statistics;
+        $('#inputRows').text(stats.input_rows || 0);
+        $('#successfulRows').text(stats.successful_rows || 0);
+        $('#errorRows').text(stats.error_rows || 0);
+        $('#duplicateRows').text(stats.duplicate_rows || 0);
+        
+        // Update import results if available
+        if (data.import_result) {
+            $('#importResultsSection').show();
+            $('#importedCount').text(data.import_result.imported_count || 0);
+            $('#importErrorCount').text(data.import_result.error_count || 0);
+            
+            if (data.import_result.errors && data.import_result.errors.length > 0) {
+                $('#importErrors').show();
+                var errorsList = $('#importErrorsList');
+                errorsList.empty();
+                data.import_result.errors.forEach(function(error) {
+                    errorsList.append('<li>' + error + '</li>');
+                });
+            }
+        }
+        
+        // Update column mapping table
+        var mappingTable = $('#columnMappingTable');
+        mappingTable.empty();
+        
+        if (stats.mapped_columns) {
+            for (var inputCol in stats.mapped_columns) {
+                var targetCol = stats.mapped_columns[inputCol];
+                mappingTable.append(
+                    '<tr>' +
+                    '<td>' + inputCol + '</td>' +
+                    '<td>' + targetCol + '</td>' +
+                    '</tr>'
+                );
+            }
+        }
+        
+        $('#resultsSection').show();
+    }
+    
+    function showError(message) {
+        $('#errorMessage').text(message);
+        $('#errorSection').show();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,267 @@
+{
+  "title": "مگاپرامپت حرفه‌ای: سیستم فونت فارسی Vazir برای Android",
+  "version": "1.0.0",
+  "description": "راهنمای کامل پیاده‌سازی فونت Vazir در اپلیکیشن Android برای هماهنگی با وب‌سایت",
+  
+  "font_info": {
+    "primary_font": "Vazir",
+    "source": "GitHub - rastikerdar/vazir-font",
+    "repository": "https://github.com/rastikerdar/vazir-font",
+    "latest_version": "v30.1.0",
+    "download_url": "https://github.com/rastikerdar/vazir-font/releases",
+    "license": "SIL Open Font License",
+    "supported_languages": ["Persian", "Farsi", "Arabic", "English", "Numbers"]
+  },
+  
+  "required_files": [
+    {
+      "name": "Vazir-Regular.ttf",
+      "weight": 400,
+      "android_name": "vazir_regular.ttf",
+      "required": true,
+      "usage": "متن اصلی و body text"
+    },
+    {
+      "name": "Vazir-Medium.ttf",
+      "weight": 500,
+      "android_name": "vazir_medium.ttf",
+      "required": true,
+      "usage": "دکمه‌ها، برچسب‌ها، عنوان‌های متوسط"
+    },
+    {
+      "name": "Vazir-Bold.ttf",
+      "weight": 700,
+      "android_name": "vazir_bold.ttf",
+      "required": true,
+      "usage": "عناوین، سرتیترها، متن‌های مهم"
+    },
+    {
+      "name": "Vazir-Light.ttf",
+      "weight": 300,
+      "android_name": "vazir_light.ttf",
+      "required": false,
+      "usage": "متن‌های سبک و ثانویه"
+    },
+    {
+      "name": "Vazir-Thin.ttf",
+      "weight": 100,
+      "android_name": "vazir_thin.ttf",
+      "required": false,
+      "usage": "عناوین سبک و تزئینی"
+    }
+  ],
+  
+  "file_structure": {
+    "base_path": "app/src/main/res/font/",
+    "files": [
+      "vazir_regular.ttf",
+      "vazir_medium.ttf",
+      "vazir_bold.ttf",
+      "vazir_light.ttf",
+      "vazir_thin.ttf"
+    ]
+  },
+  
+  "implementation_steps": [
+    {
+      "step": 1,
+      "title": "دانلود فونت",
+      "actions": [
+        "رفتن به https://github.com/rastikerdar/vazir-font/releases",
+        "دانلود آخرین نسخه (v30.1.0 یا بالاتر)",
+        "استخراج فایل ZIP"
+      ]
+    },
+    {
+      "step": 2,
+      "title": "استخراج فایل‌های TTF",
+      "actions": [
+        "باز کردن پوشه dist در فایل ZIP",
+        "کپی فایل‌های .ttf",
+        "تغییر نام به lowercase با underline"
+      ]
+    },
+    {
+      "step": 3,
+      "title": "ایجاد پوشه font",
+      "actions": [
+        "ایجاد پوشه app/src/main/res/font/",
+        "قرار دادن فایل‌های TTF در این پوشه"
+      ]
+    },
+    {
+      "step": 4,
+      "title": "ایجاد FontFamily.kt",
+      "file": "app/src/main/java/com/asiasalman/mobile/ui/theme/FontFamily.kt",
+      "code": "val VazirFontFamily = FontFamily(\n    Font(R.font.vazir_thin, FontWeight.Thin),\n    Font(R.font.vazir_light, FontWeight.Light),\n    Font(R.font.vazir_regular, FontWeight.Normal),\n    Font(R.font.vazir_medium, FontWeight.Medium),\n    Font(R.font.vazir_bold, FontWeight.Bold)\n)"
+    },
+    {
+      "step": 5,
+      "title": "به‌روزرسانی Type.kt",
+      "file": "app/src/main/java/com/asiasalman/mobile/ui/theme/Type.kt",
+      "change": "تغییر همه FontFamily.Default به AppFontFamily"
+    },
+    {
+      "step": 6,
+      "title": "تست",
+      "actions": [
+        "Build پروژه",
+        "اجرای اپلیکیشن",
+        "بررسی نمایش فونت فارسی",
+        "تست در اندازه‌های مختلف"
+      ]
+    }
+  ],
+  
+  "typography_mapping": {
+    "website_to_android": {
+      "h1": {
+        "css": "1.5rem (24px)",
+        "android": "24sp",
+        "style": "headlineLarge",
+        "weight": "Bold (700)"
+      },
+      "h2": {
+        "css": "1.25rem (20px)",
+        "android": "20sp",
+        "style": "headlineMedium",
+        "weight": "SemiBold (600)"
+      },
+      "body": {
+        "css": "1rem (16px)",
+        "android": "16sp",
+        "style": "bodyLarge",
+        "weight": "Normal (400)"
+      },
+      "small": {
+        "css": "0.875rem (14px)",
+        "android": "14sp",
+        "style": "bodyMedium",
+        "weight": "Normal (400)"
+      },
+      "caption": {
+        "css": "0.75rem (12px)",
+        "android": "12sp",
+        "style": "bodySmall",
+        "weight": "Normal (400)"
+      }
+    }
+  },
+  
+  "material_design_3_scale": {
+    "displayLarge": {
+      "size": "32sp",
+      "lineHeight": "40sp",
+      "weight": "Bold",
+      "usage": "عناوین بزرگ صفحه اصلی"
+    },
+    "headlineLarge": {
+      "size": "24sp",
+      "lineHeight": "32sp",
+      "weight": "Bold",
+      "usage": "سرتیترها، نام برند"
+    },
+    "headlineMedium": {
+      "size": "20sp",
+      "lineHeight": "28sp",
+      "weight": "SemiBold",
+      "usage": "عنوان بخش‌ها"
+    },
+    "titleMedium": {
+      "size": "16sp",
+      "lineHeight": "22sp",
+      "weight": "Medium",
+      "usage": "دکمه‌ها، منوها"
+    },
+    "bodyLarge": {
+      "size": "16sp",
+      "lineHeight": "24sp",
+      "weight": "Normal",
+      "usage": "متن اصلی"
+    },
+    "bodyMedium": {
+      "size": "14sp",
+      "lineHeight": "20sp",
+      "weight": "Normal",
+      "usage": "متن ثانویه"
+    },
+    "labelMedium": {
+      "size": "12sp",
+      "lineHeight": "16sp",
+      "weight": "Medium",
+      "usage": "برچسب‌ها، توضیحات"
+    }
+  },
+  
+  "rtl_support": {
+    "enabled": true,
+    "config": {
+      "layout_direction": "RTL",
+      "text_alignment": "Start (Right for RTL)",
+      "letter_spacing": "0.sp for Persian",
+      "line_height_multiplier": 1.5
+    }
+  },
+  
+  "optimization": {
+    "subset_font": {
+      "recommended": true,
+      "tool": "fonttools",
+      "characters": "Persian, Arabic, English, Numbers, Basic Symbols"
+    },
+    "variable_font": {
+      "available": false,
+      "note": "اگر نسخه variable font موجود شود، استفاده کنید"
+    },
+    "font_loading": {
+      "method": "Lazy loading",
+      "cache": true,
+      "fallback": "System font with Persian support"
+    }
+  },
+  
+  "website_compatibility": {
+    "website_font": "Vazir",
+    "website_css": "font-family: 'Vazir', 'Tahoma', 'Arial', sans-serif;",
+    "android_equivalent": "VazirFontFamily",
+    "matching": "100% compatible"
+  },
+  
+  "testing_checklist": [
+    "تست در اندازه‌های مختلف صفحه (small, normal, large)",
+    "تست در حالت portrait و landscape",
+    "تست در dark mode و light mode",
+    "تست نمایش اعداد فارسی و انگلیسی",
+    "تست نمایش کاراکترهای خاص",
+    "تست RTL layout",
+    "تست loading performance",
+    "تست در نسخه‌های مختلف Android"
+  ],
+  
+  "troubleshooting": {
+    "font_not_showing": {
+      "check": [
+        "نام فایل‌ها lowercase و با underline باشد",
+        "فایل‌ها در پوشه res/font/ باشند",
+        "FontFamily.kt درست تعریف شده باشد",
+        "Type.kt به‌روزرسانی شده باشد",
+        "Clean و Rebuild پروژه انجام شود"
+      ]
+    },
+    "build_error": {
+      "check": [
+        "نام فایل‌ها فقط شامل a-z، 0-9 و _ باشد",
+        "هیچ کاراکتر خاصی در نام فایل نباشد",
+        "فایل‌ها فرمت TTF معتبر داشته باشند"
+      ]
+    }
+  },
+  
+  "resources": {
+    "official_repo": "https://github.com/rastikerdar/vazir-font",
+    "documentation": "https://github.com/rastikerdar/vazir-font#readme",
+    "material_typography": "https://m3.material.io/styles/typography/overview",
+    "android_fonts": "https://developer.android.com/guide/topics/ui/look-and-feel/fonts-in-xml"
+  }
+}
+

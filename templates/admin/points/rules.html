@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت قوانین امتیازدهی{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">مدیریت قوانین امتیازدهی</h2>
+        </div>
+    </div>
+
+    <!-- دکمه اضافه کردن قانون -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+                <i class="fas fa-plus"></i> اضافه کردن قانون جدید
+            </button>
+        </div>
+    </div>
+
+    <!-- لیست قوانین -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">لیست قوانین امتیازدهی</h5>
+                    {% if rules %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>نام قانون</th>
+                                    <th>امتیاز به ازای 100 هزار ریال</th>
+                                    <th>امتیاز اضافی به ازای هر محصول</th>
+                                    <th>حداکثر امتیاز اضافی</th>
+                                    <th>وضعیت</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rule in rules %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ rule.rule_name_fa }}</strong>
+                                        {% if rule.rule_name != rule.rule_name_fa %}
+                                            <br><small class="text-muted">{{ rule.rule_name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ "{:,}".format(rule.points_per_100k_rials) }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ "{:,}".format(rule.bonus_points_per_product) }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning">{{ "{:,}".format(rule.max_bonus_points) }}</span>
+                                    </td>
+                                    <td>
+                                        {% if rule.is_active %}
+                                            <span class="badge bg-success">فعال</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">غیرفعال</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rule.created_at %}
+                                            {{ rule.created_at.strftime('%Y/%m/%d') }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rule.is_active %}
+                                            <span class="badge bg-success">قانون فعال</span>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-success" 
+                                                    onclick="activateRule({{ rule.id }})">
+                                                <i class="fas fa-play"></i> فعال کردن
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">هیچ قانونی یافت نشد.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- توضیحات سیستم امتیازدهی -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">نحوه محاسبه امتیازات</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>امتیاز پایه:</h6>
+                            <p>امتیاز پایه بر اساس قیمت فاکتور محاسبه می‌شود:</p>
+                            <code>امتیاز پایه = (قیمت فاکتور ÷ 100,000) × امتیاز به ازای هر 100 هزار ریال</code>
+                            
+                            <h6 class="mt-3">امتیاز اضافی:</h6>
+                            <p>امتیاز اضافی بر اساس تعداد محصولات محاسبه می‌شود:</p>
+                            <code>امتیاز اضافی = min((تعداد محصولات - 1) × امتیاز به ازای هر محصول, حداکثر امتیاز اضافی)</code>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>مثال محاسبه:</h6>
+                            <p>فرض کنید قانون فعال دارای این مقادیر باشد:</p>
+                            <ul>
+                                <li>امتیاز به ازای هر 100 هزار ریال: 0.05</li>
+                                <li>امتیاز اضافی به ازای هر محصول: 0.005</li>
+                                <li>حداکثر امتیاز اضافی: 0.1</li>
+                            </ul>
+                            
+                            <p>برای فاکتوری با قیمت 500,000 ریال و 5 محصول:</p>
+                            <ul>
+                                <li>امتیاز پایه: (500,000 ÷ 100,000) × 0.05 = 0.25</li>
+                                <li>امتیاز اضافی: min((5 - 1) × 0.005, 0.1) = min(0.02, 0.1) = 0.02</li>
+                                <li>مجموع امتیاز: 0.25 + 0.02 = 0.27</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal اضافه کردن قانون -->
+<div class="modal fade" id="addRuleModal" tabindex="-1" aria-labelledby="addRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addRuleModalLabel">اضافه کردن قانون جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_add_points_rule') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="rule_name" class="form-label">نام قانون (انگلیسی)</label>
+                        <input type="text" class="form-control" id="rule_name" name="rule_name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="rule_name_fa" class="form-label">نام قانون (فارسی)</label>
+                        <input type="text" class="form-control" id="rule_name_fa" name="rule_name_fa" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="points_per_100k_rials" class="form-label">امتیاز به ازای هر 100 هزار ریال</label>
+                        <input type="number" class="form-control" id="points_per_100k_rials" name="points_per_100k_rials" 
+                               required min="1" value="500">
+                        <div class="form-text">مقدار پیش‌فرض: 500 امتیاز</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bonus_points_per_product" class="form-label">امتیاز اضافی به ازای هر محصول</label>
+                        <input type="number" class="form-control" id="bonus_points_per_product" name="bonus_points_per_product" 
+                               required min="0" value="50">
+                        <div class="form-text">مقدار پیش‌فرض: 50 امتیاز</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="max_bonus_points" class="form-label">حداکثر امتیاز اضافی</label>
+                        <input type="number" class="form-control" id="max_bonus_points" name="max_bonus_points" 
+                               required min="0" value="1000">
+                        <div class="form-text">مقدار پیش‌فرض: 1000 امتیاز</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                            <label class="form-check-label" for="is_active">
+                                فعال
+                            </label>
+                        </div>
+                        <div class="form-text">فقط یک قانون می‌تواند فعال باشد</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-success">اضافه کردن</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function activateRule(ruleId) {
+    if (confirm('آیا مطمئن هستید که می‌خواهید این قانون را فعال کنید؟')) {
+        // ایجاد فرم مخفی برای فعال کردن قانون
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("admin_add_points_rule") }}';
+        
+        // اضافه کردن فیلدهای مورد نیاز
+        const fields = {
+            'rule_name': 'Activate Rule',
+            'rule_name_fa': 'فعال کردن قانون',
+            'points_per_100k_rials': '500',
+            'bonus_points_per_product': '50',
+            'max_bonus_points': '1000',
+            'is_active': 'on'
+        };
+        
+        for (const [name, value] of Object.entries(fields)) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}
+
+

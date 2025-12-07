@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+
+{% block title %}فروشگاه قطعات خودرو | آسیا سلمان - بهترین قیمت‌ها{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-12">
+            <!-- Search and Filters -->
+            <div class="filter-section">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label filter-title">جستجو</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="جستجو در کد کالا، نام محصول، برند یا نوع خودرو..." value="{{ current_filters.search or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label filter-title">برند</label>
+                        <select class="form-select" name="brand_id">
+                            <option value="">همه برندها</option>
+                            {% for brand in brands %}
+                            <option value="{{ brand.id }}" {% if current_filters.brand_id == brand.id %}selected{% endif %}>
+                                {{ brand.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label filter-title">نوع خودرو</label>
+                        <select class="form-select" name="vehicle_type_id">
+                            <option value="">همه انواع</option>
+                            {% for vehicle_type in vehicle_types %}
+                            <option value="{{ vehicle_type.id }}" {% if current_filters.vehicle_type_id == vehicle_type.id %}selected{% endif %}>
+                                {{ vehicle_type.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label class="form-label filter-title">فیلتر</label>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-filter me-1"></i>اعمال
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Multi-select Controls -->
+            <div class="multi-select-controls mb-3">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="selectAll">
+                            <label class="form-check-label" for="selectAll">
+                                <i class="fas fa-check-square me-2"></i>انتخاب همه
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <span class="selected-count badge bg-primary fs-6">0 محصول انتخاب شده</span>
+                        <button class="btn btn-success ms-2" id="addSelectedToCart" disabled>
+                            <i class="fas fa-cart-plus me-1"></i>افزودن انتخاب شده‌ها
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-boxes me-2"></i>فهرست محصولات
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th width="5%">
+                                        <input type="checkbox" id="selectAllHeader" class="form-check-input">
+                                    </th>
+                                    <th width="20%">وضعیت موجودی</th>
+                                    <th width="15%">کد کالا</th>
+                                    <th width="25%">نام کالا</th>
+                                    <th width="15%">قیمت</th>
+                                    <th width="10%">مدت تسویه</th>
+                                    <th width="10%">تعداد</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products.items %}
+                                <tr>
+                                    <td>
+                                        <div class="form-check">
+                                            <input class="form-check-input product-checkbox" type="checkbox" 
+                                                   id="product_{{ product.id }}" data-product-id="{{ product.id }}">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if product.stock_quantity > 0 %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>موجود
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times me-1"></i>ناموجود
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <code>{{ product.code or product.sku }}</code>
+                                    </td>
+                                    <td>
+                                        <strong>{{ product.name }}</strong>
+                                        {% if product.description %}
+                                            <small class="d-block text-muted">{{ product.description[:50] }}...</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <!-- Price Display Element -->
+                                        <div id="price_{{ product.id }}" class="price-display" style="display: none;">
+                                            {{ product.bulk_price_cash if can_see_bulk_prices(current_user) else product.retail_price_cash }}
+                                        </div>
+                                        
+                                        <div class="price-selection">
+                                            {% if can_see_bulk_prices(current_user) %}
+                                            <div class="price-selection-container mb-2">
+                                                <div class="btn-group btn-group-xs w-100" role="group" aria-label="انتخاب نوع قیمت">
+                                                    <input type="radio" class="btn-check price-type-radio" 
+                                                           name="price_type_{{ product.id }}" id="cash_{{ product.id }}" 
+                                                           value="cash" data-product-id="{{ product.id }}"
+                                                           data-bulk-cash-price="{{ product.bulk_price_cash }}"
+                                                           data-bulk-check-price="{{ product.bulk_price_check }}"
+                                                           data-retail-cash-price="{{ product.retail_price_cash }}"
+                                                           data-retail-check-price="{{ product.retail_price_check }}"
+                                                           data-bulk-buyer="true"
+                                                           checked>
+                                                    <label class="btn btn-outline-success btn-xs" for="cash_{{ product.id }}">
+                                                        <i class="fas fa-money-bill-wave"></i>
+                                                        <div class="d-block">
+                                                            <span>نقدی عمده</span>
+                                                            <small class="d-block">{{ format_price(product.bulk_price_cash) }}</small>
+                                                        </div>
+                                                    </label>
+                                                    
+                                                    <input type="radio" class="btn-check price-type-radio" 
+                                                           name="price_type_{{ product.id }}" id="check_{{ product.id }}" 
+                                                           value="check" data-product-id="{{ product.id }}"
+                                                           data-bulk-cash-price="{{ product.bulk_price_cash }}"
+                                                           data-bulk-check-price="{{ product.bulk_price_check }}"
+                                                           data-retail-cash-price="{{ product.retail_price_cash }}"
+                                                           data-retail-check-price="{{ product.retail_price_check }}"
+                                                           data-bulk-buyer="true">
+                                                    <label class="btn btn-outline-warning btn-xs" for="check_{{ product.id }}">
+                                                        <i class="fas fa-file-invoice"></i>
+                                                        <div class="d-block">
+                                                            <span>چکی عمده</span>
+                                                            <small class="d-block">{{ format_price(product.bulk_price_check) }}</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% elif current_user.is_bulk_buyer and current_user.bulk_buyer_approval_status == 'pending' %}
+                                            <!-- خریدار عمده در انتظار تایید - فقط قیمت چکی تکی -->
+                                            <div class="price-selection-container mb-2">
+                                                <div class="alert alert-warning p-2 mb-2">
+                                                    <small><i class="fas fa-clock me-1"></i>درخواست خریدار عمده شما در انتظار تایید است</small>
+                                                </div>
+                                                <div class="btn-group btn-group-xs w-100" role="group" aria-label="قیمت چکی">
+                                                    <input type="radio" class="btn-check price-type-radio" 
+                                                           name="price_type_{{ product.id }}" id="check_{{ product.id }}" 
+                                                           value="check" data-product-id="{{ product.id }}"
+                                                           data-bulk-cash-price="{{ product.bulk_price_cash }}"
+                                                           data-bulk-check-price="{{ product.bulk_price_check }}"
+                                                           data-retail-cash-price="{{ product.retail_price_check }}"
+                                                           data-retail-check-price="{{ product.retail_price_check }}"
+                                                           data-bulk-buyer="false"
+                                                           checked>
+                                                    <label class="btn btn-outline-warning btn-xs w-100" for="check_{{ product.id }}">
+                                                        <i class="fas fa-file-invoice"></i>
+                                                        <div class="d-block">
+                                                            <span>قیمت چکی</span>
+                                                            <small class="d-block">{{ format_price(product.retail_price_check) }}</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <!-- خریدار تکی فقط قیمت چکی دارد -->
+                                            <div class="price-selection-container mb-2">
+                                                <div class="btn-group btn-group-xs w-100" role="group" aria-label="قیمت چکی">
+                                                    <input type="radio" class="btn-check price-type-radio" 
+                                                           name="price_type_{{ product.id }}" id="check_{{ product.id }}" 
+                                                           value="check" data-product-id="{{ product.id }}"
+                                                           data-bulk-cash-price="{{ product.bulk_price_cash }}"
+                                                           data-bulk-check-price="{{ product.bulk_price_check }}"
+                                                           data-retail-cash-price="{{ product.retail_price_check }}"
+                                                           data-retail-check-price="{{ product.retail_price_check }}"
+                                                           data-bulk-buyer="false"
+                                                           checked>
+                                                    <label class="btn btn-outline-warning btn-xs w-100" for="check_{{ product.id }}">
+                                                        <i class="fas fa-file-invoice"></i>
+                                                        <div class="d-block">
+                                                            <span>قیمت چکی</span>
+                                                            <small class="d-block">{{ format_price(product.retail_price_check) }}</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            {% if current_user.is_bulk_buyer %}
+                                            <div class="price-savings text-success" style="font-size: 0.7rem; text-align: center; margin-top: 5px;">
+                                                <i class="fas fa-percentage"></i>
+                                                صرفه‌جویی چکی: {{ format_price(product.retail_price_check - product.bulk_price_check) }}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            <!-- ISACO Warehouse 15 Pricing for wholesale users -->
+                                            {% if can_see_isaco_products(current_user) and product.is_isaco_wh15 %}
+                                            <div class="isaco-pricing-section mt-2">
+                                                <small class="text-primary d-block mb-1">
+                                                    <i class="fas fa-warehouse me-1"></i>
+                                                </small>
+                                                {% set has_valid_isaco_pricing = (product.isaco_cash and product.isaco_cash > 0) or (product.isaco_1m and product.isaco_1m > 0) or (product.isaco_2m and product.isaco_2m > 0) or (product.isaco_3m and product.isaco_3m > 0) %}
+                                                {% if has_valid_isaco_pricing %}
+                                                <div class="btn-group btn-group-xs w-100" role="group" aria-label="قیمت‌های ایساکو">
+                                                    {% if product.isaco_cash and product.isaco_cash > 0 %}
+                                                    <input type="radio" class="btn-check isaco-plan-radio" name="price_plan_{{ product.id }}" id="isaco_cash_{{ product.id }}" value="isaco_cash">
+                                                    <label class="btn btn-outline-success btn-xs" for="isaco_cash_{{ product.id }}">
+                                                        نقدی<br>
+                                                        <small>{{ format_price(product.isaco_cash, is_isaco=True) }}</small>
+                                                    </label>
+                                                    {% endif %}
+                                                    {% if product.isaco_1m and product.isaco_1m > 0 %}
+                                                    <input type="radio" class="btn-check isaco-plan-radio" name="price_plan_{{ product.id }}" id="isaco_1m_{{ product.id }}" value="isaco_1m">
+                                                    <label class="btn btn-outline-info btn-xs" for="isaco_1m_{{ product.id }}">
+                                                        ۱م<br>
+                                                        <small>{{ format_price(product.isaco_1m, is_isaco=True) }}</small>
+                                                    </label>
+                                                    {% endif %}
+                                                    {% if product.isaco_2m and product.isaco_2m > 0 %}
+                                                    <input type="radio" class="btn-check isaco-plan-radio" name="price_plan_{{ product.id }}" id="isaco_2m_{{ product.id }}" value="isaco_2m">
+                                                    <label class="btn btn-outline-warning btn-xs" for="isaco_2m_{{ product.id }}">
+                                                        ۲م<br>
+                                                        <small>{{ format_price(product.isaco_2m, is_isaco=True) }}</small>
+                                                    </label>
+                                                    {% endif %}
+                                                    {% if product.isaco_3m and product.isaco_3m > 0 %}
+                                                    <input type="radio" class="btn-check isaco-plan-radio" name="price_plan_{{ product.id }}" id="isaco_3m_{{ product.id }}" value="isaco_3m">
+                                                    <label class="btn btn-outline-secondary btn-xs" for="isaco_3m_{{ product.id }}">
+                                                        ۳م<br>
+                                                        <small>{{ format_price(product.isaco_3m, is_isaco=True) }}</small>
+                                                    </label>
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if product.cash_discount_percentage > 0 %}
+                                                <small class="text-success" style="font-size: 0.7rem; text-align: center; display: block; margin-top: 3px;">
+                                                    <i class="fas fa-percentage"></i>
+                                                    {{ product.cash_discount_percentage }}% تخفیف
+                                                </small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if product.settlement_period > 0 %}
+                                            {{ product.settlement_period }} روز
+                                        {% else %}
+                                            فوری
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="input-group input-group-sm">
+                                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="-1">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <input type="number" class="form-control text-center" 
+                                                   id="quantity_{{ product.id }}" value="1" min="1">
+                                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="1">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        <!-- Points Display -->
+                                        <div class="product-points-display mt-1">
+                                            <small class="text-muted">
+                                                <i class="fas fa-star text-warning"></i>
+                                                <span class="product-points" data-product-id="{{ product.id }}">0</span> امتیاز
+                                            </small>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            {% if products.pages > 1 %}
+            <nav aria-label="صفحه‌بندی محصولات" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if products.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('shop', page=products.prev_num, **current_filters) }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in products.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != products.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('shop', page=page_num, **current_filters) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if products.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('shop', page=products.next_num, **current_filters) }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize quantity controls
+    $('.quantity-btn').on('click', function() {
+        var input = $(this).siblings('input');
+        var currentValue = parseInt(input.val()) || 1;
+        var change = $(this).data('change');
+        var newValue = currentValue + change;
+        
+        if (newValue >= 1) {
+            input.val(newValue);
+            // Update points when quantity changes
+            updateProductPoints(input);
+            // Update cart points if available
+            if (typeof updateCartPoints === 'function') {
+                updateCartPoints();
+            }
+        }
+    });
+    
+    // Update points when quantity input changes manually
+    $('input[id^="quantity_"]').on('input change', function() {
+        updateProductPoints($(this));
+        // Update cart points if available
+        if (typeof updateCartPoints === 'function') {
+            updateCartPoints();
+        }
+    });
+    
+    // Price calculation
+    $('.price-type-radio').on('change', function() {
+        var productId = $(this).data('product-id');
+        var priceType = $(this).val();
+        var isBulkBuyer = $(this).data('bulk-buyer') === 'true';
+        
+        var priceElement = $('#price_' + productId);
+        var price = 0;
+        
+        if (isBulkBuyer && priceType === 'cash') {
+            price = $(this).data('bulk-cash-price');
+        } else if (isBulkBuyer && priceType === 'check') {
+            price = $(this).data('bulk-check-price');
+        } else if (!isBulkBuyer && priceType === 'cash') {
+            price = $(this).data('retail-cash-price');
+        } else if (!isBulkBuyer && priceType === 'check') {
+            price = $(this).data('retail-check-price');
+        }
+        
+        priceElement.text(price);
+        
+        // Update points when price changes
+        updateProductPoints($('#quantity_' + productId));
+        // Update cart points if available
+        if (typeof updateCartPoints === 'function') {
+            updateCartPoints();
+        }
+    });
+    
+    // Initialize points for all products
+    initializeProductPoints();
+    
+    // Add to cart functionality is handled in main.js
+});
+
+// Function to calculate and update points for a product
+function updateProductPoints(quantityInput) {
+    var productId = quantityInput.attr('id').replace('quantity_', '');
+    var quantity = parseInt(quantityInput.val()) || 1;
+    
+    // Get product price
+    var priceElement = $('#price_' + productId);
+    var price = parseFloat(priceElement.text()) || 0;
+    
+    // Calculate points using the same logic as the backend
+    var totalPrice = price * quantity; // Total price in thousands of rials
+    var basePoints = Math.floor((totalPrice / 100) * 0.05); // 0.05 points per 100k rials
+    var bonusPoints = Math.min((quantity - 1) * 0.005, 0.1); // 0.005 bonus points per additional product, max 0.1
+    var totalPoints = basePoints + bonusPoints;
+    
+    // Update points display
+    var pointsElement = $('.product-points[data-product-id="' + productId + '"]');
+    pointsElement.text(totalPoints.toLocaleString('fa-IR'));
+}
+
+// Function to initialize points for all products
+function initializeProductPoints() {
+    $('input[id^="quantity_"]').each(function() {
+        updateProductPoints($(this));
+    });
+}
+</script>
+{% endblock %}
+
+{% block sticky_mobile_bar %}
+{% if current_user.is_authenticated %}
+<div class="mobile-sticky-cta d-md-none">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between gap-2">
+      <div class="flex-grow-1">
+        <div class="small text-muted">محصول انتخاب شده</div>
+        <div class="fw-bold selected-count">0 محصول انتخاب شده</div>
+      </div>
+      <button class="btn btn-success" id="sticky_add_selected" disabled>
+        <i class="fas fa-cart-plus me-1"></i>
+        افزودن انتخاب‌شده‌ها
+      </button>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function updateStickyBarState() {
+    const count = document.querySelectorAll('.product-checkbox:checked').length;
+    document.querySelectorAll('.selected-count').forEach(el => el.textContent = count + ' محصول انتخاب شده');
+    const btn = document.getElementById('sticky_add_selected');
+    if (btn) btn.disabled = count === 0;
+  }
+  document.querySelectorAll('.product-checkbox, #selectAll, #selectAllHeader').forEach(el => {
+    el.addEventListener('change', updateStickyBarState);
+  });
+  const addBtn = document.getElementById('addSelectedToCart');
+  const stickyBtn = document.getElementById('sticky_add_selected');
+  if (addBtn && stickyBtn) {
+    stickyBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      addBtn.click();
+    });
+  }
+  updateStickyBarState();
+});
+</script>
+{% endif %}
+{% endblock %}

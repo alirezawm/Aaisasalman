@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت فاکتورهای مشتریان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                        <a class="nav-link" href="{{ url_for('excel_reconstruction') }}">
+                            <i class="fas fa-file-excel me-2"></i>بازسازی اکسل
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_roles') }}">
+                            <i class="fas fa-user-shield me-2"></i>مدیریت نقش‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_user_roles') }}">
+                            <i class="fas fa-users-cog me-2"></i>نقش‌های کاربران
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_audit_logs') }}">
+                            <i class="fas fa-clipboard-list me-2"></i>لاگ‌های حسابرسی
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <div class="row">
+                <div class="col-12">
+            <div class="page-header">
+                <h2 class="page-title">
+                    <i class="fas fa-file-invoice"></i>
+                    مدیریت فاکتورهای مشتریان
+                </h2>
+                <div class="page-subtitle">نمایش و مدیریت فاکتورهای مشتریان</div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-primary">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ stats.total_invoices }}</div>
+                            <div class="stat-label">کل فاکتورها</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-warning">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ stats.pending_approval }}</div>
+                            <div class="stat-label">در انتظار تایید</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                    <div class="stat-icon bg-success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.approved }}</div>
+                        <div class="stat-label">تایید شده</div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                    <div class="stat-icon bg-danger">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.rejected }}</div>
+                        <div class="stat-label">رد شده</div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                    <div class="stat-icon bg-info">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.under_review }}</div>
+                        <div class="stat-label">در حال بررسی</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-filter"></i> فیلترها</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-lg-3 col-md-6">
+                            <label for="approval_status" class="form-label">وضعیت تایید</label>
+                            <select id="approval_status" name="approval_status" class="form-select">
+                                <option value="">همه</option>
+                                <option value="pending" {% if current_filters.approval_status == 'pending' %}selected{% endif %}>در انتظار تایید</option>
+                                <option value="approved" {% if current_filters.approval_status == 'approved' %}selected{% endif %}>تایید شده</option>
+                                <option value="rejected" {% if current_filters.approval_status == 'rejected' %}selected{% endif %}>رد شده</option>
+                                <option value="under_review" {% if current_filters.approval_status == 'under_review' %}selected{% endif %}>در حال بررسی</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label for="payment_type" class="form-label">نوع پرداخت</label>
+                            <select id="payment_type" name="payment_type" class="form-select">
+                                <option value="">همه</option>
+                                <option value="cash" {% if current_filters.payment_type == 'cash' %}selected{% endif %}>نقدی</option>
+                                <option value="check" {% if current_filters.payment_type == 'check' %}selected{% endif %}>چکی</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label for="user_search" class="form-label">جستجوی کاربر</label>
+                            <input type="text" id="user_search" name="user_search" class="form-control" 
+                                   value="{{ current_filters.user_search }}" 
+                                   placeholder="نام کاربری، نام یا شرکت">
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label for="date_from" class="form-label">تاریخ از</label>
+                            <input type="date" id="date_from" name="date_from" class="form-control" 
+                                   value="{{ current_filters.date_from }}">
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label for="date_to" class="form-label">تاریخ تا</label>
+                            <input type="date" id="date_to" name="date_to" class="form-control" 
+                                   value="{{ current_filters.date_to }}">
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> جستجو
+                            </button>
+                            <a href="{{ url_for('admin_invoices') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> پاک کردن
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Invoices Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> فاکتورها</h5>
+                </div>
+                <div class="card-body">
+                    {% if invoices.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>شماره فاکتور</th>
+                                        <th>مشتری</th>
+                                        <th>مبلغ (ریال)</th>
+                                        <th>نوع پرداخت</th>
+                                        <th>وضعیت تایید</th>
+                                        <th>تاریخ ایجاد</th>
+                                        <th>عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for invoice in invoices.items %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ invoice.invoice_number }}</strong>
+                                            <div class="text-muted small">#{{ invoice.id }}</div>
+                                        </td>
+                                        <td>
+                                            <div>{{ invoice.user.full_name }}</div>
+                                            {% if invoice.user.company_name %}
+                                            <div class="text-muted small">{{ invoice.user.company_name }}</div>
+                                            {% endif %}
+                                            <div class="text-muted small">{{ invoice.user.username }}</div>
+                                        </td>
+                                        <td>
+                                            <strong class="text-primary">{{ format_price(invoice.total_amount) }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if invoice.payment_type == 'cash' %}bg-success{% else %}bg-info{% endif %}">
+                                                {% if invoice.payment_type == 'cash' %}نقدی{% else %}چکی{% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if invoice.approval_status == 'pending' %}
+                                                <span class="badge bg-warning">در انتظار تایید</span>
+                                            {% elif invoice.approval_status == 'approved' %}
+                                                <span class="badge bg-success">تایید شده</span>
+                                            {% elif invoice.approval_status == 'rejected' %}
+                                                <span class="badge bg-danger">رد شده</span>
+                                            {% elif invoice.approval_status == 'under_review' %}
+                                                <span class="badge bg-info">در حال بررسی</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ invoice.created_at | persian_datetime }}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('admin_invoice_detail', invoice_id=invoice.id) }}" 
+                                                   class="btn btn-success btn-sm">
+                                                    <i class="fas fa-eye"></i> مشاهده
+                                                </a>
+                                                <button type="button" 
+                                                        class="btn btn-danger btn-sm" 
+                                                        onclick="deleteInvoice({{ invoice.id }}, '{{ invoice.invoice_number }}')"
+                                                        title="حذف فاکتور">
+                                                    <i class="fas fa-trash"></i> حذف
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if invoices.pages > 1 %}
+                        <nav class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if invoices.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_invoices', page=invoices.prev_num, **current_filters) }}">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for page_num in invoices.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != invoices.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('admin_invoices', page=page_num, **current_filters) }}">
+                                                    {{ page_num }}
+                                                </a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% endif %}
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if invoices.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_invoices', page=invoices.next_num, **current_filters) }}">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">هیچ فاکتوری یافت نشد</h5>
+                            <p class="text-muted">با فیلترهای مختلف جستجو کنید</p>
+                        </div>
+                    {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">تایید حذف فاکتور</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>آیا مطمئن هستید که می‌خواهید فاکتور <strong id="invoiceNumber"></strong> را حذف کنید؟</p>
+                <p class="text-danger"><small>این عمل قابل بازگشت نیست.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">حذف فاکتور</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteInvoice(invoiceId, invoiceNumber) {
+    document.getElementById('invoiceNumber').textContent = invoiceNumber;
+    document.getElementById('deleteForm').action = '/admin/delete-invoice/' + invoiceId;
+    
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+</script>
+
+<style>
+.stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    margin-left: 15px;
+    flex-shrink: 0;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 14px;
+    margin-top: 2px;
+}
+</style>
+{% endblock %}

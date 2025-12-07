@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت کیف پول کاربران - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('admin_wallets') }}">
+                            <i class="fas fa-wallet me-2"></i>مدیریت کیف پول
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users me-2"></i>مدیریت کاربران
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-wallet me-2"></i>مدیریت کیف پول کاربران</h2>
+            </div>
+
+            <!-- فیلترها -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">جستجو</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ request.args.get('search', '') }}" 
+                                   placeholder="نام کاربری، نام کامل، شرکت یا شماره تلفن">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="min_balance" class="form-label">حداقل موجودی (ریال)</label>
+                            <input type="number" class="form-control" id="min_balance" name="min_balance" 
+                                   value="{{ request.args.get('min_balance', '') }}" 
+                                   placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="max_balance" class="form-label">حداکثر موجودی (ریال)</label>
+                            <input type="number" class="form-control" id="max_balance" name="max_balance" 
+                                   value="{{ request.args.get('max_balance', '') }}" 
+                                   placeholder="1000000">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary w-100">فیلتر</button>
+                                <a href="{{ url_for('admin_wallets') }}" class="btn btn-secondary w-100 mt-2">پاک کردن</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- لیست کیف پول‌ها -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">لیست کیف پول‌ها</h5>
+                    {% if wallets.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>نام کاربری</th>
+                                    <th>نام کامل</th>
+                                    <th>شرکت</th>
+                                    <th>شماره تلفن</th>
+                                    <th>موجودی</th>
+                                    <th>وضعیت</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for wallet, user in wallets.items %}
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.full_name }}</td>
+                                    <td>{{ user.company_name or '-' }}</td>
+                                    <td>{{ user.phone }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if wallet.balance > 0 %}success{% else %}secondary{% endif %} fs-6">
+                                            {{ "{:,.0f}".format(wallet.balance) }} ریال
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if wallet.is_active %}
+                                            <span class="badge bg-success">فعال</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">غیرفعال</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ wallet.created_at.strftime('%Y/%m/%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin_wallet_detail', wallet_id=wallet.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye me-1"></i>مشاهده
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <nav aria-label="صفحه‌بندی">
+                        <ul class="pagination justify-content-center">
+                            {% if wallets.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_wallets', page=wallets.prev_num, search=request.args.get('search', ''), min_balance=request.args.get('min_balance', ''), max_balance=request.args.get('max_balance', '')) }}">قبلی</a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in wallets.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                    {% if page_num == wallets.page %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_wallets', page=page_num, search=request.args.get('search', ''), min_balance=request.args.get('min_balance', ''), max_balance=request.args.get('max_balance', '')) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if wallets.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_wallets', page=wallets.next_num, search=request.args.get('search', ''), min_balance=request.args.get('min_balance', ''), max_balance=request.args.get('max_balance', '')) }}">بعدی</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>هیچ کیف پولی یافت نشد.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

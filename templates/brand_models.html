@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}{{ brand.name_fa }} - انتخاب مدل - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">خانه</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('brands') }}">برندها</a></li>
+            <li class="breadcrumb-item active">{{ brand.name_fa }}</li>
+        </ol>
+    </nav>
+
+    <!-- Brand Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card brand-header-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            {% if brand.logo_url %}
+                                <img src="{{ brand.logo_url }}" alt="{{ brand.name }}" 
+                                     class="img-fluid brand-logo-large">
+                            {% else %}
+                                <div class="brand-logo-placeholder">
+                                    <i class="fas fa-car fa-4x text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <h1 class="display-6 fw-bold text-danger mb-2">
+                                {{ brand.name_fa }}
+                            </h1>
+                            <h2 class="h4 text-muted mb-3">{{ brand.name }}</h2>
+                            {% if brand.description %}
+                                <p class="lead">{{ brand.description }}</p>
+                            {% endif %}
+                            <div class="brand-info">
+                                <span class="badge bg-secondary me-2">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    {{ brand.country_of_origin or 'کشور نامشخص' }}
+                                </span>
+                                <span class="badge bg-info">
+                                    <i class="fas fa-car me-1"></i>
+                                    {{ models_by_year|length }} مدل موجود
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <div class="d-flex flex-column gap-2">
+                                <a href="{{ url_for('brand_products', brand_id=brand.id) }}" class="btn btn-danger">
+                                    <i class="fas fa-box me-2"></i>مشاهده محصولات
+                                </a>
+                                <a href="{{ url_for('brands') }}" class="btn btn-outline-danger">
+                                    <i class="fas fa-arrow-right me-2"></i>بازگشت
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Search -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mx-auto">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-center mb-3">
+                        <i class="fas fa-search me-2"></i>جستجوی سریع مدل
+                    </h5>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="modelSearch" 
+                               placeholder="نام مدل را وارد کنید...">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Models by Year -->
+    {% for year_range, models in models_by_year.items() %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="text-danger mb-3">
+                <i class="fas fa-calendar me-2"></i>{{ year_range }}
+            </h3>
+        </div>
+    </div>
+    
+    <div class="row g-3 mb-5">
+        {% for model in models %}
+        <div class="col-lg-3 col-md-4 col-sm-6 model-card" 
+             data-model-name="{{ model.model_name }}" 
+             data-model-name-fa="{{ model.model_name_fa }}">
+            <div class="card h-100 model-selection-card">
+                <div class="card-body text-center p-4">
+                    <div class="model-icon mb-3">
+                        {% if model.body_type == 'SUV' %}
+                            <i class="fas fa-truck fa-3x text-danger"></i>
+                        {% elif model.body_type == 'sedan' %}
+                            <i class="fas fa-car fa-3x text-danger"></i>
+                        {% elif model.body_type == 'hatchback' %}
+                            <i class="fas fa-car-side fa-3x text-danger"></i>
+                        {% else %}
+                            <i class="fas fa-car fa-3x text-danger"></i>
+                        {% endif %}
+                    </div>
+                    <h5 class="card-title text-danger mb-2">{{ model.model_name_fa }}</h5>
+                    <p class="card-text text-muted mb-3">{{ model.model_name }}</p>
+                    
+                    <div class="model-specs mb-3">
+                        {% if model.body_type %}
+                            <span class="badge bg-primary me-1">{{ model.body_type }}</span>
+                        {% endif %}
+                        {% if model.engine_type %}
+                            <span class="badge bg-success me-1">{{ model.engine_type }}</span>
+                        {% endif %}
+                        {% if model.year_from and model.year_to %}
+                            <span class="badge bg-info">{{ model.year_from }}-{{ model.year_to }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{{ url_for('model_categories', brand_id=brand.id, model_id=model.id) }}" 
+                           class="btn btn-danger btn-sm">
+                            <i class="fas fa-arrow-left me-2"></i>انتخاب قطعات
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- No Models Message -->
+    <div id="noModels" class="text-center py-5" style="display: none;">
+        <i class="fas fa-car fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">مدلی یافت نشد</h4>
+        <p class="text-muted">لطفاً نام مدل را دوباره وارد کنید</p>
+    </div>
+
+    <!-- Popular Parts Categories -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-star me-2"></i>قطعات محبوب {{ brand.name_fa }}
+            </h3>
+        </div>
+    </div>
+    
+    <div class="row g-3">
+        <div class="col-md-3 col-sm-6">
+            <div class="card category-quick-link">
+                <div class="card-body text-center">
+                    <i class="fas fa-car-crash fa-2x text-danger mb-2"></i>
+                    <h6>لنت ترمز</h6>
+                    <a href="{{ url_for('shop') }}?search={{ brand.name }} لنت" class="btn btn-outline-danger btn-sm">مشاهده</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card category-quick-link">
+                <div class="card-body text-center">
+                    <i class="fas fa-filter fa-2x text-danger mb-2"></i>
+                    <h6>فیلتر روغن</h6>
+                    <a href="{{ url_for('shop') }}?search={{ brand.name }} فیلتر" class="btn btn-outline-danger btn-sm">مشاهده</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card category-quick-link">
+                <div class="card-body text-center">
+                    <i class="fas fa-bolt fa-2x text-danger mb-2"></i>
+                    <h6>شمع</h6>
+                    <a href="{{ url_for('shop') }}?search={{ brand.name }} شمع" class="btn btn-outline-danger btn-sm">مشاهده</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card category-quick-link">
+                <div class="card-body text-center">
+                    <i class="fas fa-cog fa-2x text-danger mb-2"></i>
+                    <h6>قطعات موتور</h6>
+                    <a href="{{ url_for('shop') }}?search={{ brand.name }} موتور" class="btn btn-outline-danger btn-sm">مشاهده</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.brand-header-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.brand-logo-large {
+    max-height: 120px;
+    transition: transform 0.3s ease;
+}
+
+.brand-logo-large:hover {
+    transform: scale(1.1);
+}
+
+.brand-logo-placeholder {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.model-selection-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.model-selection-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: #dc3545;
+}
+
+.model-icon i {
+    transition: transform 0.3s ease;
+}
+
+.model-selection-card:hover .model-icon i {
+    transform: scale(1.1);
+}
+
+.category-quick-link {
+    transition: transform 0.3s ease;
+}
+
+.category-quick-link:hover {
+    transform: translateY(-3px);
+}
+
+.model-card.hidden {
+    display: none;
+}
+
+.model-specs .badge {
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    const searchInput = $('#modelSearch');
+    const modelCards = $('.model-card');
+    const noModels = $('#noModels');
+    
+    let searchTimeout;
+    
+    // Search functionality
+    searchInput.on('input', function() {
+        const query = $(this).val().trim();
+        
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (query.length >= 2) {
+                filterModels(query);
+            } else {
+                showAllModels();
+            }
+        }, 300);
+    });
+    
+    function filterModels(query) {
+        let visibleCount = 0;
+        
+        modelCards.each(function() {
+            const card = $(this);
+            const modelName = card.data('model-name').toLowerCase();
+            const modelNameFa = card.data('model-name-fa');
+            
+            if (modelName.includes(query.toLowerCase()) || 
+                modelNameFa.includes(query)) {
+                card.removeClass('hidden');
+                visibleCount++;
+            } else {
+                card.addClass('hidden');
+            }
+        });
+        
+        if (visibleCount === 0) {
+            $('.row').hide();
+            noModels.show();
+        } else {
+            $('.row').show();
+            noModels.hide();
+        }
+    }
+    
+    function showAllModels() {
+        modelCards.removeClass('hidden');
+        $('.row').show();
+        noModels.hide();
+    }
+    
+    // Clear search on escape key
+    searchInput.on('keydown', function(e) {
+        if (e.key === 'Escape') {
+            $(this).val('');
+            showAllModels();
+        }
+    });
+});
+</script>
+{% endblock %}

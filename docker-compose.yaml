@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: asiasalman_web
+    restart: unless-stopped
+    ports:
+      - "8081:8000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=app.py
+    volumes:
+      - ./instance:/usr/src/app/instance
+      - ./uploads:/usr/src/app/uploads
+      - ./logs:/usr/src/app/logs
+      - ./backups:/usr/src/app/backups
+    depends_on:
+      - redis
+    networks:
+      - asiasalman_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: asiasalman_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - asiasalman_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:
+
+networks:
+  asiasalman_network:
+    driver: bridge

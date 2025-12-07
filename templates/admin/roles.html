@@ -1,0 +1,690 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت نقش‌ها{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">مدیریت نقش‌ها</h3>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoleModal">
+                        <i class="fas fa-plus"></i> ایجاد نقش جدید
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Search and Filter -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <input type="text" id="searchRoles" class="form-control" placeholder="جستجو در نقش‌ها...">
+                        </div>
+                        <div class="col-md-3">
+                            <select id="scopeFilter" class="form-select">
+                                <option value="">همه دامنه‌ها</option>
+                                <option value="site">سایت</option>
+                                <option value="tenant">مستأجر</option>
+                                <option value="store">فروشگاه</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-secondary" onclick="refreshRoles()">
+                                <i class="fas fa-refresh"></i> به‌روزرسانی
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Roles Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="rolesTable">
+                            <thead>
+                                <tr>
+                                    <th>شناسه نقش</th>
+                                    <th>نام نمایشی</th>
+                                    <th>توضیحات</th>
+                                    <th>تعداد مجوزها</th>
+                                    <th>دامنه</th>
+                                    <th>وضعیت</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rolesTableBody">
+                                {% for role in roles %}
+                                <tr>
+                                    <td><code>{{ role.slug }}</code></td>
+                                    <td>{{ role.name }}</td>
+                                    <td>{{ role.description or '-' }}</td>
+                                    <td><span class="badge bg-info">{{ role.permissions|length if role.permissions else 0 }}</span></td>
+                                    <td><span class="badge bg-secondary">{{ role.scope }}</span></td>
+                                    <td>
+                                        <span class="badge {{ 'bg-warning' if role.is_immutable else 'bg-success' }}">
+                                            {{ 'ثابت' if role.is_immutable else 'فعال' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-info" onclick="viewRoleDetails('{{ role.slug }}')" title="مشاهده جزئیات">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="editRole('{{ role.slug }}')" title="ویرایش" {{ 'disabled' if role.is_immutable else '' }}>
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRole('{{ role.slug }}')" title="حذف" {{ 'disabled' if role.is_immutable else '' }}>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav aria-label="Roles pagination">
+                        <ul class="pagination justify-content-center" id="rolesPagination">
+                            <!-- Pagination will be loaded here -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Role Modal -->
+<div class="modal fade" id="createRoleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">ایجاد نقش جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createRoleForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="roleSlug" class="form-label">شناسه نقش *</label>
+                                <input type="text" class="form-control" id="roleSlug" name="slug" required>
+                                <div class="form-text">شناسه یکتا برای نقش (فقط حروف انگلیسی، اعداد و _)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="roleName" class="form-label">نام نمایشی *</label>
+                                <input type="text" class="form-control" id="roleName" name="name" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="roleDescription" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="roleDescription" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="roleScope" class="form-label">دامنه</label>
+                                <select class="form-select" id="roleScope" name="scope">
+                                    <option value="site">سایت</option>
+                                    <option value="tenant">مستأجر</option>
+                                    <option value="store">فروشگاه</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">مجوزها</label>
+                        <div class="permissions-container" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 5px;">
+                            <div class="row" id="permissionsList">
+                                <!-- Permissions will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ایجاد نقش</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Role Modal -->
+<div class="modal fade" id="editRoleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">ویرایش نقش</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editRoleForm">
+                <input type="hidden" id="editRoleId" name="role_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editRoleSlug" class="form-label">شناسه نقش *</label>
+                                <input type="text" class="form-control" id="editRoleSlug" name="slug" required readonly>
+                                <div class="form-text">شناسه نقش قابل تغییر نیست</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editRoleName" class="form-label">نام نمایشی *</label>
+                                <input type="text" class="form-control" id="editRoleName" name="name" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editRoleDescription" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="editRoleDescription" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editRoleScope" class="form-label">دامنه</label>
+                                <select class="form-select" id="editRoleScope" name="scope">
+                                    <option value="site">سایت</option>
+                                    <option value="tenant">مستأجر</option>
+                                    <option value="store">فروشگاه</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">مجوزها</label>
+                        <div class="permissions-container" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 5px;">
+                            <div class="row" id="editPermissionsList">
+                                <!-- Permissions will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Role Details Modal -->
+<div class="modal fade" id="roleDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">جزئیات نقش</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="roleDetailsContent">
+                <!-- Role details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let rolesData = [
+    {% for role in roles %}
+    {
+        "id": {{ role.id }},
+        "slug": "{{ role.slug }}",
+        "name": "{{ role.name }}",
+        "description": "{{ role.description or '' }}",
+        "scope": "{{ role.scope }}",
+        "is_immutable": {{ role.is_immutable|lower }},
+        "is_active": {{ role.is_active|lower }},
+        "permissions": {{ role.get_permissions()|tojson if role.get_permissions else '[]' }},
+        "created_at": "{{ role.created_at }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+// Available permissions
+const availablePermissions = [
+    // Role management
+    'role.read', 'role.create', 'role.update', 'role.delete', 'role.assign', 'role.revoke', 'assign_privileged_role',
+    // User management
+    'user.read', 'user.create', 'user.update', 'user.delete', 'user.manage',
+    // Site management
+    'site.*', 'site.read', 'site.update',
+    // Order management
+    'order.read', 'order.create', 'order.update', 'order.delete', 'order.bulk_create', 'order.read_own',
+    // Inventory management
+    'inventory.view', 'inventory.update', 'inventory.manage',
+    // Audit
+    'audit.view', 'audit.read',
+    // Product management
+    'product.read', 'product.create', 'product.update', 'product.delete',
+    // Brand management
+    'brand.read', 'brand.create', 'brand.update', 'brand.delete'
+];
+
+// Load roles on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadPermissions();
+    
+    // Check if we have server-side roles data, if not load from API
+    if (rolesData && rolesData.length > 0) {
+        displayRoles();
+    } else {
+        loadRoles();
+    }
+    
+    // Search functionality
+    document.getElementById('searchRoles').addEventListener('input', function() {
+        filterRoles();
+    });
+    
+    // Scope filter
+    document.getElementById('scopeFilter').addEventListener('change', function() {
+        filterRoles();
+    });
+    
+    // Create role form
+    document.getElementById('createRoleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        createRole();
+    });
+    
+    // Edit role form
+    document.getElementById('editRoleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        updateRole();
+    });
+});
+
+function loadRoles() {
+    fetch('/api/v1/roles', {
+        method: 'GET',
+        credentials: 'same-origin', // Include cookies for authentication
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            // User is not authenticated, redirect to login
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.error) {
+            showAlert('خطا در بارگذاری نقش‌ها: ' + data.error, 'danger');
+        } else if (data && data.roles) {
+            rolesData = data.roles;
+            displayRoles();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading roles:', error);
+        showAlert('خطا در بارگذاری نقش‌ها: ' + error.message, 'danger');
+    });
+}
+
+function displayRoles() {
+    const rolesTableBody = document.getElementById('rolesTableBody');
+    if (!rolesTableBody) return;
+    
+    if (rolesData.length === 0) {
+        rolesTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">هیچ نقشی یافت نشد</td></tr>';
+        return;
+    }
+    
+    const rolesHtml = rolesData.map(role => `
+        <tr data-scope="${role.scope}">
+            <td><code>${role.slug}</code></td>
+            <td>${role.name}</td>
+            <td>${role.description || '-'}</td>
+            <td><span class="badge bg-info">${role.permissions.length}</span></td>
+            <td><span class="badge bg-secondary">${role.scope}</span></td>
+            <td>
+                <span class="badge ${role.is_immutable ? 'bg-warning' : 'bg-success'}">
+                    ${role.is_immutable ? 'ثابت' : (role.is_active ? 'فعال' : 'غیرفعال')}
+                </span>
+            </td>
+            <td>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="viewRoleDetails('${role.slug}')" title="مشاهده جزئیات">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="editRole('${role.slug}')" title="ویرایش" ${role.is_immutable ? 'disabled' : ''}>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRole(${role.id})" title="حذف" ${role.is_immutable ? 'disabled' : ''}>
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    rolesTableBody.innerHTML = rolesHtml;
+}
+
+function loadPermissions() {
+    const permissionsList = document.getElementById('permissionsList');
+    const editPermissionsList = document.getElementById('editPermissionsList');
+    
+    // Group permissions by category
+    const permissionGroups = {
+        'مدیریت نقش‌ها': [
+            {value: 'role.read', label: 'مشاهده نقش‌ها'},
+            {value: 'role.create', label: 'ایجاد نقش'},
+            {value: 'role.update', label: 'ویرایش نقش'},
+            {value: 'role.delete', label: 'حذف نقش'},
+            {value: 'role.assign', label: 'اختصاص نقش'},
+            {value: 'role.revoke', label: 'لغو نقش'},
+            {value: 'assign_privileged_role', label: 'اختصاص نقش ممتاز'}
+        ],
+        'مدیریت کاربران': [
+            {value: 'user.read', label: 'مشاهده کاربران'},
+            {value: 'user.create', label: 'ایجاد کاربر'},
+            {value: 'user.update', label: 'ویرایش کاربر'},
+            {value: 'user.delete', label: 'حذف کاربر'},
+            {value: 'user.manage', label: 'مدیریت کاربران'}
+        ],
+        'مدیریت سایت': [
+            {value: 'site.*', label: 'دسترسی کامل به سایت'},
+            {value: 'site.read', label: 'مشاهده تنظیمات سایت'},
+            {value: 'site.update', label: 'ویرایش تنظیمات سایت'}
+        ],
+        'مدیریت سفارشات': [
+            {value: 'order.read', label: 'مشاهده سفارشات'},
+            {value: 'order.create', label: 'ایجاد سفارش'},
+            {value: 'order.update', label: 'ویرایش سفارش'},
+            {value: 'order.delete', label: 'حذف سفارش'},
+            {value: 'order.bulk_create', label: 'ایجاد سفارش دسته‌ای'},
+            {value: 'order.read_own', label: 'مشاهده سفارشات خود'}
+        ],
+        'مدیریت موجودی': [
+            {value: 'inventory.view', label: 'مشاهده موجودی'},
+            {value: 'inventory.update', label: 'به‌روزرسانی موجودی'},
+            {value: 'inventory.manage', label: 'مدیریت موجودی'}
+        ],
+        'مدیریت محصولات': [
+            {value: 'product.read', label: 'مشاهده محصولات'},
+            {value: 'product.create', label: 'ایجاد محصول'},
+            {value: 'product.update', label: 'ویرایش محصول'},
+            {value: 'product.delete', label: 'حذف محصول'}
+        ],
+        'مدیریت برندها': [
+            {value: 'brand.read', label: 'مشاهده برندها'},
+            {value: 'brand.create', label: 'ایجاد برند'},
+            {value: 'brand.update', label: 'ویرایش برند'},
+            {value: 'brand.delete', label: 'حذف برند'}
+        ],
+        'مدیریت حسابرسی': [
+            {value: 'audit.view', label: 'مشاهده گزارشات حسابرسی'},
+            {value: 'audit.read', label: 'خواندن گزارشات حسابرسی'}
+        ]
+    };
+    
+    function createPermissionCheckboxes(container) {
+        container.innerHTML = '';
+        
+        Object.entries(permissionGroups).forEach(([category, permissions]) => {
+            const categoryDiv = document.createElement('div');
+            categoryDiv.className = 'col-md-6 mb-3';
+            categoryDiv.innerHTML = `
+                <h6 class="text-muted">${category}</h6>
+                <div class="permission-group">
+                    ${permissions.map(permission => `
+                        <div class="form-check">
+                            <input class="form-check-input permission-checkbox" type="checkbox" value="${permission.value}" id="${permission.value}_${container.id}">
+                            <label class="form-check-label" for="${permission.value}_${container.id}">
+                                ${permission.label}
+                            </label>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.appendChild(categoryDiv);
+        });
+    }
+    
+    createPermissionCheckboxes(permissionsList);
+    createPermissionCheckboxes(editPermissionsList);
+}
+
+function createRole() {
+    const formData = new FormData(document.getElementById('createRoleForm'));
+    const selectedPermissions = Array.from(document.querySelectorAll('#permissionsList .permission-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    // Prepare role data
+    const roleData = {
+        role: {
+            slug: formData.get('slug'),
+            name: formData.get('name'),
+            description: formData.get('description') || '',
+            scope: formData.get('scope') || 'site',
+            permissions: selectedPermissions,
+            is_active: true,
+            is_immutable: false
+        },
+        audit_reason: 'Creating new role via admin panel'
+    };
+    
+    // Show loading state
+    const submitBtn = document.querySelector('#createRoleForm button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'در حال ایجاد...';
+    submitBtn.disabled = true;
+    
+    // Make API call
+    fetch('/api/v1/roles', {
+        method: 'POST',
+        credentials: 'same-origin', // Include cookies for authentication
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(roleData)
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            // User is not authenticated, redirect to login
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.error) {
+            showAlert('خطا در ایجاد نقش: ' + data.error, 'danger');
+        } else if (data && data.message) {
+            showAlert('نقش با موفقیت ایجاد شد', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createRoleModal')).hide();
+            document.getElementById('createRoleForm').reset();
+            // Refresh the roles list
+            loadRoles();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('خطا در ایجاد نقش: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        // Restore button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+function editRole(roleSlug) {
+    const role = rolesData.find(r => r.slug === roleSlug);
+    if (!role) return;
+    
+    // Populate edit form
+    document.getElementById('editRoleId').value = role.id;
+    document.getElementById('editRoleSlug').value = role.slug;
+    document.getElementById('editRoleName').value = role.name;
+    document.getElementById('editRoleDescription').value = role.description || '';
+    document.getElementById('editRoleScope').value = role.scope;
+    
+    // Set permissions
+    document.querySelectorAll('#editPermissionsList .permission-checkbox').forEach(cb => {
+        cb.checked = role.permissions.includes(cb.value);
+    });
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('editRoleModal')).show();
+}
+
+function updateRole() {
+    // For now, just show a success message
+    showAlert('نقش با موفقیت به‌روزرسانی شد (در حال توسعه)', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('editRoleModal')).hide();
+}
+
+function viewRoleDetails(roleSlug) {
+    const role = rolesData.find(r => r.slug === roleSlug);
+    if (!role) return;
+    
+    const content = document.getElementById('roleDetailsContent');
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>اطلاعات کلی</h6>
+                <table class="table table-sm">
+                    <tr><td>شناسه نقش:</td><td><code>${role.slug}</code></td></tr>
+                    <tr><td>نام نمایشی:</td><td>${role.name}</td></tr>
+                    <tr><td>دامنه:</td><td><span class="badge bg-secondary">${role.scope}</span></td></tr>
+                    <tr><td>وضعیت:</td><td><span class="badge ${role.is_immutable ? 'bg-warning' : 'bg-success'}">${role.is_immutable ? 'ثابت' : 'فعال'}</span></td></tr>
+                    <tr><td>تاریخ ایجاد:</td><td>${new Date(role.created_at).toLocaleDateString('fa-IR')}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>توضیحات</h6>
+                <p>${role.description || 'توضیحی ارائه نشده است'}</p>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6>مجوزها (${role.permissions.length})</h6>
+                <div class="permissions-display">
+                    ${role.permissions.map(permission => {
+                        const permissionObj = Object.values(permissionGroups).flat().find(p => p.value === permission);
+                        const label = permissionObj ? permissionObj.label : permission;
+                        return `<span class="badge bg-primary me-1 mb-1" title="${permission}">${label}</span>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('roleDetailsModal')).show();
+}
+
+function deleteRole(roleSlug) {
+    if (confirm('آیا مطمئن هستید که می‌خواهید این نقش را حذف کنید؟')) {
+        showAlert('قابلیت حذف نقش در حال توسعه است', 'info');
+    }
+}
+
+function filterRoles() {
+    const searchTerm = document.getElementById('searchRoles').value.toLowerCase();
+    const scopeFilter = document.getElementById('scopeFilter').value;
+    
+    let filteredRoles = rolesData.filter(role => {
+        const matchesSearch = role.slug.toLowerCase().includes(searchTerm) ||
+                            role.name.toLowerCase().includes(searchTerm) ||
+                            (role.description && role.description.toLowerCase().includes(searchTerm));
+        
+        const matchesScope = !scopeFilter || role.scope === scopeFilter;
+        
+        return matchesSearch && matchesScope;
+    });
+    
+    // Hide/show rows based on filter
+    const rows = document.querySelectorAll('#rolesTableBody tr');
+    rows.forEach((row, index) => {
+        const role = filteredRoles[index];
+        if (role) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function deleteRole(roleId) {
+    if (!confirm('آیا مطمئن هستید که می‌خواهید این نقش را حذف کنید؟')) {
+        return;
+    }
+    
+    fetch(`/api/v1/roles/${roleId}`, {
+        method: 'DELETE',
+        credentials: 'same-origin', // Include cookies for authentication
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            audit_reason: 'Deleting role via admin panel'
+        })
+    })
+    .then(response => {
+        if (response.status === 302 || response.redirected) {
+            // User is not authenticated, redirect to login
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.error) {
+            showAlert('خطا در حذف نقش: ' + data.error, 'danger');
+        } else if (data && data.message) {
+            showAlert('نقش با موفقیت حذف شد', 'success');
+            loadRoles(); // Refresh the roles list
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('خطا در حذف نقش: ' + error.message, 'danger');
+    });
+}
+
+function refreshRoles() {
+    // Reload the page to refresh data
+    window.location.reload();
+}
+
+function showAlert(message, type) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert at the top of the main content
+    const mainContent = document.querySelector('.container-fluid');
+    if (mainContent) {
+        mainContent.insertBefore(alertDiv, mainContent.firstChild);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+}
+</script>
+{% endblock %}

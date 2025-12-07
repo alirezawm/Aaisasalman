@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}داشبورد مدیریت امتیازات{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">داشبورد مدیریت امتیازات</h2>
+        </div>
+    </div>
+
+    <!-- نمایش خطا در صورت وجود -->
+    {% if statistics.error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>خطا:</strong> {{ statistics.error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <!-- آمار کلی -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ statistics.users.total_with_points }}</h3>
+                    <p class="card-text">کاربران دارای امتیاز</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ "{:,}".format(statistics.users.total_points_awarded) }}</h3>
+                    <p class="card-text">مجموع امتیازات اعطا شده</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ "{:,}".format(statistics.users.total_current_points) }}</h3>
+                    <p class="card-text">امتیازات فعال</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ statistics.rewards.total_redemptions }}</h3>
+                    <p class="card-text">استفاده از جوایز</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- آمار جوایز -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">آمار جوایز</h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <p><strong>کل جوایز:</strong> {{ statistics.rewards.total_rewards }}</p>
+                            <p><strong>جوایز فعال:</strong> {{ statistics.rewards.active_rewards }}</p>
+                        </div>
+                        <div class="col-6">
+                            <p><strong>استفاده شده:</strong> {{ statistics.rewards.total_redemptions }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">توزیع سطح‌بندی کاربران</h5>
+                    {% for level, count in statistics.user_levels.items() %}
+                    <div class="d-flex justify-content-between">
+                        <span>{{ level }}:</span>
+                        <span class="badge bg-secondary">{{ count }} کاربر</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- کاربران برتر -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">کاربران برتر بر اساس امتیازات</h5>
+                    {% if top_users %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>رتبه</th>
+                                    <th>نام کاربری</th>
+                                    <th>نام کامل</th>
+                                    <th>امتیاز فعلی</th>
+                                    <th>مجموع کسب شده</th>
+                                    <th>سطح</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in top_users %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.full_name }}</td>
+                                    <td><span class="badge bg-primary">{{ "{:,}".format(user.current_points) }}</span></td>
+                                    <td>{{ "{:,}".format(user.total_earned) }}</td>
+                                    <td>
+                                        {% if user.level %}
+                                            <span class="badge bg-info">{{ user.level.name_fa }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">هیچ کاربری یافت نشد.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نمودار روند امتیازات -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">روند امتیازات (30 روز اخیر)</h5>
+                    <canvas id="pointsTrendChart" width="400" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- لینک‌های مدیریت -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">مدیریت سیستم امتیازدهی</h5>
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('admin_points_users') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-users"></i> مدیریت کاربران
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('admin_rewards') }}" class="btn btn-success w-100">
+                                <i class="fas fa-gift"></i> مدیریت جوایز
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('admin_points_rules') }}" class="btn btn-info w-100">
+                                <i class="fas fa-cogs"></i> قوانین امتیازدهی
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('admin_points_analytics') }}" class="btn btn-warning w-100">
+                                <i class="fas fa-chart-bar"></i> آمار و تحلیل
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- عملیات سریع -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">عملیات سریع</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <form method="POST" action="{{ url_for('admin_expire_points') }}" class="d-inline">
+                                <button type="submit" class="btn btn-warning" onclick="return confirm('آیا مطمئن هستید که می‌خواهید امتیازات قدیمی را منقضی کنید؟')">
+                                    <i class="fas fa-clock"></i> انقضای امتیازات قدیمی
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{{ url_for('admin_points_users') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> تنظیم امتیاز کاربر
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// نمودار روند امتیازات
+const ctx = document.getElementById('pointsTrendChart').getContext('2d');
+const pointsTrend = {{ points_trend | tojson }};
+
+// آماده‌سازی داده‌ها
+const earnedData = pointsTrend.earned || [];
+const spentData = pointsTrend.spent || [];
+
+// ایجاد نمودار
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: earnedData.map(item => item.date),
+        datasets: [
+            {
+                label: 'امتیازات کسب شده',
+                data: earnedData.map(item => item.points),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            },
+            {
+                label: 'امتیازات خرج شده',
+                data: spentData.map(item => item.points),
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'روند امتیازات در 30 روز اخیر'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
+
+

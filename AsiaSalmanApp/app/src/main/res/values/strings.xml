@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">آسیا سلمان</string>
+    
+    <!-- Navigation -->
+    <string name="nav_shop">فروشگاه</string>
+    <string name="nav_categories">دسته‌بندی‌ها</string>
+    <string name="nav_suggestions">پیشنهادات روز</string>
+    <string name="nav_rewards">جوایز</string>
+    <string name="nav_orders">سفارشات</string>
+    <string name="nav_profile">پروفایل</string>
+    
+    <!-- Auth -->
+    <string name="login_title">ورود به حساب کاربری</string>
+    <string name="phone_label">شماره موبایل</string>
+    <string name="phone_hint">09123456789</string>
+    <string name="send_otp">ارسال کد تایید</string>
+    <string name="verify_otp">تایید کد</string>
+    <string name="otp_hint">کد تایید را وارد کنید</string>
+    <string name="logout">خروج از حساب</string>
+    
+    <!-- Shop -->
+    <string name="search_hint">جستجوی محصول...</string>
+    <string name="discounted_products">محصولات تخفیف دار</string>
+    <string name="add_to_cart">افزودن به سبد</string>
+    <string name="view_all">مشاهده همه</string>
+    
+    <!-- Cart -->
+    <string name="cash_cart">سبد خرید نقدی</string>
+    <string name="check_cart">سبد خرید چکی</string>
+    <string name="total">جمع کل</string>
+    <string name="checkout">تکمیل خرید</string>
+    <string name="empty_cart">سبد خرید خالی است</string>
+    
+    <!-- Orders -->
+    <string name="my_orders">سفارشات من</string>
+    <string name="order_status">وضعیت سفارش</string>
+    <string name="continue_order">ادامه سفارش</string>
+    
+    <!-- Profile -->
+    <string name="edit_profile">ویرایش پروفایل</string>
+    <string name="bulk_buyer">خریدار عمده</string>
+    <string name="settings">تنظیمات</string>
+    
+    <!-- Common -->
+    <string name="retry">تلاش مجدد</string>
+    <string name="toman">تومان</string>
+    <string name="rial">ریال</string>
+    <string name="cash_price">قیمت نقدی</string>
+    <string name="check_price">قیمت چکی</string>
+    
+    <!-- Points -->
+    <string name="points">امتیاز</string>
+    <string name="your_points">امتیازات شما</string>
+    
+    <!-- Other -->
+    <string name="about">درباره ما</string>
+    <string name="loading">در حال بارگذاری...</string>
+    <string name="error">خطا</string>
+</resources>
+
