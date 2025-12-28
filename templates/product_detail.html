@@ -6,7 +6,98 @@
 
 {% block keywords %}{{ product.name_fa }}, {{ product.sku }}, {{ product.brand.name_fa if product.brand else '' }}, قطعات خودرو{% endblock %}
 
+{% block extra_css %}
+<style>
+    .product-image img {
+        max-height: 400px;
+        object-fit: contain;
+        transition: transform 0.3s ease;
+    }
+    .product-image img:hover {
+        transform: scale(1.05);
+    }
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
+<!-- Product Schema Structured Data -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": "{{ product.name_fa }}",
+    "description": "{{ (product.description_fa or product.description or product.name_fa)|replace('"', '\\"') }}",
+    "sku": "{{ product.sku }}",
+    {% if product.oem_code %}"mpn": "{{ product.oem_code }}",{% endif %}
+    {% if product.brand %}"brand": {
+        "@type": "Brand",
+        "name": "{{ product.brand.name_fa }}"
+    },{% endif %}
+    {% if product.primary_image %}"image": "{{ url_for('uploaded_file', filename='products/' + product.primary_image, _external=True) }}",{% endif %}
+    "offers": {
+        "@type": "Offer",
+        "price": "{{ product.retail_price_cash }}",
+        "priceCurrency": "IRR",
+        "availability": "{{ 'https://schema.org/InStock' if product.stock_quantity > 0 else 'https://schema.org/OutOfStock' }}",
+        "url": "{{ request.url }}",
+        "seller": {
+            "@type": "Organization",
+            "name": "شرکت بازرگانی قطعات خودرو آسیا سلمان"
+        }
+    },
+    "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.5",
+        "reviewCount": "10"
+    }
+}
+</script>
+
+<!-- BreadcrumbList Schema -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org/",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "خانه",
+            "item": "{{ url_for('index', _external=True) }}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "فروشگاه",
+            "item": "{{ url_for('shop', _external=True) }}"
+        }{% if product.brand %},
+        {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "{{ product.brand.name_fa }}",
+            "item": "{{ url_for('brand_models', brand_id=product.brand.id, _external=True) }}"
+        }{% endif %},
+        {
+            "@type": "ListItem",
+            "position": {{ 3 if not product.brand else 4 }},
+            "name": "{{ product.name_fa }}",
+            "item": "{{ request.url }}"
+        }
+    ]
+}
+</script>
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
@@ -27,16 +118,35 @@
             <div class="product-image">
                 {% if product.primary_image %}
                 <img src="{{ url_for('uploaded_file', filename='products/' + product.primary_image) }}" 
-                     class="img-fluid rounded" alt="{{ product.name_fa }}">
+                     class="img-fluid rounded" 
+                     alt="{{ product.name_fa }} - کد: {{ product.sku }}{% if product.brand %} - برند: {{ product.brand.name_fa }}{% endif %}"
+                     loading="lazy"
+                     decoding="async"
+                     width="600"
+                     height="400"
+                     onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/products/product_1.jpg') }}';">
                 {% else %}
                 <img src="{{ url_for('static', filename='images/products/product_1.jpg') }}" 
-                     class="img-fluid rounded" alt="{{ product.name_fa }}">
+                     class="img-fluid rounded" 
+                     alt="{{ product.name_fa }} - کد: {{ product.sku }}{% if product.brand %} - برند: {{ product.brand.name_fa }}{% endif %}"
+                     loading="lazy"
+                     decoding="async"
+                     width="600"
+                     height="400">
                 {% endif %}
             </div>
         </div>
         
         <div class="col-md-6">
             <div class="product-info">
+                {% set discount_percent = get_product_discount_percentage(product) %}
+                {% if discount_percent > 0 %}
+                <div class="mb-3">
+                    <span class="badge bg-danger" style="font-size: 16px; padding: 8px 15px;">
+                        <i class="fas fa-tag me-2"></i>{{ discount_percent }}% تخفیف ویژه
+                    </span>
+                </div>
+                {% endif %}
                 <h1 class="product-title">{{ product.name_fa }}</h1>
                 <p class="product-sku">کد محصول: {{ product.sku }}</p>
                 
@@ -168,49 +278,49 @@
                         </div>
                     </div>
                     
+                    <!-- نمایش قیمت‌ها (بدون انتخاب نوع قیمت - دو دکمه جداگانه برای سبد خرید) -->
                     {% if can_see_bulk_prices(current_user) %}
-                    <!-- Price type selection for approved bulk buyers -->
-                    <div class="form-group mb-3">
-                        <label>نوع قیمت:</label>
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="price_type" id="cash_price" value="cash" checked>
-                            <label class="btn btn-outline-success" for="cash_price">
-                                <i class="fas fa-money-bill-wave me-1"></i>نقدی عمده
-                            </label>
-                            
-                            <input type="radio" class="btn-check" name="price_type" id="check_price" value="check">
-                            <label class="btn btn-outline-warning" for="check_price">
-                                <i class="fas fa-file-invoice me-1"></i>چکی عمده
-                            </label>
-                        </div>
+                    <div class="alert alert-info">
+                        <strong>قیمت عمده:</strong><br>
+                        نقدی: {{ format_price(product.bulk_price_cash) }}<br>
+                        چکی: {{ format_price(product.bulk_price_check) }}
                     </div>
                     {% else %}
-                    <!-- Price type selection for regular users -->
-                    <div class="form-group mb-3">
-                        <label>نوع قیمت:</label>
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="price_type" id="cash_price" value="cash" checked>
-                            <label class="btn btn-outline-success" for="cash_price">
-                                <i class="fas fa-money-bill-wave me-1"></i>نقدی
-                            </label>
-                            
-                            <input type="radio" class="btn-check" name="price_type" id="check_price" value="check">
-                            <label class="btn btn-outline-warning" for="check_price">
-                                <i class="fas fa-file-invoice me-1"></i>چکی
-                            </label>
-                        </div>
+                    <div class="alert alert-info">
+                        <strong>قیمت:</strong><br>
+                        نقدی: {{ format_price(product.retail_price_cash) }}<br>
+                        چکی: {{ format_price(product.retail_price_check) }}
                     </div>
                     {% endif %}
                     
-                    <form method="POST" action="{{ url_for('add_to_cart') }}" class="add-to-cart-form">
-                        <input type="hidden" name="product_id" value="{{ product.id }}">
-                        <input type="hidden" name="quantity" id="hidden_quantity_{{ product.id }}" value="1">
-                        <input type="hidden" name="price_type" id="hidden_price_type_{{ product.id }}" value="cash">
+                    <!-- دو گزینه سبد خرید: نقدی و چکی -->
+                    <div class="cart-options-container">
+                        <form method="POST" action="{{ url_for('add_to_cart') }}" class="add-to-cart-form mb-2" id="addToCartCashForm">
+                            <input type="hidden" name="product_id" value="{{ product.id }}">
+                            <input type="hidden" name="quantity" id="hidden_quantity_{{ product.id }}" value="1">
+                            <input type="hidden" name="price_type" value="cash">
+                            
+                            <button type="submit" class="btn btn-success btn-lg w-100" id="addToCartCashBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-money-bill-wave me-2"></i>افزودن به سبد خرید نقدی
+                                </span>
+                                <span class="loading-spinner" style="display: none;"></span>
+                            </button>
+                        </form>
                         
-                        <button type="submit" class="btn btn-danger btn-lg w-100">
-                            <i class="fas fa-cart-plus me-2"></i>افزودن به سبد خرید
-                        </button>
-                    </form>
+                        <form method="POST" action="{{ url_for('add_to_cart') }}" class="add-to-cart-form" id="addToCartCheckForm">
+                            <input type="hidden" name="product_id" value="{{ product.id }}">
+                            <input type="hidden" name="quantity" id="hidden_quantity_check_{{ product.id }}" value="1">
+                            <input type="hidden" name="price_type" value="check">
+                            
+                            <button type="submit" class="btn btn-primary btn-lg w-100" id="addToCartCheckBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-file-invoice me-2"></i>افزودن به سبد خرید چکی
+                                </span>
+                                <span class="loading-spinner" style="display: none;"></span>
+                            </button>
+                        </form>
+                    </div>
                 {% elif not current_user.is_authenticated %}
                 <p class="text-muted">برای خرید باید وارد شوید.</p>
                 <a href="{{ url_for('login') }}" class="btn btn-primary">ورود</a>
@@ -300,14 +410,29 @@
             <h3>محصولات مرتبط</h3>
             <div class="row">
                 {% for related_product in related_products %}
+                {% set related_discount = get_product_discount_percentage(related_product) %}
                 <div class="col-md-3 mb-3">
-                    <div class="card product-card">
+                    <div class="card product-card position-relative">
+                        {% if related_discount > 0 %}
+                        <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;">
+                            <span class="badge bg-danger" style="font-size: 12px; padding: 5px 8px;">
+                                <i class="fas fa-tag me-1"></i>{{ related_discount }}%
+                            </span>
+                        </div>
+                        {% endif %}
                         {% if related_product.primary_image %}
                         <img src="{{ url_for('uploaded_file', filename='products/' + related_product.primary_image) }}" 
-                             class="card-img-top" alt="{{ related_product.name_fa }}">
+                             class="card-img-top" 
+                             alt="{{ related_product.name_fa }} - کد: {{ related_product.sku }}"
+                             loading="lazy"
+                             decoding="async"
+                             onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/products/product_1.jpg') }}';">
                         {% else %}
                         <img src="{{ url_for('static', filename='images/products/product_1.jpg') }}" 
-                             class="card-img-top" alt="{{ related_product.name_fa }}">
+                             class="card-img-top" 
+                             alt="{{ related_product.name_fa }} - کد: {{ related_product.sku }}"
+                             loading="lazy"
+                             decoding="async">
                         {% endif %}
                         <div class="card-body">
                             <h5 class="card-title">{{ related_product.name_fa }}</h5>
@@ -324,78 +449,24 @@
     {% endif %}
 </div>
 
-<style>
-.product-image img {
-    max-height: 400px;
-    object-fit: contain;
-}
-
-.product-title {
-    color: #2c3e50;
-    margin-bottom: 1rem;
-}
-
-.product-sku, .product-oem, .product-brand {
-    color: #6c757d;
-    margin-bottom: 0.5rem;
-}
-
-.product-pricing {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin: 1rem 0;
-}
-
-.price-section {
-    margin-bottom: 1rem;
-}
-
-.price-section h4 {
-    color: #495057;
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-}
-
-.price-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.25rem;
-}
-
-.price-label {
-    font-weight: 500;
-}
-
-.price-value {
-    font-weight: bold;
-    color: #28a745;
-}
-
-.add-to-cart-form {
-    margin-top: 1rem;
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const quantityInput = document.getElementById('quantity_{{ product.id }}');
     const hiddenQuantity = document.getElementById('hidden_quantity_{{ product.id }}');
-    const hiddenPriceType = document.getElementById('hidden_price_type_{{ product.id }}');
-    const priceTypeRadios = document.querySelectorAll('input[name="price_type"]');
-    const form = document.querySelector('.add-to-cart-form');
+    const hiddenQuantityCheck = document.getElementById('hidden_quantity_check_{{ product.id }}');
+    const cashForm = document.getElementById('addToCartCashForm');
+    const checkForm = document.getElementById('addToCartCheckForm');
+    const cashBtn = document.getElementById('addToCartCashBtn');
+    const checkBtn = document.getElementById('addToCartCheckBtn');
     
     // Update hidden quantity when quantity input changes
-    quantityInput.addEventListener('input', function() {
-        hiddenQuantity.value = this.value;
-    });
-    
-    // Update hidden price type when radio buttons change
-    priceTypeRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            hiddenPriceType.value = this.value;
+    if (quantityInput) {
+        quantityInput.addEventListener('input', function() {
+            if (hiddenQuantity) hiddenQuantity.value = this.value;
+            if (hiddenQuantityCheck) hiddenQuantityCheck.value = this.value;
         });
-    });
+    }
     
     // Handle quantity buttons
     document.querySelectorAll('.quantity-btn').forEach(btn => {
@@ -404,19 +475,131 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentValue = parseInt(quantityInput.value);
             const newValue = Math.max(1, Math.min({{ product.stock_quantity }}, currentValue + change));
             quantityInput.value = newValue;
-            hiddenQuantity.value = newValue;
+            if (hiddenQuantity) hiddenQuantity.value = newValue;
+            if (hiddenQuantityCheck) hiddenQuantityCheck.value = newValue;
         });
     });
     
-    // Handle form submission
-    form.addEventListener('submit', function(e) {
-        // Ensure hidden fields are updated
-        hiddenQuantity.value = quantityInput.value;
-        const selectedPriceType = document.querySelector('input[name="price_type"]:checked');
-        if (selectedPriceType) {
-            hiddenPriceType.value = selectedPriceType.value;
-        }
-    });
+    // Handle form submission with loading state
+    function handleFormSubmit(form, btn) {
+        if (!form || !btn) return;
+        
+        form.addEventListener('submit', function(e) {
+            const btnText = btn.querySelector('.btn-text');
+            const spinner = btn.querySelector('.loading-spinner');
+            
+            if (btnText) btnText.style.display = 'none';
+            if (spinner) spinner.style.display = 'inline-block';
+            btn.disabled = true;
+            
+            // Update quantity before submit
+            if (quantityInput && hiddenQuantity) {
+                hiddenQuantity.value = quantityInput.value;
+            }
+            if (quantityInput && hiddenQuantityCheck) {
+                hiddenQuantityCheck.value = quantityInput.value;
+            }
+        });
+    }
+    
+    handleFormSubmit(cashForm, cashBtn);
+    handleFormSubmit(checkForm, checkBtn);
+    
+    // AJAX form submission for better UX
+    if (cashForm) {
+        cashForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(cashForm);
+            
+            fetch('{{ url_for("add_to_cart") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show';
+                    alert.innerHTML = '<i class="fas fa-check-circle me-2"></i>محصول به سبد خرید اضافه شد! <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                    cashForm.parentElement.insertBefore(alert, cashForm);
+                    
+                    // Update cart count
+                    if (typeof updateCartCount === 'function') {
+                        updateCartCount();
+                    }
+                    
+                    // Reset button
+                    setTimeout(() => {
+                        cashBtn.querySelector('.btn-text').style.display = 'inline';
+                        cashBtn.querySelector('.loading-spinner').style.display = 'none';
+                        cashBtn.disabled = false;
+                    }, 500);
+                } else {
+                    alert('خطا: ' + (data.message || 'خطا در افزودن به سبد خرید'));
+                    cashBtn.querySelector('.btn-text').style.display = 'inline';
+                    cashBtn.querySelector('.loading-spinner').style.display = 'none';
+                    cashBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('خطا در ارتباط با سرور');
+                cashBtn.querySelector('.btn-text').style.display = 'inline';
+                cashBtn.querySelector('.loading-spinner').style.display = 'none';
+                cashBtn.disabled = false;
+            });
+        });
+    }
+    
+    if (checkForm) {
+        checkForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(checkForm);
+            
+            fetch('{{ url_for("add_to_cart") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show';
+                    alert.innerHTML = '<i class="fas fa-check-circle me-2"></i>محصول به سبد خرید اضافه شد! <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                    checkForm.parentElement.insertBefore(alert, checkForm);
+                    
+                    if (typeof updateCartCount === 'function') {
+                        updateCartCount();
+                    }
+                    
+                    setTimeout(() => {
+                        checkBtn.querySelector('.btn-text').style.display = 'inline';
+                        checkBtn.querySelector('.loading-spinner').style.display = 'none';
+                        checkBtn.disabled = false;
+                    }, 500);
+                } else {
+                    alert('خطا: ' + (data.message || 'خطا در افزودن به سبد خرید'));
+                    checkBtn.querySelector('.btn-text').style.display = 'inline';
+                    checkBtn.querySelector('.loading-spinner').style.display = 'none';
+                    checkBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('خطا در ارتباط با سرور');
+                checkBtn.querySelector('.btn-text').style.display = 'inline';
+                checkBtn.querySelector('.loading-spinner').style.display = 'none';
+                checkBtn.disabled = false;
+            });
+        });
+    }
 });
 </script>
 

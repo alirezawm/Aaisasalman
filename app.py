@@ -3,6 +3,7 @@ from flask_login import LoginManager
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 import os
+from pathlib import Path
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -24,16 +25,75 @@ CORS(app, resources={
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///asia_salman.db'
+
+# Database Configuration - Store database outside project directory
+# Priority: 1. DATABASE_DIR env var, 2. /root/data/ (server), 3. ../data/ (local)
+if 'DATABASE_DIR' in os.environ:
+    DATABASE_DIR = os.environ.get('DATABASE_DIR')
+else:
+    # Auto-detect: if running in /root/, use /root/data/, otherwise use ../data/
+    project_root = Path(__file__).parent
+    if str(project_root).startswith('/root/'):
+        DATABASE_DIR = '/root/data'
+    else:
+        DATABASE_DIR = str(project_root.parent / 'data')
+os.makedirs(DATABASE_DIR, exist_ok=True)
+DATABASE_PATH = os.path.join(DATABASE_DIR, 'asia_salman.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DATABASE_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Session configuration to work with Tracking Prevention
+# Detect if running in production (HTTPS)
+# Check multiple indicators for production/HTTPS
+is_production = (
+    os.environ.get('FLASK_ENV') == 'production' or 
+    os.environ.get('USE_HTTPS', '').lower() == 'true' or
+    os.environ.get('HTTPS', '').lower() == 'on'
+)
+
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Lax instead of Strict to work with redirects
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
-app.config['PERMANENT_SESSION_LIFETIME'] = 600  # 10 minutes for OTP verification
+# Use 'None' for cross-site cookies in production with HTTPS, 'Lax' for development
+# Note: 'None' requires Secure=True (HTTPS)
+app.config['SESSION_COOKIE_SAMESITE'] = 'None' if is_production else 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = is_production  # True in production with HTTPS
+app.config['PERMANENT_SESSION_LIFETIME'] = 2592000  # 30 days for persistent login sessions
+
+# Flask-Login Remember Cookie Configuration
+# This ensures users stay logged in even after closing the browser
+app.config['REMEMBER_COOKIE_DURATION'] = 2592000  # 30 days (in seconds)
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+app.config['REMEMBER_COOKIE_SECURE'] = is_production  # True in production with HTTPS
+app.config['REMEMBER_COOKIE_SAMESITE'] = 'None' if is_production else 'Lax'
+
+# Add after_request hook to dynamically adjust cookie settings based on request
+@app.after_request
+def adjust_cookie_settings(response):
+    """Dynamically adjust cookie SameSite and Secure based on request"""
+    from flask import request
+    
+    # Check if request is secure (HTTPS)
+    is_https = (
+        request.is_secure or 
+        request.headers.get('X-Forwarded-Proto') == 'https' or
+        request.headers.get('X-Forwarded-Ssl') == 'on' or
+        request.scheme == 'https'
+    )
+    
+    # If HTTPS, update cookie settings dynamically
+    if is_https:
+        # Update app config for this request context
+        app.config['SESSION_COOKIE_SECURE'] = True
+        app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+        app.config['REMEMBER_COOKIE_SECURE'] = True
+        app.config['REMEMBER_COOKIE_SAMESITE'] = 'None'
+    
+    # Add headers to prevent Tracking Prevention issues
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    
+    return response
 
 # ISACO Warehouse 15 feature flags and constants
 app.config['ENABLE_ISACO_WH15'] = True
@@ -95,6 +155,8 @@ import models
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+# Configure remember cookie duration (30 days)
+login_manager.remember_cookie_duration = 2592000  # 30 days in seconds
 
 # Initialize the database with the Flask app
 models.db.init_app(app)
@@ -113,6 +175,12 @@ def load_user(user_id):
 # Import routes after models are defined
 from routes import *
 
+# Import mobile API routes
+try:
+    from mobile_api_routes import *
+except ImportError:
+    pass  # mobile_api_routes may not exist yet
+
 # Register Detection API Blueprint
 from detection_api import detection_bp
 if 'detection_api' not in app.blueprints:
@@ -127,15 +195,6 @@ if 'tadbir_monitoring' not in app.blueprints:
 from sync_api import sync_api_bp
 if 'sync_api' not in app.blueprints:
     app.register_blueprint(sync_api_bp)
-
-# Register Mobile API Blueprint
-try:
-    from mobile_api import mobile_api_bp
-    if 'mobile_api' not in app.blueprints:
-        app.register_blueprint(mobile_api_bp)
-        print("Mobile API blueprint registered successfully")
-except Exception as e:
-    print(f"Warning: Could not register Mobile API blueprint: {e}")
 
 # Define format_price function here to avoid circular import
 def format_price(price, is_isaco=False):
@@ -208,8 +267,52 @@ def can_see_isaco_products(user):
     
     return False
 
+def get_product_discount_percentage(product):
+    """Get the maximum active discount percentage for a product"""
+    if not product:
+        return 0
+    
+    try:
+        from models import ProductDiscount, ProductDiscountProduct
+        from datetime import datetime
+        from sqlalchemy import or_
+        
+        now = datetime.utcnow()
+        
+        # Get all active discounts for this product
+        active_discounts = ProductDiscount.query.join(
+            ProductDiscountProduct
+        ).filter(
+            ProductDiscountProduct.product_id == product.id,
+            ProductDiscount.is_active == True,
+            or_(
+                ProductDiscount.start_date.is_(None),
+                ProductDiscount.start_date <= now
+            ),
+            or_(
+                ProductDiscount.end_date.is_(None),
+                ProductDiscount.end_date >= now
+            )
+        ).all()
+        
+        if not active_discounts:
+            return 0
+        
+        # Return the maximum discount percentage
+        max_discount = max(discount.discount_percentage for discount in active_discounts)
+        return round(max_discount, 1)
+    except Exception:
+        return 0
+
 # Make functions available in templates
-app.jinja_env.globals.update(format_price=format_price, csrf_token=csrf_token, can_see_bulk_prices=can_see_bulk_prices, can_see_isaco_products=can_see_isaco_products)
+app.jinja_env.globals.update(
+    format_price=format_price, 
+    csrf_token=csrf_token, 
+    can_see_bulk_prices=can_see_bulk_prices, 
+    can_see_isaco_products=can_see_isaco_products,
+    get_product_discount_percentage=get_product_discount_percentage,
+    hasattr=hasattr
+)
 
 # Register Persian date filters
 app.jinja_env.filters['persian_date'] = persian_date_filter
@@ -228,6 +331,10 @@ def format_number(value):
         return "0"
 
 app.jinja_env.filters['format_number'] = format_number
+
+# Register format_price as filter (for use with | syntax)
+app.jinja_env.filters['format_price'] = format_price
+app.jinja_env.filters['format_price_thousands'] = format_price_thousands
 
 # Context processor to provide unread notifications count
 @app.context_processor
@@ -308,7 +415,9 @@ if __name__ == '__main__':
         while True:
             try:
                 time.sleep(300)  # 5 minutes
-                checkpoint_wal_database(models.db.engine)
+                # Use application context for database operations in thread
+                with app.app_context():
+                    checkpoint_wal_database(models.db.engine)
             except Exception as e:
                 print(f"WAL checkpoint failed: {e}")
     

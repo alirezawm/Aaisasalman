@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت موتور جستجو - آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <hr class="text-white">
+                        <h6 class="text-white-50 mb-2">موتور جستجو</h6>
+                        <a class="nav-link active" href="{{ url_for('admin_search_management') }}">
+                            <i class="fas fa-search me-2"></i>مدیریت جستجو
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-search me-2"></i>مدیریت موتور جستجو (Meilisearch)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Status Section -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-{{ 'success' if is_available else 'warning' }}" role="alert">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-{{ 'check-circle' if is_available else 'exclamation-triangle' }} me-2"></i>
+                                    وضعیت: {{ 'فعال' if is_available else 'غیرفعال' }}
+                                </h6>
+                                {% if is_available %}
+                                    <p class="mb-0">Meilisearch در دسترس است و آماده استفاده می‌باشد.</p>
+                                {% else %}
+                                    <p class="mb-0">Meilisearch در دسترس نیست. لطفاً مطمئن شوید که سرویس اجرا شده است.</p>
+                                    <hr>
+                                    <p class="mb-0">
+                                        <strong>راه‌اندازی:</strong><br>
+                                        <code>docker-compose -f docker-compose.meilisearch.yml up -d</code>
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        <strong>خطا:</strong> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Configuration Info -->
+                    {% if config %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-cog me-2"></i>تنظیمات</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <th width="200">Host:</th>
+                                    <td><code>{{ config.host }}</code></td>
+                                </tr>
+                                <tr>
+                                    <th>Index Name:</th>
+                                    <td><code>{{ config.index_name }}</code></td>
+                                </tr>
+                                <tr>
+                                    <th>Primary Key:</th>
+                                    <td><code>{{ config.primary_key }}</code></td>
+                                </tr>
+                                <tr>
+                                    <th>Timeout:</th>
+                                    <td>{{ config.timeout }} seconds</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Statistics -->
+                    {% if stats %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>آمار Index</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <h3 class="text-primary mb-0">{{ stats.numberOfDocuments | default(0) }}</h3>
+                                        <small class="text-muted">تعداد اسناد</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <h3 class="text-success mb-0">{{ stats.isIndexing | default(false) and 'در حال...' or 'آماده' }}</h3>
+                                        <small class="text-muted">وضعیت Indexing</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <h3 class="text-info mb-0">{{ (stats.fieldDistribution | length) | default(0) }}</h3>
+                                        <small class="text-muted">تعداد فیلدها</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <h3 class="text-warning mb-0">{{ stats.lastUpdate | default('نامشخص') }}</h3>
+                                        <small class="text-muted">آخرین به‌روزرسانی</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-tools me-2"></i>عملیات</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h6>همگام‌سازی</h6>
+                                    <p class="text-muted small">همه محصولات را به index اضافه/به‌روزرسانی می‌کند</p>
+                                    <button class="btn btn-primary" id="syncAllBtn" onclick="syncAllProducts()">
+                                        <i class="fas fa-sync me-2"></i>همگام‌سازی همه محصولات
+                                    </button>
+                                    <div id="syncProgress" class="mt-2" style="display: none;">
+                                        <div class="progress">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                 role="progressbar" style="width: 100%"></div>
+                                        </div>
+                                        <small class="text-muted">در حال همگام‌سازی...</small>
+                                    </div>
+                                    <div id="syncResult" class="mt-2"></div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h6>بررسی وضعیت</h6>
+                                    <p class="text-muted small">وضعیت فعلی index را بررسی می‌کند</p>
+                                    <button class="btn btn-info" onclick="checkStatus()">
+                                        <i class="fas fa-info-circle me-2"></i>بررسی وضعیت
+                                    </button>
+                                    <div id="statusResult" class="mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test Search -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-vial me-2"></i>تست جستجو</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <input type="text" class="form-control" id="testSearchQuery" 
+                                           placeholder="عبارت جستجو را وارد کنید...">
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-success w-100" onclick="testSearch()">
+                                        <i class="fas fa-search me-2"></i>تست جستجو
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="testSearchResult" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function syncAllProducts() {
+    const btn = document.getElementById('syncAllBtn');
+    const progress = document.getElementById('syncProgress');
+    const result = document.getElementById('syncResult');
+    
+    btn.disabled = true;
+    progress.style.display = 'block';
+    result.innerHTML = '';
+    
+    fetch('/admin/search/sync', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progress.style.display = 'none';
+        btn.disabled = false;
+        
+        if (data.success) {
+            result.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>موفق!</strong> ${data.message}<br>
+                    <small>همگام‌سازی شده: ${data.synced} از ${data.total}</small>
+                </div>
+            `;
+        } else {
+            result.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>خطا!</strong> ${data.message}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        progress.style.display = 'none';
+        btn.disabled = false;
+        result.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>خطا!</strong> ${error.message}
+            </div>
+        `;
+    });
+}
+
+function checkStatus() {
+    const result = document.getElementById('statusResult');
+    result.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> در حال بررسی...';
+    
+    fetch('/admin/search/status')
+    .then(response => response.json())
+    .then(data => {
+        if (data.available) {
+            result.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>وضعیت:</strong> فعال<br>
+                    <small>Index: ${data.index_name}</small>
+                </div>
+            `;
+        } else {
+            result.innerHTML = `
+                <div class="alert alert-warning">
+                    <strong>وضعیت:</strong> ${data.message}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        result.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>خطا!</strong> ${error.message}
+            </div>
+        `;
+    });
+}
+
+function testSearch() {
+    const query = document.getElementById('testSearchQuery').value;
+    const result = document.getElementById('testSearchResult');
+    
+    if (!query) {
+        result.innerHTML = '<div class="alert alert-warning">لطفاً عبارت جستجو را وارد کنید</div>';
+        return;
+    }
+    
+    result.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> در حال جستجو...';
+    
+    fetch(`/api/search?q=${encodeURIComponent(query)}&limit=5`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.results && data.results.length > 0) {
+            let html = '<div class="alert alert-success"><strong>نتایج:</strong></div><ul class="list-group">';
+            data.results.forEach(product => {
+                html += `
+                    <li class="list-group-item">
+                        <strong>${product.name_fa || product.name}</strong><br>
+                        <small class="text-muted">SKU: ${product.sku}</small>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            result.innerHTML = html;
+        } else {
+            result.innerHTML = '<div class="alert alert-info">نتیجه‌ای یافت نشد</div>';
+        }
+    })
+    .catch(error => {
+        result.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>خطا!</strong> ${error.message}
+            </div>
+        `;
+    });
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,365 @@
+{
+  "title": "مگاپرامپت حرفه‌ای حذف کامل نرم‌افزار اندروید - آسیا سلمان",
+  "version": "1.0.0",
+  "description": "این مگاپرامپت تمام فایل‌ها، پوشه‌ها، مستندات و ارجاعات مربوط به اپلیکیشن اندروید را به طور کامل از پروژه حذف می‌کند.",
+  "created_at": "2025-01-28",
+  "author": "AI Assistant",
+  
+  "instructions": {
+    "overview": "این مگاپرامپت باید تمام موارد مرتبط با اپلیکیشن اندروید را از پروژه حذف کند. این شامل پوشه‌ها، فایل‌ها، مستندات، فایل‌های پیکربندی، و هر ارجاعی به اندروید در فایل‌های دیگر است.",
+    
+    "steps": [
+      {
+        "step": 1,
+        "title": "حذف پوشه اصلی اندروید",
+        "description": "حذف کامل پوشه android-app/ و تمام محتویات آن",
+        "actions": [
+          "حذف پوشه android-app/ به طور کامل",
+          "این شامل تمام زیرپوشه‌ها و فایل‌های زیر است:",
+          "  - app/ (شامل تمام کدهای Kotlin، XML، منابع)",
+          "  - gradle/ (Gradle wrapper)",
+          "  - .gradle/ (کش Gradle)",
+          "  - build/ (فایل‌های build شده)",
+          "  - تمام فایل‌های .gradle.kts",
+          "  - تمام فایل‌های .properties",
+          "  - تمام فایل‌های .bat و .sh",
+          "  - تمام فایل‌های مستندات (.md)"
+        ],
+        "files_to_delete": [
+          "android-app/",
+          "android-app/app/",
+          "android-app/app/build/",
+          "android-app/app/src/",
+          "android-app/gradle/",
+          "android-app/.gradle/",
+          "android-app/app/build.gradle.kts",
+          "android-app/build.gradle.kts",
+          "android-app/settings.gradle.kts",
+          "android-app/gradle.properties",
+          "android-app/local.properties",
+          "android-app/gradlew",
+          "android-app/gradlew.bat",
+          "android-app/build-apk.bat",
+          "android-app/build-apk.sh",
+          "android-app/create-gradle-wrapper.bat",
+          "android-app/create-gradle-wrapper.sh"
+        ]
+      },
+      {
+        "step": 2,
+        "title": "حذف فایل‌های مستندات اندروید",
+        "description": "حذف تمام فایل‌های مستندات و README مربوط به اندروید",
+        "actions": [
+          "حذف فایل‌های مستندات در ریشه پروژه",
+          "حذف فایل‌های مستندات داخل پوشه android-app/"
+        ],
+        "files_to_delete": [
+          "ANDROID_APP_MEGAPROMPT_README.md",
+          "MEGAPROMPT_ANDROID_APP.json",
+          "MEGAPROMPT_CLEANUP_ANDROID_AND_EXTRAS.json",
+          "android-app/README.md",
+          "android-app/APP_FIX_SUMMARY.md",
+          "android-app/BUILD_APK_GUIDE.md",
+          "android-app/CRASH_FIX_OTP.md",
+          "android-app/CRASH_FIX_SUMMARY.md",
+          "android-app/IMPLEMENTATION_GUIDE.md",
+          "android-app/NAVIGATION_FIX.md",
+          "android-app/QUICK_BUILD.md",
+          "android-app/QUICK_FIX.md",
+          "android-app/README_GRADLE_WRAPPER.md",
+          "android-app/REMOVE_WELCOME_SCREEN.md",
+          "android-app/setup-gradle-wrapper.md",
+          "android-app/SPLASH_SCREEN_FIX.md",
+          "android-app/SPLASH_SCREEN_IMAGE_GUIDE.md",
+          "android-app/TROUBLESHOOTING.md"
+        ]
+      },
+      {
+        "step": 3,
+        "title": "حذف فایل‌های پیکربندی و اسکریپت‌های مرتبط",
+        "description": "حذف فایل‌های پیکربندی و اسکریپت‌های مرتبط با اندروید",
+        "actions": [
+          "بررسی و حذف فایل‌های cleanup مرتبط با اندروید",
+          "حذف فایل‌های پیکربندی اضافی"
+        ],
+        "files_to_delete": [
+          "cleanup_android_and_extras.py"
+        ],
+        "files_to_check": [
+          "cleanup_project.py",
+          "cleanup_simple.py",
+          "cleanup.sh"
+        ]
+      },
+      {
+        "step": 4,
+        "title": "پاک‌سازی ارجاعات به اندروید در فایل‌های دیگر",
+        "description": "حذف یا اصلاح ارجاعات به اندروید در فایل‌های پیکربندی و مستندات",
+        "actions": [
+          "بررسی فایل .gitignore و حذف قوانین مربوط به اندروید (اگر وجود دارد)",
+          "بررسی فایل README.md اصلی و حذف بخش‌های مربوط به اندروید",
+          "بررسی فایل requirements.txt و حذف وابستگی‌های اندروید (اگر وجود دارد)",
+          "بررسی فایل docker-compose.yaml و حذف سرویس‌های اندروید (اگر وجود دارد)",
+          "بررسی فایل‌های Python و حذف import یا کدهای مرتبط با اندروید"
+        ],
+        "files_to_modify": [
+          ".gitignore",
+          "README.md",
+          "requirements.txt",
+          "docker-compose.yaml",
+          "app.py",
+          "routes.py"
+        ],
+        "search_patterns": [
+          "android",
+          "Android",
+          "ANDROID",
+          "kotlin",
+          "Kotlin",
+          "gradle",
+          "Gradle",
+          "android-app",
+          "APK",
+          "apk"
+        ]
+      },
+      {
+        "step": 5,
+        "title": "بررسی و پاک‌سازی فایل‌های استاتیک مرتبط",
+        "description": "بررسی پوشه static برای فایل‌های مرتبط با اندروید",
+        "actions": [
+          "بررسی پوشه static/ برای فایل‌های APK یا منابع اندروید",
+          "بررسی پوشه uploads/ برای فایل‌های APK",
+          "حذف فایل‌های مرتبط"
+        ],
+        "directories_to_check": [
+          "static/",
+          "uploads/",
+          "static/images/",
+          "static/files/"
+        ],
+        "file_extensions_to_delete": [
+          ".apk",
+          ".aab",
+          ".keystore",
+          ".jks"
+        ]
+      },
+      {
+        "step": 6,
+        "title": "بررسی و پاک‌سازی دیتابیس",
+        "description": "بررسی جداول یا رکوردهای مرتبط با اندروید در دیتابیس",
+        "actions": [
+          "بررسی مدل‌های دیتابیس برای جداول مرتبط با اندروید",
+          "بررسی routes.py برای API endpoint های مخصوص اندروید",
+          "حذف یا غیرفعال کردن endpoint های مرتبط"
+        ],
+        "database_tables_to_check": [
+          "mobile_devices",
+          "android_tokens",
+          "fcm_tokens",
+          "push_notifications"
+        ],
+        "api_endpoints_to_check": [
+          "/api/mobile/",
+          "/api/android/",
+          "/api/fcm/",
+          "/api/push/"
+        ]
+      },
+      {
+        "step": 7,
+        "title": "بررسی و پاک‌سازی فایل‌های پیکربندی سرور",
+        "description": "بررسی فایل‌های پیکربندی سرور برای ارجاعات به اندروید",
+        "actions": [
+          "بررسی فایل setup_nginx.sh",
+          "بررسی فایل Dockerfile",
+          "بررسی فایل‌های deployment",
+          "حذف یا اصلاح ارجاعات"
+        ],
+        "files_to_check": [
+          "setup_nginx.sh",
+          "Dockerfile",
+          "docker-compose.yaml",
+          "deploy_to_server.sh",
+          "setup_server.sh"
+        ]
+      },
+      {
+        "step": 8,
+        "title": "بررسی و پاک‌سازی فایل‌های تست",
+        "description": "حذف فایل‌های تست مرتبط با اندروید",
+        "actions": [
+          "بررسی پوشه tests/ یا test_*.py",
+          "حذف تست‌های مرتبط با اندروید"
+        ],
+        "test_files_to_check": [
+          "test_android*.py",
+          "test_mobile*.py",
+          "tests/test_android*.py",
+          "tests/test_mobile*.py"
+        ]
+      },
+      {
+        "step": 9,
+        "title": "بررسی و پاک‌سازی فایل‌های لاگ",
+        "description": "حذف فایل‌های لاگ مرتبط با اندروید",
+        "actions": [
+          "بررسی پوشه logs/",
+          "حذف لاگ‌های مرتبط با اندروید"
+        ],
+        "log_patterns": [
+          "*android*.log",
+          "*mobile*.log",
+          "*gradle*.log",
+          "*apk*.log"
+        ]
+      },
+      {
+        "step": 10,
+        "title": "بررسی نهایی و تایید",
+        "description": "بررسی نهایی برای اطمینان از حذف کامل",
+        "actions": [
+          "جستجوی تمام فایل‌های باقی‌مانده با کلمات کلیدی اندروید",
+          "بررسی فایل‌های JSON و YAML برای ارجاعات",
+          "بررسی فایل‌های Python برای import های مرتبط",
+          "تایید نهایی حذف کامل"
+        ],
+        "final_checks": [
+          "جستجوی 'android' در تمام فایل‌های متنی",
+          "جستجوی 'kotlin' در تمام فایل‌های متنی",
+          "جستجوی 'gradle' در تمام فایل‌های متنی",
+          "جستجوی 'apk' در تمام فایل‌های متنی",
+          "بررسی وجود پوشه android-app/",
+          "بررسی وجود فایل‌های .kt",
+          "بررسی وجود فایل‌های .gradle.kts"
+        ]
+      }
+    ]
+  },
+  
+  "file_categories": {
+    "source_code": {
+      "description": "کدهای منبع اندروید",
+      "patterns": [
+        "**/*.kt",
+        "**/*.java",
+        "**/AndroidManifest.xml",
+        "**/build.gradle.kts",
+        "**/settings.gradle.kts"
+      ],
+      "directories": [
+        "android-app/app/src/",
+        "android-app/app/build/",
+        "android-app/.gradle/"
+      ]
+    },
+    "resources": {
+      "description": "منابع و دارایی‌های اندروید",
+      "patterns": [
+        "**/res/**",
+        "**/drawable*/**",
+        "**/mipmap*/**",
+        "**/values/**",
+        "**/xml/**"
+      ],
+      "directories": [
+        "android-app/app/src/main/res/"
+      ]
+    },
+    "build_files": {
+      "description": "فایل‌های build و خروجی",
+      "patterns": [
+        "**/*.apk",
+        "**/*.aab",
+        "**/build/**",
+        "**/.gradle/**",
+        "**/build/**/*.dex",
+        "**/build/**/*.class"
+      ],
+      "directories": [
+        "android-app/app/build/",
+        "android-app/.gradle/",
+        "android-app/app/build/outputs/"
+      ]
+    },
+    "documentation": {
+      "description": "مستندات و راهنماها",
+      "files": [
+        "ANDROID_APP_MEGAPROMPT_README.md",
+        "MEGAPROMPT_ANDROID_APP.json",
+        "MEGAPROMPT_CLEANUP_ANDROID_AND_EXTRAS.json",
+        "android-app/**/*.md"
+      ]
+    },
+    "configuration": {
+      "description": "فایل‌های پیکربندی",
+      "files": [
+        "android-app/gradle.properties",
+        "android-app/local.properties",
+        "android-app/google-services.json",
+        "android-app/app/proguard-rules.pro"
+      ]
+    },
+    "scripts": {
+      "description": "اسکریپت‌های build و اجرا",
+      "files": [
+        "android-app/gradlew",
+        "android-app/gradlew.bat",
+        "android-app/build-apk.bat",
+        "android-app/build-apk.sh",
+        "android-app/create-gradle-wrapper.bat",
+        "android-app/create-gradle-wrapper.sh",
+        "cleanup_android_and_extras.py"
+      ]
+    }
+  },
+  
+  "verification_commands": {
+    "check_directory_exists": "if [ -d 'android-app' ]; then echo 'ERROR: android-app directory still exists'; exit 1; fi",
+    "check_kt_files": "find . -name '*.kt' -not -path './venv/*' -not -path './.git/*' | head -5",
+    "check_gradle_files": "find . -name '*.gradle*' -not -path './venv/*' -not -path './.git/*' | head -5",
+    "check_android_references": "grep -r -i 'android' --include='*.py' --include='*.md' --include='*.txt' --include='*.json' --include='*.yaml' --include='*.yml' . | grep -v 'venv' | grep -v '.git' | head -10",
+    "check_apk_files": "find . -name '*.apk' -o -name '*.aab' -not -path './venv/*' -not -path './.git/*'"
+  },
+  
+  "safety_checks": {
+    "backup_recommended": true,
+    "backup_commands": [
+      "git add -A",
+      "git commit -m 'Backup before Android app deletion'",
+      "git tag -a 'backup-before-android-deletion' -m 'Backup before removing Android app'"
+    ],
+    "dry_run": {
+      "enabled": true,
+      "description": "قبل از حذف واقعی، لیست فایل‌هایی که حذف می‌شوند را نمایش دهید"
+    },
+    "confirmation_required": {
+      "enabled": true,
+      "message": "آیا مطمئن هستید که می‌خواهید تمام فایل‌های اندروید را حذف کنید؟ این عمل غیرقابل بازگشت است."
+    }
+  },
+  
+  "execution_script": {
+    "bash_script": "#!/bin/bash\n\n# مگاپرامپت حذف کامل نرم‌افزار اندروید\n# آسیا سلمان\n\necho '========================================'\necho 'حذف کامل نرم‌افزار اندروید'\necho '========================================'\necho ''\n\n# بررسی وجود پوشه android-app\nif [ -d 'android-app' ]; then\n    echo 'در حال حذف پوشه android-app/...'\n    rm -rf android-app/\n    echo '✓ پوشه android-app/ حذف شد'\nelse\n    echo '⚠ پوشه android-app/ یافت نشد'\nfi\n\n# حذف فایل‌های مستندات\nFILES=(\n    'ANDROID_APP_MEGAPROMPT_README.md'\n    'MEGAPROMPT_ANDROID_APP.json'\n    'MEGAPROMPT_CLEANUP_ANDROID_AND_EXTRAS.json'\n    'cleanup_android_and_extras.py'\n)\n\nfor file in \"${FILES[@]}\"; do\n    if [ -f \"$file\" ]; then\n        echo \"در حال حذف $file...\"\n        rm -f \"$file\"\n        echo \"✓ $file حذف شد\"\n    fi\ndone\n\n# جستجوی فایل‌های APK\necho ''\necho 'در حال جستجوی فایل‌های APK...'\nfind . -name '*.apk' -o -name '*.aab' -not -path './venv/*' -not -path './.git/*' | while read file; do\n    if [ -f \"$file\" ]; then\n        echo \"در حال حذف $file...\"\n        rm -f \"$file\"\n        echo \"✓ $file حذف شد\"\n    fi\ndone\n\n# بررسی نهایی\necho ''\necho '========================================'\necho 'بررسی نهایی'\necho '========================================'\n\nif [ -d 'android-app' ]; then\n    echo '❌ خطا: پوشه android-app/ هنوز وجود دارد!'\n    exit 1\nelse\n    echo '✓ پوشه android-app/ حذف شد'\nfi\n\nKT_FILES=$(find . -name '*.kt' -not -path './venv/*' -not -path './.git/*' 2>/dev/null | wc -l)\nif [ \"$KT_FILES\" -gt 0 ]; then\n    echo \"⚠ هشدار: $KT_FILES فایل .kt یافت شد\"\n    find . -name '*.kt' -not -path './venv/*' -not -path './.git/*' | head -5\nelse\n    echo '✓ هیچ فایل .kt یافت نشد'\nfi\n\nGRADLE_FILES=$(find . -name '*.gradle*' -not -path './venv/*' -not -path './.git/*' 2>/dev/null | wc -l)\nif [ \"$GRADLE_FILES\" -gt 0 ]; then\n    echo \"⚠ هشدار: $GRADLE_FILES فایل .gradle* یافت شد\"\n    find . -name '*.gradle*' -not -path './venv/*' -not -path './.git/*' | head -5\nelse\n    echo '✓ هیچ فایل .gradle* یافت نشد'\nfi\n\necho ''\necho '========================================'\necho 'حذف کامل انجام شد!'\necho '========================================'\n",
+    
+    "python_script": "#!/usr/bin/env python3\n\"\"\"\nمگاپرامپت حذف کامل نرم‌افزار اندروید - آسیا سلمان\n\"\"\"\n\nimport os\nimport shutil\nimport glob\nfrom pathlib import Path\n\n# فایل‌ها و پوشه‌های مرتبط با اندروید\nANDROID_DIRS = [\n    'android-app',\n]\n\nANDROID_FILES = [\n    'ANDROID_APP_MEGAPROMPT_README.md',\n    'MEGAPROMPT_ANDROID_APP.json',\n    'MEGAPROMPT_CLEANUP_ANDROID_AND_EXTRAS.json',\n    'cleanup_android_and_extras.py',\n]\n\nANDROID_PATTERNS = [\n    '**/*.apk',\n    '**/*.aab',\n    '**/*.keystore',\n    '**/*.jks',\n]\n\ndef delete_android_app():\n    \"\"\"حذف کامل نرم‌افزار اندروید\"\"\"\n    print('=' * 50)\n    print('حذف کامل نرم‌افزار اندروید')\n    print('=' * 50)\n    print()\n    \n    deleted_count = 0\n    \n    # حذف پوشه‌ها\n    for dir_path in ANDROID_DIRS:\n        if os.path.exists(dir_path):\n            print(f'در حال حذف پوشه {dir_path}/...')\n            try:\n                shutil.rmtree(dir_path)\n                print(f'✓ پوشه {dir_path}/ حذف شد')\n                deleted_count += 1\n            except Exception as e:\n                print(f'❌ خطا در حذف {dir_path}: {e}')\n        else:\n            print(f'⚠ پوشه {dir_path}/ یافت نشد')\n    \n    # حذف فایل‌ها\n    for file_path in ANDROID_FILES:\n        if os.path.exists(file_path):\n            print(f'در حال حذف {file_path}...')\n            try:\n                os.remove(file_path)\n                print(f'✓ {file_path} حذف شد')\n                deleted_count += 1\n            except Exception as e:\n                print(f'❌ خطا در حذف {file_path}: {e}')\n    \n    # جستجو و حذف فایل‌های با الگوهای خاص\n    print()\n    print('در حال جستجوی فایل‌های مرتبط...')\n    for pattern in ANDROID_PATTERNS:\n        for file_path in glob.glob(pattern, recursive=True):\n            # نادیده گرفتن venv و .git\n            if 'venv' in file_path or '.git' in file_path:\n                continue\n            \n            if os.path.isfile(file_path):\n                print(f'در حال حذف {file_path}...')\n                try:\n                    os.remove(file_path)\n                    print(f'✓ {file_path} حذف شد')\n                    deleted_count += 1\n                except Exception as e:\n                    print(f'❌ خطا در حذف {file_path}: {e}')\n    \n    # بررسی نهایی\n    print()\n    print('=' * 50)\n    print('بررسی نهایی')\n    print('=' * 50)\n    \n    # بررسی پوشه android-app\n    if os.path.exists('android-app'):\n        print('❌ خطا: پوشه android-app/ هنوز وجود دارد!')\n        return False\n    else:\n        print('✓ پوشه android-app/ حذف شد')\n    \n    # بررسی فایل‌های .kt\n    kt_files = list(Path('.').rglob('*.kt'))\n    kt_files = [f for f in kt_files if 'venv' not in str(f) and '.git' not in str(f)]\n    if kt_files:\n        print(f'⚠ هشدار: {len(kt_files)} فایل .kt یافت شد:')\n        for f in kt_files[:5]:\n            print(f'  - {f}')\n    else:\n        print('✓ هیچ فایل .kt یافت نشد')\n    \n    # بررسی فایل‌های .gradle*\n    gradle_files = list(Path('.').rglob('*.gradle*'))\n    gradle_files = [f for f in gradle_files if 'venv' not in str(f) and '.git' not in str(f)]\n    if gradle_files:\n        print(f'⚠ هشدار: {len(gradle_files)} فایل .gradle* یافت شد:')\n        for f in gradle_files[:5]:\n            print(f'  - {f}')\n    else:\n        print('✓ هیچ فایل .gradle* یافت نشد')\n    \n    print()\n    print('=' * 50)\n    print(f'حذف کامل انجام شد! ({deleted_count} مورد حذف شد)')\n    print('=' * 50)\n    \n    return True\n\nif __name__ == '__main__':\n    delete_android_app()\n"
+  },
+  
+  "notes": [
+    "این مگاپرامپت تمام فایل‌ها و پوشه‌های مرتبط با اندروید را حذف می‌کند",
+    "قبل از اجرا، حتماً یک backup از پروژه تهیه کنید",
+    "این عمل غیرقابل بازگشت است",
+    "پس از حذف، بررسی نهایی انجام می‌شود تا مطمئن شوید همه چیز حذف شده است",
+    "اگر فایل‌های مرتبط دیگری وجود دارد، باید به صورت دستی بررسی و حذف شوند"
+  ],
+  
+  "warnings": [
+    "⚠️ این عمل غیرقابل بازگشت است!",
+    "⚠️ قبل از اجرا حتماً backup تهیه کنید",
+    "⚠️ مطمئن شوید که دیگر به اپلیکیشن اندروید نیاز ندارید",
+    "⚠️ تمام کدها، مستندات و فایل‌های build حذف می‌شوند"
+  ]
+}
+
+

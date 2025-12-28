@@ -40,7 +40,7 @@
                                     {% if invoice.payment_type == 'cash' %}
                                         <span class="badge bg-success">پرداخت نقدی (کارت به کارت)</span>
                                     {% else %}
-                                        <span class="badge bg-warning">چکی (ارسال تصویر چک ثبت شده)</span>
+                                        <span class="badge bg-primary">چکی (ارسال تصویر چک ثبت شده)</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -221,7 +221,7 @@
                         </div>
                         {% else %}
                         <div class="col-md-12">
-                            <button class="btn btn-warning w-100 upload-document" 
+                            <button class="btn btn-primary w-100 upload-document" 
                                     data-invoice-id="{{ invoice.id }}" 
                                     data-document-type="check">
                                 <i class="fas fa-file-invoice me-2"></i>بارگذاری تصویر چک ثبت شده

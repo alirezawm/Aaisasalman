@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}سبد خرید | آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-danger">
+                    <i class="fas fa-shopping-cart me-2"></i>سبد خرید
+                </h2>
+                <a href="{{ url_for('shop') }}" class="btn btn-outline-danger">
+                    <i class="fas fa-arrow-right me-2"></i>ادامه خرید
+                </a>
+            </div>
+
+            <!-- Price Type Filter - Available for all users -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="fas fa-filter me-2"></i>فیلتر بر اساس نوع پرداخت:</h6>
+                    <div class="btn-group w-100" role="group">
+                        <a href="{{ url_for('cart') }}" 
+                           class="btn {% if not price_type %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                            <i class="fas fa-list me-2"></i>همه آیتم‌ها
+                        </a>
+                        <a href="{{ url_for('cart') }}?price_type=cash" 
+                           class="btn {% if price_type == 'cash' %}btn-success{% else %}btn-outline-success{% endif %}">
+                            <i class="fas fa-money-bill-wave me-2"></i>نقدی ({{ cash_items|length }})
+                        </a>
+                        <a href="{{ url_for('cart') }}?price_type=check" 
+                           class="btn {% if price_type == 'check' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                            <i class="fas fa-file-invoice me-2"></i>چکی ({{ check_items|length }})
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {% if cart_items %}
+                <!-- Cart Items Table -->
+                <div class="card">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-boxes me-2"></i>محصولات سبد خرید
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th width="5%">#</th>
+                                        <th width="15%">کد کالا</th>
+                                        <th width="25%">نام کالا</th>
+                                        <th width="15%">نوع قیمت</th>
+                                        <th width="12%">قیمت واحد</th>
+                                        <th width="10%">تعداد</th>
+                                        <th width="13%">جمع</th>
+                                        <th width="5%">عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in cart_items %}
+                                    {% set item_discount = get_product_discount_percentage(item.product) %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <code>{{ item.product.code or item.product.sku }}</code>
+                                        </td>
+                                        <td>
+                                            <strong>{{ item.product.name }}</strong>
+                                            {% if item_discount > 0 %}
+                                            <span class="badge bg-danger ms-2" style="font-size: 11px;">
+                                                <i class="fas fa-tag me-1"></i>{{ item_discount }}% تخفیف
+                                            </span>
+                                            {% endif %}
+                                            {% if item.product.description %}
+                                                <small class="d-block text-muted">{{ item.product.description[:50] }}...</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.price_type == 'cash' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-money-bill-wave me-1"></i>نقدی
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-primary text-white">
+                                                    <i class="fas fa-file-invoice me-1"></i>چکی
+                                                </span>
+                                            {% endif %}
+                                            {% if item.price_plan %}
+                                                <small class="d-block text-muted mt-1">{{ item.price_plan }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">{{ format_price(item.unit_price) }}</strong>
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('update_cart_quantity') }}" class="d-inline">
+                                                <input type="hidden" name="cart_item_id" value="{{ item.id }}">
+                                                <div class="input-group input-group-sm">
+                                                    <button class="btn btn-outline-danger quantity-btn" type="button" data-change="-1" data-item-id="{{ item.id }}">
+                                                        <i class="fas fa-minus"></i>
+                                                    </button>
+                                                    <input type="number" class="form-control text-center cart-quantity" 
+                                                           name="quantity" value="{{ item.quantity }}" min="1" 
+                                                           data-item-id="{{ item.id }}" required>
+                                                    <button class="btn btn-outline-danger quantity-btn" type="button" data-change="1" data-item-id="{{ item.id }}">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <strong class="text-danger">{{ format_price(item.get_total_price()) }}</strong>
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('remove_from_cart', cart_item_id=item.id) }}" 
+                                                  class="d-inline" onsubmit="return confirm('آیا از حذف این محصول از سبد خرید مطمئن هستید؟');">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cart Summary -->
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <!-- Additional info or empty space -->
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-calculator me-2"></i>خلاصه سفارش
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                {% if can_see_bulk_prices(current_user) %}
+                                    {% if not price_type or price_type == 'cash' %}
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>جمع نقدی:</span>
+                                        <strong class="text-success">{{ format_price(cash_total) }}</strong>
+                                    </div>
+                                    {% endif %}
+                                    {% if not price_type or price_type == 'check' %}
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>جمع چکی:</span>
+                                        <strong class="text-primary">{{ format_price(check_total) }}</strong>
+                                    </div>
+                                    {% endif %}
+                                    <hr>
+                                {% endif %}
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span class="fw-bold">جمع کل:</span>
+                                    <strong class="text-danger fs-5">{{ format_price(total_amount) }}</strong>
+                                </div>
+                                <form method="POST" action="{{ url_for('create_invoice') }}" id="checkoutForm">
+                                    <input type="hidden" name="payment_type" value="{{ price_type or 'cash' }}">
+                                    <button type="submit" class="btn btn-danger w-100 btn-lg" id="checkoutBtn">
+                                        <span class="btn-text">
+                                            <i class="fas fa-check-circle me-2"></i>تایید و ادامه
+                                        </span>
+                                        <span class="loading-spinner" style="display: none;"></span>
+                                    </button>
+                                </form>
+                                <small class="text-muted d-block text-center mt-2">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    برای تکمیل سفارش با ما تماس بگیرید
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% elif price_type %}
+                <!-- Empty filtered cart -->
+                <div class="card text-center py-5">
+                    <div class="card-body">
+                        <i class="fas fa-shopping-cart fa-4x text-muted mb-4"></i>
+                        <h4 class="text-muted mb-3">هیچ آیتم {{ 'چکی' if price_type == 'check' else 'نقدی' }} در سبد خرید وجود ندارد</h4>
+                        <p class="text-muted mb-4">محصولات {{ 'چکی' if price_type == 'check' else 'نقدی' }} مورد نظر خود را به سبد خرید اضافه کنید</p>
+                        <div class="d-flex justify-content-center gap-2">
+                            <a href="{{ url_for('cart') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-list me-2"></i>مشاهده همه آیتم‌ها
+                            </a>
+                            <a href="{{ url_for('shop') }}" class="btn btn-danger">
+                                <i class="fas fa-store me-2"></i>مشاهده محصولات
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Empty Cart -->
+                <div class="card text-center py-5">
+                    <div class="card-body">
+                        <i class="fas fa-shopping-cart fa-4x text-muted mb-4"></i>
+                        <h4 class="text-muted mb-3">سبد خرید شما خالی است</h4>
+                        <p class="text-muted mb-4">محصولات مورد نظر خود را به سبد خرید اضافه کنید</p>
+                        <a href="{{ url_for('shop') }}" class="btn btn-danger btn-lg">
+                            <i class="fas fa-store me-2"></i>مشاهده محصولات
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+        vertical-align: middle;
+        margin-right: 8px;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .cart-quantity {
+        min-width: 60px;
+    }
+    .quantity-btn {
+        min-width: 40px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Quantity button handlers with loading state
+    $('.quantity-btn').on('click', function() {
+        var $btn = $(this);
+        var $input = $btn.siblings('.cart-quantity');
+        var currentValue = parseInt($input.val()) || 1;
+        var change = parseInt($btn.data('change'));
+        var newValue = currentValue + change;
+        
+        if (newValue >= 1) {
+            $input.val(newValue);
+            $btn.prop('disabled', true);
+            $btn.html('<span class="loading-spinner"></span>');
+            // Auto-submit the form
+            $input.closest('form').submit();
+        }
+    });
+    
+    // Quantity input change handler with debounce
+    var quantityTimeout;
+    $('.cart-quantity').on('change', function() {
+        var $input = $(this);
+        var value = parseInt($input.val()) || 1;
+        if (value < 1) {
+            $input.val(1);
+        }
+        
+        clearTimeout(quantityTimeout);
+        quantityTimeout = setTimeout(function() {
+            $input.closest('form').submit();
+        }, 500);
+    });
+    
+    // Checkout form submission with loading state
+    $('#checkoutForm').on('submit', function(e) {
+        var $form = $(this);
+        var $btn = $('#checkoutBtn');
+        var $btnText = $btn.find('.btn-text');
+        var $spinner = $btn.find('.loading-spinner');
+        
+        $btn.prop('disabled', true);
+        $btnText.hide();
+        $spinner.show();
+    });
+    
+    // Enable checkout button if cart has items
+    {% if cart_items %}
+    $('#checkoutBtn').prop('disabled', false);
+    {% endif %}
+});
+</script>
+{% endblock %}
+

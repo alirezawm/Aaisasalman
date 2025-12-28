@@ -16,7 +16,8 @@ if sys.platform == 'win32':
 
 def close_database_connections():
     """Close all database connections and clear locks"""
-    db_path = Path('instance/asia_salman.db')
+    from database_path import get_database_path
+    db_path = get_database_path()
     
     if not db_path.exists():
         print("Database file not found. Creating new instance.")
@@ -55,9 +56,10 @@ def close_database_connections():
 
 def check_wal_files():
     """Check for WAL files that might indicate active transactions"""
-    db_path = Path('instance/asia_salman.db')
-    wal_path = Path('instance/asia_salman.db-wal')
-    shm_path = Path('instance/asia_salman.db-shm')
+    from database_path import get_database_path
+    db_path = get_database_path()
+    wal_path = db_path.parent / f"{db_path.name}-wal"
+    shm_path = db_path.parent / f"{db_path.name}-shm"
     
     print("\nChecking database files:")
     print(f"  Database: {db_path.exists()} - {db_path}")

@@ -41,6 +41,24 @@ services:
       timeout: 10s
       retries: 3
 
+  nginx:
+    image: nginx:alpine
+    container_name: asiasalman_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./static:/usr/src/app/static:ro  # Mount static folder for nginx
+      - ./uploads:/usr/src/app/uploads:ro  # Mount uploads folder for nginx
+      - ./ssl_certs:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+    networks:
+      - asiasalman_network
+
 volumes:
   redis_data:
 

@@ -13,40 +13,121 @@
                     </h4>
                 </div>
                 <div class="card-body p-4">
+                    <!-- Login Method Toggle -->
                     <div class="text-center mb-4">
-                        <i class="fas fa-mobile-alt fa-3x text-danger mb-3"></i>
-                        <p class="text-muted">
-                            برای ورود، شماره تلفن همراه خود را وارد کنید
-                        </p>
+                        <div class="btn-group" role="group" aria-label="روش ورود">
+                            <input type="radio" class="btn-check" name="login_method" id="phone_method" value="phone" checked>
+                            <label class="btn btn-outline-danger" for="phone_method">
+                                <i class="fas fa-mobile-alt me-2"></i>ورود با شماره تلفن
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="login_method" id="username_method" value="username">
+                            <label class="btn btn-outline-danger" for="username_method">
+                                <i class="fas fa-user me-2"></i>ورود با نام کاربری
+                            </label>
+                        </div>
                     </div>
                     
-                    <form method="POST" id="login-form">
-                        <input type="hidden" name="action" value="send_otp">
+                    <!-- Phone/OTP Login Form -->
+                    <div id="phone-login-form" style="transition: opacity 0.3s ease-in-out;">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-mobile-alt fa-3x text-danger mb-3"></i>
+                            <p class="text-muted">
+                                برای ورود، شماره تلفن همراه خود را وارد کنید
+                            </p>
+                        </div>
                         
-                        <div class="mb-3">
-                            <label for="phone" class="form-label">شماره تلفن همراه</label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-phone"></i>
-                                </span>
-                                <input type="tel" 
-                                       class="form-control" 
-                                       id="phone" 
-                                       name="phone" 
-                                       placeholder="09123456789"
-                                       pattern="09[0-9]{9}"
-                                       maxlength="11"
-                                       required>
+                        <form method="POST" id="login-form-phone">
+                            <input type="hidden" name="action" value="send_otp">
+                            
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">شماره تلفن همراه</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-phone"></i>
+                                    </span>
+                                    <input type="tel" 
+                                           class="form-control" 
+                                           id="phone" 
+                                           name="phone" 
+                                           placeholder="09123456789"
+                                           pattern="09[0-9]{9}"
+                                           maxlength="11"
+                                           required>
+                                </div>
+                                <div class="form-text">شماره تلفن خود را با فرمت 09123456789 وارد کنید</div>
                             </div>
-                            <div class="form-text">شماره تلفن خود را با فرمت 09123456789 وارد کنید</div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-danger btn-lg" id="submitBtnPhone">
+                                    <i class="fas fa-paper-plane me-2"></i>ارسال کد تأیید
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Username/Password Login Form -->
+                    <div id="username-login-form" style="display: none; transition: opacity 0.3s ease-in-out;">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-user fa-3x text-danger mb-3"></i>
+                            <p class="text-muted">
+                                برای ورود، نام کاربری و رمز عبور خود را وارد کنید
+                            </p>
                         </div>
                         
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-danger btn-lg" id="submitBtn">
-                                <i class="fas fa-paper-plane me-2"></i>ارسال کد تأیید
-                            </button>
-                        </div>
-                    </form>
+                        <form method="POST" id="login-form-username">
+                            <input type="hidden" name="action" value="username_login">
+                            
+                            <div class="mb-3">
+                                <label for="username" class="form-label">نام کاربری</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-user"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="username" 
+                                           name="username" 
+                                           placeholder="نام کاربری"
+                                           required
+                                           autocomplete="username">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">رمز عبور</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="password" 
+                                           name="password" 
+                                           placeholder="رمز عبور"
+                                           required
+                                           autocomplete="current-password">
+                                    <button type="button" 
+                                            class="btn btn-outline-secondary" 
+                                            id="togglePassword"
+                                            title="نمایش/مخفی کردن رمز عبور">
+                                        <i class="fas fa-eye" id="togglePasswordIcon"></i>
+                                    </button>
+                                </div>
+                                <div class="d-flex justify-content-end mt-2">
+                                    <a href="{{ url_for('forgot_password') }}" class="text-decoration-none small text-muted" id="forgotPasswordLink">
+                                        <i class="fas fa-key me-1"></i>فراموشی رمز عبور؟
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-danger btn-lg" id="submitBtnUsername">
+                                    <i class="fas fa-sign-in-alt me-2"></i>ورود
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                     
                     <hr class="my-4">
                     
@@ -62,9 +143,34 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('login-form');
+    const phoneForm = document.getElementById('login-form-phone');
+    const usernameForm = document.getElementById('login-form-username');
     const phoneInput = document.getElementById('phone');
-    const submitBtn = document.getElementById('submitBtn');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const submitBtnPhone = document.getElementById('submitBtnPhone');
+    const submitBtnUsername = document.getElementById('submitBtnUsername');
+    const phoneMethodRadio = document.getElementById('phone_method');
+    const usernameMethodRadio = document.getElementById('username_method');
+    const phoneLoginDiv = document.getElementById('phone-login-form');
+    const usernameLoginDiv = document.getElementById('username-login-form');
+    
+    // Toggle between login methods
+    phoneMethodRadio.addEventListener('change', function() {
+        if (this.checked) {
+            phoneLoginDiv.style.display = 'block';
+            usernameLoginDiv.style.display = 'none';
+            phoneInput.focus();
+        }
+    });
+    
+    usernameMethodRadio.addEventListener('change', function() {
+        if (this.checked) {
+            phoneLoginDiv.style.display = 'none';
+            usernameLoginDiv.style.display = 'block';
+            usernameInput.focus();
+        }
+    });
     
     // Auto-format phone number
     phoneInput.addEventListener('input', function(e) {
@@ -77,8 +183,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Handle form submission
-    form.addEventListener('submit', function(e) {
+    // Handle phone form submission
+    phoneForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const phone = phoneInput.value.trim();
@@ -91,11 +197,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Disable button and show loading
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>در حال ارسال...';
+        submitBtnPhone.disabled = true;
+        submitBtnPhone.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>در حال ارسال...';
         
         // Submit form
-        form.submit();
+        phoneForm.submit();
+    });
+    
+    // Handle username form submission
+    usernameForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+        
+        // Validate inputs
+        if (!username) {
+            showAlert('لطفاً نام کاربری را وارد کنید', 'danger');
+            usernameInput.focus();
+            return;
+        }
+        
+        if (!password) {
+            showAlert('لطفاً رمز عبور را وارد کنید', 'danger');
+            passwordInput.focus();
+            return;
+        }
+        
+        // Disable button and show loading
+        submitBtnUsername.disabled = true;
+        submitBtnUsername.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>در حال ورود...';
+        
+        // Submit form
+        usernameForm.submit();
     });
     
     function showAlert(message, type) {
@@ -123,8 +257,73 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
     
-    // Focus on phone input
-    phoneInput.focus();
+    // Toggle password visibility
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+    if (togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // Toggle icon
+            if (type === 'text') {
+                togglePasswordIcon.classList.remove('fa-eye');
+                togglePasswordIcon.classList.add('fa-eye-slash');
+            } else {
+                togglePasswordIcon.classList.remove('fa-eye-slash');
+                togglePasswordIcon.classList.add('fa-eye');
+            }
+        });
+    }
+    
+    
+    // Smooth transition between forms
+    function switchForm(showPhone) {
+        if (showPhone) {
+            phoneLoginDiv.style.display = 'block';
+            usernameLoginDiv.style.display = 'none';
+            setTimeout(() => phoneInput.focus(), 100);
+        } else {
+            phoneLoginDiv.style.display = 'none';
+            usernameLoginDiv.style.display = 'block';
+            setTimeout(() => usernameInput.focus(), 100);
+        }
+    }
+    
+    // Update toggle handlers to use smooth transition
+    phoneMethodRadio.addEventListener('change', function() {
+        if (this.checked) {
+            switchForm(true);
+        }
+    });
+    
+    usernameMethodRadio.addEventListener('change', function() {
+        if (this.checked) {
+            switchForm(false);
+        }
+    });
+    
+    // Focus on appropriate input based on selected method
+    if (phoneMethodRadio.checked) {
+        phoneInput.focus();
+    } else {
+        usernameInput.focus();
+    }
+    
+    // Allow Enter key to submit forms
+    usernameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            usernameForm.dispatchEvent(new Event('submit'));
+        }
+    });
+    
+    passwordInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            usernameForm.dispatchEvent(new Event('submit'));
+        }
+    });
 });
 </script>
 {% endblock %}

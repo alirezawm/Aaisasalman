@@ -120,7 +120,7 @@
                                         <tr>
                                             <td><strong>نوع پرداخت:</strong></td>
                                             <td>
-                                                <span class="badge {% if invoice.payment_type == 'cash' %}bg-success{% else %}bg-warning{% endif %}">
+                                                <span class="badge {% if invoice.payment_type == 'cash' %}bg-success{% else %}bg-primary{% endif %}">
                                                     {% if invoice.payment_type == 'cash' %}پرداخت نقدی (کارت به کارت){% else %}چکی (ارسال تصویر چک ثبت شده){% endif %}
                                                 </span>
                                             </td>

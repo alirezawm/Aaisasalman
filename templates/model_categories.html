@@ -22,8 +22,13 @@
                     <div class="row align-items-center">
                         <div class="col-md-2 text-center">
                             {% if brand.logo_url %}
-                                <img src="{{ brand.logo_url }}" alt="{{ brand.name }}" 
-                                     class="img-fluid brand-logo-medium">
+                                {% if brand.logo_url.startswith('/') or brand.logo_url.startswith('http') %}
+                                    <img src="{{ brand.logo_url }}" alt="{{ brand.name }}" 
+                                         class="img-fluid brand-logo-medium">
+                                {% else %}
+                                    <img src="{{ url_for('uploaded_file', filename=brand.logo_url) }}" alt="{{ brand.name }}" 
+                                         class="img-fluid brand-logo-medium">
+                                {% endif %}
                             {% else %}
                                 <div class="brand-logo-placeholder">
                                     <i class="fas fa-car fa-3x text-muted"></i>

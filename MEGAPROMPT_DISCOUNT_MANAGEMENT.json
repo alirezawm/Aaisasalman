@@ -1,0 +1,784 @@
+{
+  "project_name": "سیستم مدیریت تخفیفات و نمایش محصولات تخفیف‌دار",
+  "version": "1.0.0",
+  "description": "ایجاد سیستم کامل مدیریت تخفیفات در داشبورد مدیریت و نمایش محصولات تخفیف‌دار در صفحه اصلی با اسلایدرهای شبیه دیجی‌کالا",
+  "language": "fa",
+  "framework": "Flask",
+  "database": "SQLite with SQLAlchemy",
+  
+  "requirements": {
+    "backend": [
+      "Flask",
+      "SQLAlchemy",
+      "Flask-Login",
+      "datetime"
+    ],
+    "frontend": [
+      "Bootstrap 5",
+      "jQuery",
+      "Swiper.js (for sliders)",
+      "Font Awesome"
+    ]
+  },
+  
+  "database_models": {
+    "existing_models": {
+      "ProductDiscount": {
+        "description": "مدل موجود برای تخفیفات محصولات",
+        "fields": [
+          "id (Integer, Primary Key)",
+          "name (String 200)",
+          "name_fa (String 200)",
+          "description (Text)",
+          "discount_percentage (Float)",
+          "is_active (Boolean)",
+          "start_date (DateTime)",
+          "end_date (DateTime)",
+          "created_at (DateTime)",
+          "updated_at (DateTime)",
+          "created_by (Integer, ForeignKey to User)"
+        ],
+        "relationships": [
+          "products (Many-to-Many via ProductDiscountProduct)",
+          "creator (Many-to-One to User)"
+        ]
+      },
+      "ProductDiscountProduct": {
+        "description": "جدول ارتباط محصولات با تخفیفات",
+        "fields": [
+          "discount_id (Integer, Primary Key, ForeignKey)",
+          "product_id (Integer, Primary Key, ForeignKey)",
+          "created_at (DateTime)"
+        ]
+      }
+    },
+    "modifications_needed": {
+      "ProductDiscount": {
+        "add_fields": [
+          {
+            "name": "discount_type",
+            "type": "String(20)",
+            "default": "daily",
+            "description": "نوع تخفیف: 'daily' (روزانه) یا 'monthly' (ماهانه)"
+          },
+          {
+            "name": "priority",
+            "type": "Integer",
+            "default": 0,
+            "description": "اولویت نمایش (عدد بالاتر = اولویت بیشتر)"
+          }
+        ]
+      }
+    }
+  },
+  
+  "admin_dashboard_features": {
+    "section_name": "مدیریت تخفیفات",
+    "route": "/admin/discounts",
+    "template": "templates/admin/discounts.html",
+    "sidebar_menu_item": {
+      "icon": "fas fa-tags",
+      "text": "تخفیفات",
+      "position": "after 'اطلاعیه‌ها' menu item"
+    },
+    
+    "pages": {
+      "main_page": {
+        "title": "مدیریت تخفیفات",
+        "description": "مدیریت تخفیفات روزانه و ماهانه محصولات",
+        "sections": [
+          {
+            "name": "لیست تخفیفات",
+            "type": "table",
+            "columns": [
+              "نام تخفیف",
+              "نوع (روزانه/ماهانه)",
+              "درصد تخفیف",
+              "تعداد محصولات",
+              "وضعیت",
+              "تاریخ شروع",
+              "تاریخ پایان",
+              "عملیات"
+            ],
+            "actions": [
+              "مشاهده",
+              "ویرایش",
+              "حذف",
+              "فعال/غیرفعال"
+            ],
+            "filters": [
+              "فیلتر بر اساس نوع (روزانه/ماهانه)",
+              "فیلتر بر اساس وضعیت (فعال/غیرفعال)",
+              "جستجو در نام تخفیف"
+            ]
+          },
+          {
+            "name": "ایجاد تخفیف جدید",
+            "type": "button",
+            "action": "open_modal",
+            "modal_id": "createDiscountModal"
+          }
+        ]
+      },
+      "discount_detail_page": {
+        "route": "/admin/discounts/<int:discount_id>",
+        "template": "templates/admin/discount_detail.html",
+        "sections": [
+          {
+            "name": "اطلاعات تخفیف",
+            "fields": [
+              "نام تخفیف (فارسی)",
+              "نام تخفیف (انگلیسی)",
+              "توضیحات",
+              "نوع تخفیف (روزانه/ماهانه)",
+              "درصد تخفیف",
+              "تاریخ شروع",
+              "تاریخ پایان",
+              "وضعیت (فعال/غیرفعال)",
+              "اولویت نمایش"
+            ]
+          },
+          {
+            "name": "مدیریت محصولات",
+            "type": "product_management",
+            "features": [
+              "جستجوی محصولات",
+              "افزودن محصول به تخفیف",
+              "حذف محصول از تخفیف",
+              "نمایش لیست محصولات تخفیف‌دار",
+              "جستجو در محصولات موجود"
+            ],
+            "search_functionality": {
+              "search_by": [
+                "نام محصول",
+                "کد SKU",
+                "کد OEM",
+                "برند",
+                "دسته‌بندی"
+              ],
+              "search_api": "/api/admin/discounts/search-products",
+              "method": "GET",
+              "parameters": {
+                "query": "string",
+                "discount_id": "integer (optional, to exclude already added products)"
+              }
+            },
+            "add_product_api": "/api/admin/discounts/<int:discount_id>/add-product",
+            "remove_product_api": "/api/admin/discounts/<int:discount_id>/remove-product",
+            "product_list_api": "/api/admin/discounts/<int:discount_id>/products"
+          }
+        ]
+      }
+    },
+    
+    "modals": {
+      "createDiscountModal": {
+        "title": "ایجاد تخفیف جدید",
+        "form_fields": [
+          {
+            "name": "name_fa",
+            "label": "نام تخفیف (فارسی)",
+            "type": "text",
+            "required": true,
+            "placeholder": "مثال: تخفیف ویژه نوروز"
+          },
+          {
+            "name": "name",
+            "label": "نام تخفیف (انگلیسی)",
+            "type": "text",
+            "required": true,
+            "placeholder": "Example: Nowruz Special Discount"
+          },
+          {
+            "name": "description",
+            "label": "توضیحات",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "name": "discount_type",
+            "label": "نوع تخفیف",
+            "type": "select",
+            "required": true,
+            "options": [
+              {"value": "daily", "label": "روزانه"},
+              {"value": "monthly", "label": "ماهانه"}
+            ]
+          },
+          {
+            "name": "discount_percentage",
+            "label": "درصد تخفیف",
+            "type": "number",
+            "required": true,
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          },
+          {
+            "name": "start_date",
+            "label": "تاریخ شروع",
+            "type": "datetime-local",
+            "required": false
+          },
+          {
+            "name": "end_date",
+            "label": "تاریخ پایان",
+            "type": "datetime-local",
+            "required": false
+          },
+          {
+            "name": "priority",
+            "label": "اولویت نمایش",
+            "type": "number",
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 100
+          },
+          {
+            "name": "is_active",
+            "label": "فعال",
+            "type": "checkbox",
+            "default": true
+          }
+        ],
+        "submit_api": "/api/admin/discounts/create",
+        "method": "POST"
+      },
+      "editDiscountModal": {
+        "title": "ویرایش تخفیف",
+        "similar_to": "createDiscountModal",
+        "load_data_api": "/api/admin/discounts/<int:discount_id>",
+        "update_api": "/api/admin/discounts/<int:discount_id>/update",
+        "method": "PUT"
+      },
+      "addProductModal": {
+        "title": "افزودن محصول به تخفیف",
+        "features": [
+          "جستجوی محصولات",
+          "نمایش نتایج جستجو",
+          "انتخاب چندتایی محصولات",
+          "افزودن به تخفیف"
+        ],
+        "search_input": {
+          "placeholder": "جستجوی محصول (نام، SKU، OEM، برند...)",
+          "min_length": 2,
+          "debounce": 300
+        },
+        "results_display": {
+          "type": "grid",
+          "columns": [
+            "تصویر",
+            "نام محصول",
+            "SKU",
+            "برند",
+            "قیمت",
+            "عملیات"
+          ],
+          "pagination": true,
+          "items_per_page": 12
+        }
+      }
+    },
+    
+    "api_endpoints": {
+      "list_discounts": {
+        "route": "/api/admin/discounts",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "discounts": "array of discount objects",
+          "pagination": "object"
+        }
+      },
+      "get_discount": {
+        "route": "/api/admin/discounts/<int:discount_id>",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "discount": "discount object with products"
+        }
+      },
+      "create_discount": {
+        "route": "/api/admin/discounts/create",
+        "method": "POST",
+        "request_body": {
+          "name_fa": "string",
+          "name": "string",
+          "description": "string (optional)",
+          "discount_type": "string (daily|monthly)",
+          "discount_percentage": "float",
+          "start_date": "datetime (optional)",
+          "end_date": "datetime (optional)",
+          "priority": "integer (optional)",
+          "is_active": "boolean"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string",
+          "discount_id": "integer"
+        }
+      },
+      "update_discount": {
+        "route": "/api/admin/discounts/<int:discount_id>/update",
+        "method": "PUT",
+        "request_body": "same as create_discount",
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      },
+      "delete_discount": {
+        "route": "/api/admin/discounts/<int:discount_id>/delete",
+        "method": "DELETE",
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      },
+      "toggle_discount_status": {
+        "route": "/api/admin/discounts/<int:discount_id>/toggle-status",
+        "method": "POST",
+        "response": {
+          "success": "boolean",
+          "message": "string",
+          "is_active": "boolean"
+        }
+      },
+      "search_products": {
+        "route": "/api/admin/discounts/search-products",
+        "method": "GET",
+        "query_parameters": {
+          "query": "string",
+          "discount_id": "integer (optional)",
+          "page": "integer (optional)",
+          "per_page": "integer (optional, default: 12)"
+        },
+        "response": {
+          "success": "boolean",
+          "products": "array of product objects",
+          "pagination": "object"
+        }
+      },
+      "add_product_to_discount": {
+        "route": "/api/admin/discounts/<int:discount_id>/add-product",
+        "method": "POST",
+        "request_body": {
+          "product_id": "integer"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      },
+      "remove_product_from_discount": {
+        "route": "/api/admin/discounts/<int:discount_id>/remove-product",
+        "method": "DELETE",
+        "query_parameters": {
+          "product_id": "integer"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      },
+      "get_discount_products": {
+        "route": "/api/admin/discounts/<int:discount_id>/products",
+        "method": "GET",
+        "query_parameters": {
+          "page": "integer (optional)",
+          "per_page": "integer (optional, default: 20)"
+        },
+        "response": {
+          "success": "boolean",
+          "products": "array of product objects",
+          "pagination": "object"
+        }
+      }
+    }
+  },
+  
+  "homepage_features": {
+    "sliders": {
+      "daily_discounts_slider": {
+        "title": "تخفیفات شگفت‌انگیز روزانه",
+        "subtitle": "پیشنهادهای ویژه امروز",
+        "icon": "fas fa-bolt",
+        "section_id": "daily-discounts-slider",
+        "position": "after 'Featured Categories Section'",
+        "api_endpoint": "/api/discounts/daily-products",
+        "method": "GET",
+        "query_parameters": {
+          "limit": "integer (default: 20)"
+        },
+        "design": {
+          "style": "digikala_amazing_slider",
+          "container_class": "digikala-slider-container",
+          "slider_class": "swiper daily-discounts-swiper",
+          "card_class": "product-card discount-card",
+          "features": [
+            "Navigation arrows (prev/next)",
+            "Pagination dots",
+            "Auto-play (optional)",
+            "Responsive breakpoints",
+            "Touch/swipe support"
+          ]
+        },
+        "product_card_design": {
+          "elements": [
+            {
+              "name": "discount_badge",
+              "position": "top-right",
+              "style": "red badge with percentage",
+              "text": "{{discount_percentage}}%"
+            },
+            {
+              "name": "product_image",
+              "position": "center",
+              "aspect_ratio": "1:1",
+              "fallback": "default product image"
+            },
+            {
+              "name": "product_name",
+              "position": "below image",
+              "max_lines": 2,
+              "truncate": true
+            },
+            {
+              "name": "brand_name",
+              "position": "below product name",
+              "style": "small text, muted color"
+            },
+            {
+              "name": "price_section",
+              "position": "bottom",
+              "elements": [
+                {
+                  "name": "original_price",
+                  "style": "line-through, muted",
+                  "show_if": "has discount"
+                },
+                {
+                  "name": "discounted_price",
+                  "style": "bold, primary color",
+                  "size": "larger"
+                },
+                {
+                  "name": "discount_amount",
+                  "style": "small, success color",
+                  "text": "{{discount_amount}} ریال تخفیف"
+                }
+              ]
+            },
+            {
+              "name": "add_to_cart_button",
+              "position": "overlay on hover",
+              "style": "primary button",
+              "icon": "fas fa-shopping-cart"
+            }
+          ]
+        }
+      },
+      "monthly_discounts_slider": {
+        "title": "تخفیفات ویژه ماهانه",
+        "subtitle": "پیشنهادهای شگفت‌انگیز این ماه",
+        "icon": "fas fa-star",
+        "section_id": "monthly-discounts-slider",
+        "position": "after daily discounts slider",
+        "api_endpoint": "/api/discounts/monthly-products",
+        "method": "GET",
+        "query_parameters": {
+          "limit": "integer (default: 20)"
+        },
+        "design": "same as daily_discounts_slider",
+        "product_card_design": "same as daily_discounts_slider"
+      }
+    },
+    
+    "api_endpoints": {
+      "daily_discount_products": {
+        "route": "/api/discounts/daily-products",
+        "method": "GET",
+        "query_parameters": {
+          "limit": "integer (optional, default: 20)",
+          "offset": "integer (optional, default: 0)"
+        },
+        "logic": {
+          "filter": "ProductDiscount where discount_type='daily' AND is_active=true AND is_valid()",
+          "order_by": "priority DESC, created_at DESC",
+          "include": "products with stock_quantity > 0 AND is_active=true",
+          "calculate": "discounted price for each product"
+        },
+        "response": {
+          "success": "boolean",
+          "products": [
+            {
+              "id": "integer",
+              "name": "string",
+              "name_fa": "string",
+              "sku": "string",
+              "primary_image": "string",
+              "brand": {
+                "id": "integer",
+                "name": "string",
+                "name_fa": "string"
+              },
+              "original_price": "float",
+              "discounted_price": "float",
+              "discount_percentage": "float",
+              "discount_amount": "float",
+              "stock_quantity": "integer",
+              "discount_info": {
+                "discount_id": "integer",
+                "discount_name": "string",
+                "discount_name_fa": "string"
+              }
+            }
+          ],
+          "total": "integer"
+        }
+      },
+      "monthly_discount_products": {
+        "route": "/api/discounts/monthly-products",
+        "method": "GET",
+        "query_parameters": "same as daily_discount_products",
+        "logic": "same as daily but filter by discount_type='monthly'",
+        "response": "same structure as daily_discount_products"
+      }
+    },
+    
+    "template_modifications": {
+      "file": "templates/index.html",
+      "insert_after": "Featured Categories Section (line ~257)",
+      "sections_to_add": [
+        {
+          "name": "Daily Discounts Slider",
+          "html_structure": "see template_snippets section"
+        },
+        {
+          "name": "Monthly Discounts Slider",
+          "html_structure": "see template_snippets section"
+        }
+      ]
+    },
+    
+    "css_styles": {
+      "file": "static/css/discount-sliders.css",
+      "styles": [
+        "Digikala-style slider container",
+        "Product card with discount badge",
+        "Hover effects",
+        "Responsive design",
+        "Animation transitions"
+      ]
+    },
+    
+    "javascript": {
+      "file": "static/js/discount-sliders.js",
+      "functionality": [
+        "Initialize Swiper sliders",
+        "Load products from API",
+        "Render product cards",
+        "Handle add to cart",
+        "Auto-refresh on interval (optional)"
+      ]
+    }
+  },
+  
+  "template_snippets": {
+    "daily_discounts_slider_html": {
+      "code": "<section class=\"py-5 daily-discounts-section\">\n    <div class=\"container\">\n        <div class=\"section-header mb-4\">\n            <div class=\"d-flex justify-content-between align-items-center\">\n                <div>\n                    <h2 class=\"display-6 fw-bold mb-2\">\n                        <i class=\"fas fa-bolt text-warning me-2\"></i>\n                        تخفیفات شگفت‌انگیز روزانه\n                    </h2>\n                    <p class=\"text-muted mb-0\">پیشنهادهای ویژه امروز</p>\n                </div>\n                <a href=\"{{ url_for('shop') }}?discount_type=daily\" class=\"btn btn-outline-primary\">\n                    مشاهده همه\n                    <i class=\"fas fa-arrow-left me-2\"></i>\n                </a>\n            </div>\n        </div>\n        <div class=\"swiper daily-discounts-swiper\">\n            <div class=\"swiper-wrapper\" id=\"daily-discounts-container\">\n                <!-- Products will be loaded here via JavaScript -->\n            </div>\n            <div class=\"swiper-button-next\"></div>\n            <div class=\"swiper-button-prev\"></div>\n            <div class=\"swiper-pagination\"></div>\n        </div>\n    </div>\n</section>",
+      "description": "HTML structure for daily discounts slider"
+    },
+    "monthly_discounts_slider_html": {
+      "code": "<section class=\"py-5 monthly-discounts-section bg-light\">\n    <div class=\"container\">\n        <div class=\"section-header mb-4\">\n            <div class=\"d-flex justify-content-between align-items-center\">\n                <div>\n                    <h2 class=\"display-6 fw-bold mb-2\">\n                        <i class=\"fas fa-star text-warning me-2\"></i>\n                        تخفیفات ویژه ماهانه\n                    </h2>\n                    <p class=\"text-muted mb-0\">پیشنهادهای شگفت‌انگیز این ماه</p>\n                </div>\n                <a href=\"{{ url_for('shop') }}?discount_type=monthly\" class=\"btn btn-outline-primary\">\n                    مشاهده همه\n                    <i class=\"fas fa-arrow-left me-2\"></i>\n                </a>\n            </div>\n        </div>\n        <div class=\"swiper monthly-discounts-swiper\">\n            <div class=\"swiper-wrapper\" id=\"monthly-discounts-container\">\n                <!-- Products will be loaded here via JavaScript -->\n            </div>\n            <div class=\"swiper-button-next\"></div>\n            <div class=\"swiper-button-prev\"></div>\n            <div class=\"swiper-pagination\"></div>\n        </div>\n    </div>\n</section>",
+      "description": "HTML structure for monthly discounts slider"
+    },
+    "product_card_html": {
+      "code": "<div class=\"swiper-slide\">\n    <div class=\"product-card discount-card h-100\">\n        <div class=\"discount-badge\">{{discount_percentage}}%</div>\n        <div class=\"product-image-container\">\n            <img src=\"{{product_image}}\" alt=\"{{product_name}}\" class=\"product-image\" onerror=\"this.src='{{default_image}}'\">\n            <div class=\"add-to-cart-overlay\">\n                <button class=\"btn btn-primary btn-sm add-to-cart-btn\" data-product-id=\"{{product_id}}\">\n                    <i class=\"fas fa-shopping-cart me-1\"></i>\n                    افزودن به سبد\n                </button>\n            </div>\n        </div>\n        <div class=\"product-info\">\n            <h6 class=\"product-name\" title=\"{{product_name}}\">{{product_name}}</h6>\n            <small class=\"brand-name text-muted\">{{brand_name}}</small>\n            <div class=\"price-section mt-2\">\n                {% if original_price != discounted_price %}\n                <div class=\"original-price text-muted text-decoration-line-through\">\n                    {{original_price | format_price}}\n                </div>\n                {% endif %}\n                <div class=\"discounted-price fw-bold text-primary\">\n                    {{discounted_price | format_price}}\n                </div>\n                {% if discount_amount > 0 %}\n                <small class=\"discount-amount text-success\">\n                    {{discount_amount | format_price}} تخفیف\n                </small>\n                {% endif %}\n            </div>\n        </div>\n    </div>\n</div>",
+      "description": "Product card template for slider"
+    }
+  },
+  
+  "implementation_steps": {
+    "step_1": {
+      "title": "به‌روزرسانی مدل دیتابیس",
+      "description": "افزودن فیلدهای discount_type و priority به مدل ProductDiscount",
+      "file": "models.py",
+      "action": "modify ProductDiscount class"
+    },
+    "step_2": {
+      "title": "ایجاد migration برای دیتابیس",
+      "description": "ایجاد فایل migration برای افزودن فیلدهای جدید",
+      "file": "migration_add_discount_fields.sql",
+      "action": "create SQL migration file"
+    },
+    "step_3": {
+      "title": "ایجاد route های admin برای مدیریت تخفیفات",
+      "description": "افزودن route های لازم در routes.py",
+      "file": "routes.py",
+      "action": "add admin discount management routes"
+    },
+    "step_4": {
+      "title": "ایجاد template داشبورد مدیریت تخفیفات",
+      "description": "ایجاد templates/admin/discounts.html و templates/admin/discount_detail.html",
+      "files": [
+        "templates/admin/discounts.html",
+        "templates/admin/discount_detail.html"
+      ],
+      "action": "create admin templates"
+    },
+    "step_5": {
+      "title": "افزودن لینک به sidebar داشبورد",
+      "description": "افزودن منوی تخفیفات به sidebar داشبورد مدیریت",
+      "file": "templates/admin/dashboard.html",
+      "action": "add menu item"
+    },
+    "step_6": {
+      "title": "ایجاد API endpoints برای محصولات تخفیف‌دار",
+      "description": "ایجاد API برای دریافت محصولات تخفیف‌دار روزانه و ماهانه",
+      "file": "routes.py",
+      "action": "add public API routes"
+    },
+    "step_7": {
+      "title": "افزودن اسلایدرها به صفحه اصلی",
+      "description": "افزودن دو اسلایدر محصولات تخفیف‌دار به index.html",
+      "file": "templates/index.html",
+      "action": "add slider sections"
+    },
+    "step_8": {
+      "title": "ایجاد CSS برای اسلایدرها",
+      "description": "ایجاد استایل‌های شبیه دیجی‌کالا برای اسلایدرها",
+      "file": "static/css/discount-sliders.css",
+      "action": "create CSS file"
+    },
+    "step_9": {
+      "title": "ایجاد JavaScript برای اسلایدرها",
+      "description": "ایجاد اسکریپت برای بارگذاری و نمایش محصولات در اسلایدرها",
+      "file": "static/js/discount-sliders.js",
+      "action": "create JavaScript file"
+    },
+    "step_10": {
+      "title": "افزودن Swiper.js به base template",
+      "description": "افزودن کتابخانه Swiper.js به base.html",
+      "file": "templates/base.html",
+      "action": "add Swiper CDN links"
+    }
+  },
+  
+  "design_guidelines": {
+    "slider_design": {
+      "inspiration": "Digikala Amazing Products Slider",
+      "features": [
+        "Smooth horizontal scrolling",
+        "Navigation arrows on sides",
+        "Pagination dots at bottom",
+        "Responsive breakpoints",
+        "Touch/swipe gestures",
+        "Auto-play option (configurable)"
+      ],
+      "breakpoints": {
+        "mobile": "1 slide per view",
+        "tablet": "2-3 slides per view",
+        "desktop": "4-5 slides per view",
+        "large_desktop": "5-6 slides per view"
+      }
+    },
+    "product_card_design": {
+      "layout": "vertical card",
+      "elements_order": [
+        "Discount badge (top-right)",
+        "Product image (center)",
+        "Product name (below image)",
+        "Brand name (below product name)",
+        "Price section (bottom)",
+        "Add to cart button (overlay on hover)"
+      ],
+      "colors": {
+        "discount_badge": "#ef4056 (Digikala red)",
+        "primary_price": "#00bfd6 (Digikala blue)",
+        "original_price": "#81858b (muted gray)",
+        "discount_text": "#00a049 (success green)"
+      },
+      "animations": {
+        "card_hover": "scale(1.02) with shadow increase",
+        "image_hover": "slight zoom",
+        "button_appear": "fade in from bottom"
+      }
+    }
+  },
+  
+  "security_considerations": {
+    "admin_routes": [
+      "Require admin authentication",
+      "Validate all input data",
+      "Sanitize search queries",
+      "Check user permissions",
+      "Rate limiting on API endpoints"
+    ],
+    "public_api": [
+      "No authentication required",
+      "Limit response size",
+      "Cache responses (optional)",
+      "Validate query parameters"
+    ]
+  },
+  
+  "performance_optimizations": {
+    "database": [
+      "Add indexes on discount_type, is_active, start_date, end_date",
+      "Use eager loading for product relationships",
+      "Cache active discounts list"
+    ],
+    "frontend": [
+      "Lazy load slider images",
+      "Debounce search input",
+      "Cache API responses",
+      "Use pagination for product lists"
+    ]
+  },
+  
+  "testing_checklist": {
+    "admin_features": [
+      "Create daily discount",
+      "Create monthly discount",
+      "Search and add products",
+      "Remove products from discount",
+      "Edit discount details",
+      "Delete discount",
+      "Toggle discount status",
+      "View discount products list"
+    ],
+    "homepage_features": [
+      "Daily discounts slider displays correctly",
+      "Monthly discounts slider displays correctly",
+      "Products load from API",
+      "Product cards display correctly",
+      "Add to cart works",
+      "Sliders are responsive",
+      "Navigation arrows work",
+      "Pagination dots work",
+      "Touch/swipe works on mobile"
+    ]
+  },
+  
+  "notes": {
+    "important": [
+      "Ensure ProductDiscount model has discount_type field before running",
+      "Run database migration before deploying",
+      "Test all API endpoints",
+      "Verify Swiper.js is loaded before initializing sliders",
+      "Handle empty states (no discounts available)",
+      "Show loading states while fetching products"
+    ],
+    "future_enhancements": [
+      "Add discount categories",
+      "Add discount codes",
+      "Add discount analytics",
+      "Add email notifications for new discounts",
+      "Add discount expiration reminders",
+      "Add bulk product import to discounts"
+    ]
+  }
+}
+

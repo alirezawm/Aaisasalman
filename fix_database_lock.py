@@ -109,24 +109,31 @@ def main():
     print("SQLite Database Lock Fix Utility")
     print("=" * 40)
     
-    # Find database file
-    db_paths = [
-        "instance/asia_salman.db",
-        "asia_salman.db",
-        "instance/asiasalman.db"
-    ]
-    
-    db_path = None
-    for path in db_paths:
-        if os.path.exists(path):
-            db_path = path
-            break
+    # Find database file using utility function
+    try:
+        from database_path import find_database
+        db_path_obj = find_database()
+        if db_path_obj:
+            db_path = str(db_path_obj)
+        else:
+            db_path = None
+    except ImportError:
+        # Fallback to old method if database_path module not available
+        db_paths = [
+            "instance/asia_salman.db",
+            "asia_salman.db",
+            "instance/asiasalman.db"
+        ]
+        
+        db_path = None
+        for path in db_paths:
+            if os.path.exists(path):
+                db_path = path
+                break
     
     if not db_path:
         print("[ERROR] No database file found")
-        print("Searched paths:")
-        for path in db_paths:
-            print(f"  - {path}")
+        print("Searched in standard locations")
         return 1
     
     print(f"Found database: {db_path}")

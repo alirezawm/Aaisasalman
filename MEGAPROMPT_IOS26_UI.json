@@ -1,0 +1,612 @@
+{
+  "project_name": "طراحی رابط کاربری iOS 26 - هدر و دکمه‌ها",
+  "version": "1.0.0",
+  "description": "مگاپرامپت فوق حرفه‌ای برای تبدیل تمام هدر و دکمه‌های سایت به سبک رابط کاربری iOS 26",
+  "last_updated": "2024-12-25",
+  "target_platform": "iOS 26 Design System",
+  "features": [
+    "iOS 26 Vibrancy Effects",
+    "iOS 26 Button Styles",
+    "iOS 26 Typography System",
+    "iOS 26 Spring Animations",
+    "iOS 26 Color Palette",
+    "iOS 26 Spacing System",
+    "iOS 26 Depth & Shadows",
+    "iOS 26 Navigation Patterns",
+    "iOS 26 Dropdown Menus",
+    "iOS 26 Badge System",
+    "iOS 26 Glass Morphism",
+    "iOS 26 Haptic Feedback Simulation"
+  ],
+  "design_philosophy": {
+    "principle": "iOS 26 Human Interface Guidelines",
+    "focus": "Clarity, Deference, Depth",
+    "aesthetics": "Clean, Minimal, Elegant",
+    "interaction": "Intuitive, Responsive, Delightful"
+  },
+  "header": {
+    "style": "iOS 26 Navigation Bar",
+    "background": {
+      "type": "vibrancy_blur",
+      "material": "ultraThinMaterial",
+      "background_color": "rgba(255, 255, 255, 0.8)",
+      "backdrop_filter": "blur(40px) saturate(180%)",
+      "webkit_backdrop_filter": "blur(40px) saturate(180%)",
+      "border": "none",
+      "border_bottom": "0.5px solid rgba(0, 0, 0, 0.1)",
+      "box_shadow": "0 1px 0 0 rgba(255, 255, 255, 0.5) inset, 0 0 20px rgba(0, 0, 0, 0.03)"
+    },
+    "height": {
+      "default": "44px",
+      "large_title": "96px",
+      "compact": "44px"
+    },
+    "position": "sticky",
+    "z_index": 1000,
+    "scrolled_state": {
+      "background": "rgba(255, 255, 255, 0.95)",
+      "backdrop_filter": "blur(50px) saturate(200%)",
+      "box_shadow": "0 0.5px 0 0 rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.05)"
+    },
+    "elements": {
+      "brand_logo": {
+        "style": "iOS 26 Large Title",
+        "font_family": "SF Pro Display",
+        "font_size": "34px",
+        "font_weight": "700 (Bold)",
+        "letter_spacing": "0.37px",
+        "line_height": "41px",
+        "color": "#000000",
+        "opacity": "1.0",
+        "transition": "spring animation (damping: 0.8, stiffness: 100)"
+      },
+      "navigation_links": {
+        "style": "iOS 26 Navigation Items",
+        "font_family": "SF Pro Text",
+        "font_size": "17px",
+        "font_weight": "400 (Regular)",
+        "letter_spacing": "-0.41px",
+        "line_height": "22px",
+        "color": "#007AFF",
+        "color_active": "#000000",
+        "padding": {
+          "vertical": "8px",
+          "horizontal": "12px"
+        },
+        "border_radius": "10px",
+        "background": "transparent",
+        "background_active": "rgba(0, 122, 255, 0.1)",
+        "transition": "spring animation (damping: 0.7, stiffness: 200)",
+        "hover_state": {
+          "background": "rgba(0, 0, 0, 0.05)",
+          "scale": "0.98"
+        },
+        "active_state": {
+          "background": "rgba(0, 122, 255, 0.15)",
+          "scale": "0.96"
+        }
+      },
+      "mobile_toggle": {
+        "style": "iOS 26 Hamburger Menu",
+        "size": "44px × 44px",
+        "border_radius": "10px",
+        "background": "transparent",
+        "background_active": "rgba(0, 0, 0, 0.1)",
+        "icon_color": "#000000",
+        "icon_size": "22px",
+        "touch_target": "44px minimum",
+        "transition": "spring animation"
+      }
+    }
+  },
+  "buttons": {
+    "primary_button": {
+      "style": "iOS 26 Filled Button",
+      "background": {
+        "type": "gradient",
+        "colors": ["#007AFF", "#0051D5"],
+        "direction": "vertical"
+      },
+      "background_fallback": "#007AFF",
+      "border": "none",
+      "border_radius": "14px",
+      "padding": {
+        "vertical": "14px",
+        "horizontal": "24px"
+      },
+      "min_height": "44px",
+      "font_family": "SF Pro Text",
+      "font_size": "17px",
+      "font_weight": "600 (Semibold)",
+      "letter_spacing": "-0.41px",
+      "color": "#FFFFFF",
+      "box_shadow": "0 2px 8px rgba(0, 122, 255, 0.3), 0 1px 2px rgba(0, 0, 0, 0.1)",
+      "transition": "spring animation (damping: 0.6, stiffness: 300)",
+      "states": {
+        "default": {
+          "transform": "scale(1)",
+          "box_shadow": "0 2px 8px rgba(0, 122, 255, 0.3)"
+        },
+        "hover": {
+          "transform": "scale(0.98)",
+          "box_shadow": "0 4px 12px rgba(0, 122, 255, 0.4)"
+        },
+        "active": {
+          "transform": "scale(0.96)",
+          "box_shadow": "0 1px 4px rgba(0, 122, 255, 0.3)"
+        },
+        "disabled": {
+          "opacity": "0.4",
+          "background": "#C7C7CC"
+        }
+      }
+    },
+    "secondary_button": {
+      "style": "iOS 26 Outlined Button",
+      "background": "transparent",
+      "border": "1.5px solid #007AFF",
+      "border_radius": "14px",
+      "padding": {
+        "vertical": "14px",
+        "horizontal": "24px"
+      },
+      "min_height": "44px",
+      "font_family": "SF Pro Text",
+      "font_size": "17px",
+      "font_weight": "600 (Semibold)",
+      "color": "#007AFF",
+      "transition": "spring animation",
+      "states": {
+        "default": {
+          "background": "transparent",
+          "border_color": "#007AFF"
+        },
+        "hover": {
+          "background": "rgba(0, 122, 255, 0.1)",
+          "transform": "scale(0.98)"
+        },
+        "active": {
+          "background": "rgba(0, 122, 255, 0.2)",
+          "transform": "scale(0.96)"
+        }
+      }
+    },
+    "tertiary_button": {
+      "style": "iOS 26 Text Button",
+      "background": "transparent",
+      "border": "none",
+      "border_radius": "10px",
+      "padding": {
+        "vertical": "8px",
+        "horizontal": "12px"
+      },
+      "font_family": "SF Pro Text",
+      "font_size": "17px",
+      "font_weight": "400 (Regular)",
+      "color": "#007AFF",
+      "transition": "spring animation",
+      "states": {
+        "hover": {
+          "background": "rgba(0, 122, 255, 0.1)"
+        },
+        "active": {
+          "background": "rgba(0, 122, 255, 0.15)"
+        }
+      }
+    },
+    "cart_button": {
+      "style": "iOS 26 Icon Button with Badge",
+      "background": {
+        "type": "vibrancy",
+        "material": "regularMaterial",
+        "background_color": "rgba(255, 255, 255, 0.7)",
+        "backdrop_filter": "blur(20px)"
+      },
+      "border": "0.5px solid rgba(0, 0, 0, 0.1)",
+      "border_radius": "12px",
+      "padding": {
+        "vertical": "10px",
+        "horizontal": "16px"
+      },
+      "min_height": "44px",
+      "icon_size": "22px",
+      "icon_color": "#000000",
+      "box_shadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
+      "badge": {
+        "style": "iOS 26 Badge",
+        "position": "top-right",
+        "background": "#FF3B30",
+        "color": "#FFFFFF",
+        "font_size": "12px",
+        "font_weight": "600",
+        "min_size": "20px",
+        "border_radius": "10px",
+        "padding": "2px 6px",
+        "box_shadow": "0 1px 3px rgba(255, 59, 48, 0.4)"
+      },
+      "transition": "spring animation"
+    },
+    "wallet_button": {
+      "style": "iOS 26 Success Button",
+      "background": {
+        "type": "gradient",
+        "colors": ["#34C759", "#28A745"],
+        "direction": "vertical"
+      },
+      "background_fallback": "#34C759",
+      "border": "none",
+      "border_radius": "14px",
+      "padding": {
+        "vertical": "14px",
+        "horizontal": "24px"
+      },
+      "min_height": "44px",
+      "font_family": "SF Pro Text",
+      "font_size": "17px",
+      "font_weight": "600",
+      "color": "#FFFFFF",
+      "box_shadow": "0 2px 8px rgba(52, 199, 89, 0.3)",
+      "transition": "spring animation"
+    },
+    "user_button": {
+      "style": "iOS 26 Profile Button",
+      "background": {
+        "type": "vibrancy",
+        "material": "regularMaterial",
+        "background_color": "rgba(255, 255, 255, 0.7)"
+      },
+      "border": "0.5px solid rgba(0, 0, 0, 0.1)",
+      "border_radius": "12px",
+      "padding": {
+        "vertical": "10px",
+        "horizontal": "16px"
+      },
+      "min_height": "44px",
+      "font_family": "SF Pro Text",
+      "font_size": "17px",
+      "font_weight": "500 (Medium)",
+      "color": "#000000",
+      "box_shadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
+      "transition": "spring animation"
+    },
+    "auth_buttons": {
+      "login": {
+        "style": "iOS 26 Outlined Button",
+        "background": "transparent",
+        "border": "1.5px solid #007AFF",
+        "color": "#007AFF"
+      },
+      "register": {
+        "style": "iOS 26 Filled Button",
+        "background": "#007AFF",
+        "color": "#FFFFFF"
+      }
+    }
+  },
+  "dropdowns": {
+    "style": "iOS 26 Action Sheet / Menu",
+    "background": {
+      "type": "vibrancy",
+      "material": "ultraThinMaterial",
+      "background_color": "rgba(255, 255, 255, 0.95)",
+      "backdrop_filter": "blur(50px) saturate(200%)"
+    },
+    "border": "0.5px solid rgba(0, 0, 0, 0.1)",
+    "border_radius": "14px",
+    "box_shadow": "0 8px 24px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1)",
+    "padding": "8px",
+    "min_width": "200px",
+    "max_width": "320px",
+    "items": {
+      "style": "iOS 26 Menu Item",
+      "padding": {
+        "vertical": "12px",
+        "horizontal": "16px"
+      },
+      "border_radius": "10px",
+      "font_family": "SF Pro Text",
+      "font_size": "17px",
+      "font_weight": "400",
+      "color": "#000000",
+      "icon_size": "22px",
+      "icon_color": "#007AFF",
+      "icon_spacing": "12px",
+      "transition": "spring animation",
+      "states": {
+        "default": {
+          "background": "transparent"
+        },
+        "hover": {
+          "background": "rgba(0, 0, 0, 0.05)"
+        },
+        "active": {
+          "background": "rgba(0, 122, 255, 0.1)",
+          "color": "#007AFF"
+        }
+      }
+    },
+    "divider": {
+      "style": "iOS 26 Separator",
+      "height": "0.5px",
+      "background": "rgba(0, 0, 0, 0.1)",
+      "margin": "8px 0"
+    }
+  },
+  "badges": {
+    "style": "iOS 26 Badge",
+    "types": {
+      "notification": {
+        "background": "#FF3B30",
+        "color": "#FFFFFF",
+        "font_size": "11px",
+        "font_weight": "600",
+        "min_size": "18px",
+        "border_radius": "9px",
+        "padding": "2px 6px"
+      },
+      "count": {
+        "background": "#FF9500",
+        "color": "#FFFFFF",
+        "font_size": "12px",
+        "font_weight": "600",
+        "min_size": "20px",
+        "border_radius": "10px",
+        "padding": "2px 7px"
+      },
+      "status": {
+        "background": "#34C759",
+        "color": "#FFFFFF",
+        "font_size": "11px",
+        "font_weight": "600",
+        "min_size": "18px",
+        "border_radius": "9px",
+        "padding": "2px 6px"
+      }
+    },
+    "animation": {
+      "type": "spring",
+      "scale_effect": true,
+      "bounce": "subtle"
+    }
+  },
+  "animations": {
+    "spring_animation": {
+      "type": "CSS Spring",
+      "damping": "0.7",
+      "stiffness": "200",
+      "mass": "1",
+      "duration": "0.3s - 0.5s",
+      "timing_function": "cubic-bezier(0.36, 0, 0.66, -0.56)"
+    },
+    "button_press": {
+      "type": "scale",
+      "scale_down": "0.96",
+      "duration": "0.1s",
+      "scale_up": "1.0",
+      "duration_up": "0.3s"
+    },
+    "menu_reveal": {
+      "type": "fade + scale",
+      "opacity": "0 to 1",
+      "scale": "0.95 to 1",
+      "duration": "0.3s",
+      "timing": "spring"
+    },
+    "badge_pulse": {
+      "type": "scale pulse",
+      "scale": "1 to 1.1 to 1",
+      "duration": "0.3s",
+      "iteration": "1"
+    }
+  },
+  "color_palette": {
+    "ios_26_colors": {
+      "system_blue": "#007AFF",
+      "system_green": "#34C759",
+      "system_indigo": "#5856D6",
+      "system_orange": "#FF9500",
+      "system_pink": "#FF2D55",
+      "system_purple": "#AF52DE",
+      "system_red": "#FF3B30",
+      "system_teal": "#5AC8FA",
+      "system_yellow": "#FFCC00",
+      "label_primary": "#000000",
+      "label_secondary": "rgba(0, 0, 0, 0.6)",
+      "label_tertiary": "rgba(0, 0, 0, 0.4)",
+      "separator": "rgba(0, 0, 0, 0.1)",
+      "background_primary": "#FFFFFF",
+      "background_secondary": "#F2F2F7",
+      "background_tertiary": "#FFFFFF"
+    },
+    "vibrancy_materials": {
+      "ultraThinMaterial": "rgba(255, 255, 255, 0.7) with blur(40px)",
+      "thinMaterial": "rgba(255, 255, 255, 0.8) with blur(50px)",
+      "regularMaterial": "rgba(255, 255, 255, 0.85) with blur(60px)",
+      "thickMaterial": "rgba(255, 255, 255, 0.9) with blur(70px)"
+    }
+  },
+  "typography": {
+    "font_family": {
+      "primary": "SF Pro Display (for headings)",
+      "secondary": "SF Pro Text (for body)",
+      "fallback": "Vazir, IRANSans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    },
+    "font_sizes": {
+      "large_title": "34px (line-height: 41px)",
+      "title_1": "28px (line-height: 34px)",
+      "title_2": "22px (line-height: 28px)",
+      "title_3": "20px (line-height: 25px)",
+      "headline": "17px (line-height: 22px)",
+      "body": "17px (line-height: 22px)",
+      "callout": "16px (line-height: 21px)",
+      "subheadline": "15px (line-height: 20px)",
+      "footnote": "13px (line-height: 18px)",
+      "caption_1": "12px (line-height: 16px)",
+      "caption_2": "11px (line-height: 13px)"
+    },
+    "font_weights": {
+      "ultraLight": "100",
+      "thin": "200",
+      "light": "300",
+      "regular": "400",
+      "medium": "500",
+      "semibold": "600",
+      "bold": "700",
+      "heavy": "800",
+      "black": "900"
+    },
+    "letter_spacing": {
+      "tight": "-0.5px",
+      "normal": "-0.41px",
+      "wide": "0px"
+    }
+  },
+  "spacing_system": {
+    "base_unit": "4px",
+    "spacing": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "12px",
+      "lg": "16px",
+      "xl": "20px",
+      "2xl": "24px",
+      "3xl": "32px",
+      "4xl": "40px",
+      "5xl": "48px"
+    },
+    "touch_targets": {
+      "minimum": "44px × 44px",
+      "recommended": "48px × 48px"
+    }
+  },
+  "shadows": {
+    "elevation_levels": {
+      "level_0": "none",
+      "level_1": "0 1px 2px rgba(0, 0, 0, 0.05)",
+      "level_2": "0 2px 8px rgba(0, 0, 0, 0.1)",
+      "level_3": "0 4px 12px rgba(0, 0, 0, 0.12)",
+      "level_4": "0 8px 24px rgba(0, 0, 0, 0.15)",
+      "level_5": "0 16px 32px rgba(0, 0, 0, 0.2)"
+    },
+    "colored_shadows": {
+      "blue": "0 2px 8px rgba(0, 122, 255, 0.3)",
+      "green": "0 2px 8px rgba(52, 199, 89, 0.3)",
+      "red": "0 2px 8px rgba(255, 59, 48, 0.3)"
+    }
+  },
+  "border_radius": {
+    "small": "8px",
+    "medium": "10px",
+    "large": "12px",
+    "xlarge": "14px",
+    "round": "50%",
+    "pill": "9999px"
+  },
+  "responsive_design": {
+    "breakpoints": {
+      "iphone_se": "375px",
+      "iphone_12_13": "390px",
+      "iphone_14_pro_max": "430px",
+      "ipad": "768px",
+      "ipad_pro": "1024px",
+      "desktop": "1280px+"
+    },
+    "adaptive_layouts": {
+      "mobile": "Single column, stacked buttons",
+      "tablet": "Two column, side-by-side buttons",
+      "desktop": "Multi-column, horizontal layout"
+    }
+  },
+  "accessibility": {
+    "minimum_contrast": "4.5:1 (WCAG AA)",
+    "touch_targets": "44px minimum",
+    "focus_indicators": "iOS 26 style focus rings",
+    "screen_reader": "Full ARIA support",
+    "reduced_motion": "Respect prefers-reduced-motion",
+    "color_blind": "Not rely solely on color"
+  },
+  "performance": {
+    "gpu_acceleration": "transform and opacity only",
+    "will_change": "Use sparingly",
+    "backdrop_filter": "GPU accelerated",
+    "animation_optimization": "Use transform instead of position",
+    "lazy_loading": "For non-critical animations"
+  },
+  "implementation_guide": {
+    "step_1": "Update CSS variables with iOS 26 color palette",
+    "step_2": "Implement vibrancy blur effects for header",
+    "step_3": "Convert all buttons to iOS 26 style",
+    "step_4": "Update typography to SF Pro (or fallback)",
+    "step_5": "Implement spring animations",
+    "step_6": "Update dropdowns to iOS 26 menu style",
+    "step_7": "Add iOS 26 badges to buttons",
+    "step_8": "Implement responsive breakpoints",
+    "step_9": "Add accessibility features",
+    "step_10": "Optimize for performance",
+    "step_11": "Test on multiple devices",
+    "step_12": "Polish animations and transitions"
+  },
+  "css_variables": {
+    "ios_blue": "var(--ios-blue, #007AFF)",
+    "ios_green": "var(--ios-green, #34C759)",
+    "ios_red": "var(--ios-red, #FF3B30)",
+    "ios_orange": "var(--ios-orange, #FF9500)",
+    "ios_label_primary": "var(--ios-label-primary, #000000)",
+    "ios_label_secondary": "var(--ios-label-secondary, rgba(0, 0, 0, 0.6))",
+    "ios_separator": "var(--ios-separator, rgba(0, 0, 0, 0.1))",
+    "ios_background": "var(--ios-background, #FFFFFF)",
+    "ios_border_radius_small": "var(--ios-radius-small, 8px)",
+    "ios_border_radius_medium": "var(--ios-radius-medium, 10px)",
+    "ios_border_radius_large": "var(--ios-radius-large, 12px)",
+    "ios_border_radius_xlarge": "var(--ios-radius-xlarge, 14px)",
+    "ios_spacing_xs": "var(--ios-spacing-xs, 4px)",
+    "ios_spacing_sm": "var(--ios-spacing-sm, 8px)",
+    "ios_spacing_md": "var(--ios-spacing-md, 12px)",
+    "ios_spacing_lg": "var(--ios-spacing-lg, 16px)",
+    "ios_spacing_xl": "var(--ios-spacing-xl, 20px)",
+    "ios_shadow_small": "var(--ios-shadow-small, 0 1px 2px rgba(0, 0, 0, 0.05))",
+    "ios_shadow_medium": "var(--ios-shadow-medium, 0 2px 8px rgba(0, 0, 0, 0.1))",
+    "ios_shadow_large": "var(--ios-shadow-large, 0 8px 24px rgba(0, 0, 0, 0.15))"
+  },
+  "javascript_features": {
+    "spring_animation_helper": "Custom spring animation function",
+    "haptic_feedback_simulation": "Visual feedback on button press",
+    "menu_animations": "Smooth menu reveal/hide",
+    "badge_animations": "Pulse animation for new badges",
+    "scroll_effects": "Parallax and blur effects on scroll",
+    "touch_optimization": "Touch event handling for mobile"
+  },
+  "browser_support": {
+    "backdrop_filter": {
+      "chrome": "76+",
+      "safari": "9+ (with -webkit- prefix)",
+      "firefox": "103+",
+      "edge": "79+"
+    },
+    "css_grid": "All modern browsers",
+    "css_custom_properties": "All modern browsers",
+    "fallbacks": "Solid backgrounds for older browsers"
+  },
+  "testing_checklist": [
+    "Test on iOS Safari",
+    "Test on Chrome (desktop and mobile)",
+    "Test on Firefox",
+    "Test on Edge",
+    "Test touch interactions",
+    "Test keyboard navigation",
+    "Test screen readers",
+    "Test with reduced motion preference",
+    "Test color contrast",
+    "Test performance (60fps animations)",
+    "Test responsive breakpoints",
+    "Test dark mode (if applicable)"
+  ],
+  "notes": {
+    "rtl_support": "All styles support RTL (right-to-left) layout",
+    "persian_fonts": "Use Vazir or IRANSans as fallback for Persian text",
+    "customization": "Colors can be customized while maintaining iOS 26 aesthetics",
+    "brand_colors": "Integrate brand colors (red #dc3545) with iOS 26 system colors",
+    "accessibility_first": "Always prioritize accessibility over aesthetics"
+  }
+}
+

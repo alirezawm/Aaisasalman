@@ -60,6 +60,8 @@
     }
 }
 </script>
+<!-- Discount Sliders CSS -->
+<link href="{{ url_for('static', filename='css/discount-sliders.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -141,6 +143,75 @@
                                 <i class="fas fa-handshake me-2"></i>خرید عمده
                             </a>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Discount Sliders in Hero Section -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <!-- Daily Discounts Slider -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h3 class="text-white mb-1">
+                                <i class="fas fa-bolt text-warning me-2"></i>
+                                تخفیفات شگفت‌انگیز روزانه
+                            </h3>
+                            <p class="text-white-50 mb-0 small">پیشنهادهای ویژه امروز</p>
+                        </div>
+                        <a href="{{ url_for('shop') }}?discount_type=daily" class="btn btn-light btn-sm">
+                            مشاهده همه
+                            <i class="fas fa-arrow-left me-2"></i>
+                        </a>
+                    </div>
+                    <div class="swiper daily-discounts-swiper-hero">
+                        <div class="swiper-wrapper" id="daily-discounts-container-hero">
+                            <!-- Products will be loaded here via JavaScript -->
+                            <div class="swiper-slide">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border text-white" role="status">
+                                        <span class="visually-hidden">در حال بارگذاری...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="swiper-button-next swiper-button-white"></div>
+                        <div class="swiper-button-prev swiper-button-white"></div>
+                        <div class="swiper-pagination swiper-pagination-white"></div>
+                    </div>
+                </div>
+                
+                <!-- Monthly Discounts Slider -->
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h3 class="text-white mb-1">
+                                <i class="fas fa-star text-warning me-2"></i>
+                                تخفیفات ویژه ماهانه
+                            </h3>
+                            <p class="text-white-50 mb-0 small">پیشنهادهای شگفت‌انگیز این ماه</p>
+                        </div>
+                        <a href="{{ url_for('shop') }}?discount_type=monthly" class="btn btn-light btn-sm">
+                            مشاهده همه
+                            <i class="fas fa-arrow-left me-2"></i>
+                        </a>
+                    </div>
+                    <div class="swiper monthly-discounts-swiper-hero">
+                        <div class="swiper-wrapper" id="monthly-discounts-container-hero">
+                            <!-- Products will be loaded here via JavaScript -->
+                            <div class="swiper-slide">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border text-white" role="status">
+                                        <span class="visually-hidden">در حال بارگذاری...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="swiper-button-next swiper-button-white"></div>
+                        <div class="swiper-button-prev swiper-button-white"></div>
+                        <div class="swiper-pagination swiper-pagination-white"></div>
                     </div>
                 </div>
             </div>
@@ -252,6 +323,78 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</section>
+
+<!-- Daily Discounts Slider Section -->
+<section class="py-5 daily-discounts-section">
+    <div class="container">
+        <div class="section-header mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="display-6 fw-bold mb-2">
+                        <i class="fas fa-bolt text-warning me-2"></i>
+                        تخفیفات شگفت‌انگیز روزانه
+                    </h2>
+                    <p class="text-muted mb-0">پیشنهادهای ویژه امروز</p>
+                </div>
+                <a href="{{ url_for('shop') }}?discount_type=daily" class="btn btn-outline-primary">
+                    مشاهده همه
+                    <i class="fas fa-arrow-left me-2"></i>
+                </a>
+            </div>
+        </div>
+        <div class="swiper daily-discounts-swiper">
+            <div class="swiper-wrapper" id="daily-discounts-container">
+                <!-- Products will be loaded here via JavaScript -->
+                <div class="swiper-slide">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">در حال بارگذاری...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="swiper-button-next"></div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-pagination"></div>
+        </div>
+    </div>
+</section>
+
+<!-- Monthly Discounts Slider Section -->
+<section class="py-5 monthly-discounts-section bg-light">
+    <div class="container">
+        <div class="section-header mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="display-6 fw-bold mb-2">
+                        <i class="fas fa-star text-warning me-2"></i>
+                        تخفیفات ویژه ماهانه
+                    </h2>
+                    <p class="text-muted mb-0">پیشنهادهای شگفت‌انگیز این ماه</p>
+                </div>
+                <a href="{{ url_for('shop') }}?discount_type=monthly" class="btn btn-outline-primary">
+                    مشاهده همه
+                    <i class="fas fa-arrow-left me-2"></i>
+                </a>
+            </div>
+        </div>
+        <div class="swiper monthly-discounts-swiper">
+            <div class="swiper-wrapper" id="monthly-discounts-container">
+                <!-- Products will be loaded here via JavaScript -->
+                <div class="swiper-slide">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">در حال بارگذاری...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="swiper-button-next"></div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-pagination"></div>
         </div>
     </div>
 </section>
@@ -769,4 +912,8 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/discount-sliders.js') }}" defer></script>
 {% endblock %}

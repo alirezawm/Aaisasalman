@@ -1,5 +1,37 @@
 // Enhanced JavaScript for Asia Salman Automotive Parts Website
 
+// Safe localStorage wrapper to handle Tracking Prevention
+const safeStorage = {
+    setItem: function(key, value) {
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch (e) {
+            // Tracking Prevention or storage blocked - silently fail
+            console.debug('localStorage.setItem blocked:', e);
+            return false;
+        }
+    },
+    getItem: function(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            // Tracking Prevention or storage blocked - silently fail
+            console.debug('localStorage.getItem blocked:', e);
+            return null;
+        }
+    },
+    removeItem: function(key) {
+        try {
+            localStorage.removeItem(key);
+            return true;
+        } catch (e) {
+            console.debug('localStorage.removeItem blocked:', e);
+            return false;
+        }
+    }
+};
+
 $(document).ready(function() {
     // Initialize enhanced features
     initializeModernHeader();
@@ -23,7 +55,7 @@ $(document).ready(function() {
 
     // Auto-hide only alerts marked as auto-dismiss
     setTimeout(function() {
-        $('.alert.auto-dismiss').fadeOut('slow');
+        $('.alert.auto-dismiss').hide();
     }, 5000);
     
     // Initialize cart count on page load
@@ -41,6 +73,7 @@ $(document).ready(function() {
         var productId = button.data('product-id');
         var quantity = parseInt($('#quantity_' + productId).val()) || 1;
         var priceType = $('input[name="price_type_' + productId + '"]:checked').val();
+        var pricePlan = $('input[name="price_plan_' + productId + '"]:checked').val();
         
         // For individual users (non-bulk buyers), default to cash
         if (!priceType) {
@@ -50,19 +83,24 @@ $(document).ready(function() {
         button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> در حال اضافه کردن...');
 
         $.ajax({
-            url: '/add_to_cart',
+            url: '/add-to-cart',
             method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             data: {
                 product_id: productId,
                 quantity: quantity,
-                price_type: priceType
+                price_type: priceType,
+                price_plan: pricePlan
             },
             success: function(response) {
-                if (response.success) {
+                // jQuery auto-parses JSON when content-type is application/json
+                if (response && response.success) {
                     showAlert(response.message, 'success');
                     updateCartDisplay();
                 } else {
-                    showAlert(response.message, 'error');
+                    showAlert((response && response.message) || 'خطا در افزودن به سبد', 'error');
                 }
             },
             error: function() {
@@ -74,7 +112,7 @@ $(document).ready(function() {
         });
     });
 
-    // Update cart quantity
+    // Update cart quantity (AJAX)
     $('.update-cart-quantity').on('change', function() {
         var cartId = $(this).data('cart-id');
         var quantity = parseInt($(this).val());
@@ -83,17 +121,16 @@ $(document).ready(function() {
         if (quantity <= 0) {
             if (confirm('آیا مطمئن هستید که می‌خواهید این کالا را از سبد خرید حذف کنید؟')) {
                 $.ajax({
-                    url: '/remove_from_cart',
-                    method: 'POST',
-                    data: {
-                        cart_id: cartId
-                    },
+                    url: '/api/cart/remove',
+                    method: 'DELETE',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ cart_id: cartId }),
                     success: function(response) {
-                        if (response.success) {
+                        if (response && response.success) {
                             showAlert('کالا از سبد خرید حذف شد', 'success');
                             updateCartDisplay();
                         } else {
-                            showAlert(response.message, 'error');
+                            showAlert((response && response.message) || 'حذف کالا ناموفق بود', 'error');
                         }
                     },
                     error: function() {
@@ -108,17 +145,18 @@ $(document).ready(function() {
         }
         
         $.ajax({
-            url: '/update_cart',
-            method: 'POST',
-            data: {
+            url: '/api/cart/update',
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({
                 cart_id: cartId,
                 quantity: quantity
-            },
+            }),
             success: function(response) {
-                if (response.success) {
+                if (response && response.success) {
                     updateCartDisplay();
                 } else {
-                    showAlert(response.message, 'error');
+                    showAlert((response && response.message) || 'به‌روزرسانی تعداد ناموفق بود', 'error');
                 }
             },
             error: function() {
@@ -134,17 +172,16 @@ $(document).ready(function() {
         
         if (confirm('آیا مطمئن هستید که می‌خواهید این کالا را از سبد خرید حذف کنید؟')) {
             $.ajax({
-                url: '/remove_from_cart',
-                method: 'POST',
-                data: {
-                    cart_id: cartId
-                },
+                url: '/api/cart/remove',
+                method: 'DELETE',
+                contentType: 'application/json',
+                data: JSON.stringify({ cart_id: cartId }),
                 success: function(response) {
-                    if (response.success) {
+                    if (response && response.success) {
                         showAlert('کالا از سبد خرید حذف شد', 'success');
                         updateCartDisplay();
                     } else {
-                        showAlert(response.message, 'error');
+                        showAlert((response && response.message) || 'حذف کالا ناموفق بود', 'error');
                     }
                 },
                 error: function() {
@@ -372,14 +409,14 @@ $(document).ready(function() {
         // Update cart total
         updateCartTotal();
         
-        // Save selection in localStorage
-        localStorage.setItem('price_type_' + productId, priceType);
+        // Save selection in localStorage with error handling for Tracking Prevention
+        safeStorage.setItem('price_type_' + productId, priceType);
     });
 
     // Restore previous selections
     $('.price-type-radio').each(function() {
         var productId = $(this).data('product-id');
-        var savedType = localStorage.getItem('price_type_' + productId);
+        var savedType = safeStorage.getItem('price_type_' + productId);
         if (savedType) {
             $(this).filter('[value="' + savedType + '"]').prop('checked', true);
         }
@@ -391,18 +428,10 @@ $(document).ready(function() {
     });
 });
 
-// Enhanced price animation function
+// Enhanced price animation function - حذف شد
 function animatePriceChange($element, newPrice) {
-    $element.addClass('price-changing');
-    
-    $element.fadeOut(150, function() {
-        var formattedPrice = formatPrice(newPrice);
-        $element.text(formattedPrice);
-        
-        $element.fadeIn(150, function() {
-            $element.removeClass('price-changing');
-        });
-    });
+    var formattedPrice = formatPrice(newPrice);
+    $element.text(formattedPrice);
 }
 
 // Enhanced price formatting function
@@ -488,7 +517,7 @@ function showAlert(message, type) {
     $('.container').first().prepend(alertHtml);
     
     setTimeout(function() {
-        $('.alert.auto-dismiss').fadeOut('slow');
+        $('.alert.auto-dismiss').hide();
     }, 5000);
 }
 
@@ -558,21 +587,12 @@ function validatePrice(price) {
 }
 
 function animatePriceChange(element, newPrice) {
-    // Fade out
-    element.addClass('price-fade-out');
-    
-    setTimeout(function() {
-        // Update content
+    // انیمیشن حذف شد - فقط قیمت را تغییر می‌دهد
+    if (element && element.length) {
         element.text(newPrice);
-        
-        // Fade in
-        element.removeClass('price-fade-out').addClass('price-fade-in');
-        
-        // Clean up classes
-        setTimeout(function() {
-            element.removeClass('price-fade-in');
-        }, 300);
-    }, 150);
+    } else if (element) {
+        element.textContent = newPrice;
+    }
 }
 
 function updateCartTotal() {
@@ -617,25 +637,12 @@ function initializeScrollAnimations() {
         rootMargin: '0px 0px -50px 0px'
     };
     
-    const observer = new IntersectionObserver(function(entries) {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('fade-in');
-            }
-        });
-    }, observerOptions);
-    
-    // Observe elements for animation
-    document.querySelectorAll('.category-card, .trust-card, .testimonial-card, .blog-card').forEach(el => {
-        observer.observe(el);
-    });
+    // انیمیشن‌های اسکرول حذف شدند
 }
 
-// Live Chat Functionality
+// Live Chat Functionality - حذف شد
 function initializeLiveChat() {
-    window.openChat = function() {
-        showNotification('سیستم چت آنلاین به زودی راه‌اندازی خواهد شد', 'info');
-    };
+    // پشتیبانی آنلاین حذف شد
 }
 
 // Newsletter Signup
@@ -664,38 +671,14 @@ function initializeNewsletter() {
     });
 }
 
-// Category Cards Enhancement
+// Category Cards Enhancement - انیمیشن حذف شد
 function initializeCategoryCards() {
-    $('.category-card').hover(
-        function() {
-            $(this).find('.category-icon').addClass('animate__animated animate__pulse');
-        },
-        function() {
-            $(this).find('.category-icon').removeClass('animate__animated animate__pulse');
-        }
-    );
+    // انیمیشن‌ها حذف شدند
 }
 
-// Back to Top Button
+// Back to Top Button - حذف شد
 function initializeBackToTop() {
-    $(window).scroll(function() {
-        if ($(this).scrollTop() > 300) {
-            if (!$('.back-to-top').length) {
-                $('body').append(`
-                    <button class="btn btn-primary back-to-top position-fixed" 
-                            style="bottom: 20px; right: 20px; z-index: 999; border-radius: 50%; width: 50px; height: 50px;">
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                `);
-            }
-        } else {
-            $('.back-to-top').remove();
-        }
-    });
-
-    $(document).on('click', '.back-to-top', function() {
-        $('html, body').animate({scrollTop: 0}, 800);
-    });
+    // دکمه بازگشت به بالا حذف شد
 }
 
 // Enhanced Notification System
@@ -839,10 +822,31 @@ function initializeMobileMenu() {
     
     if (!navbarToggler || !navbarCollapse) return;
 
+    // متغیر برای نگهداری موقعیت اسکرول هنگام باز شدن منو
+    let scrollPosition = 0;
+
+    function lockBodyScroll() {
+        scrollPosition = window.pageYOffset || document.documentElement.scrollTop || 0;
+        document.body.classList.add('no-scroll');
+        document.body.style.top = `-${scrollPosition}px`;
+    }
+
+    function unlockBodyScroll() {
+        document.body.classList.remove('no-scroll');
+        const savedScroll = scrollPosition;
+        document.body.style.top = '';
+        // بازگرداندن کاربر دقیقاً به موقعیت قبلی بدون پرش
+        window.scrollTo(0, savedScroll || 0);
+    }
+
     // Animate hamburger icon
     navbarToggler.addEventListener('click', function() {
         this.classList.toggle('active');
     });
+
+    // قفل/آزاد کردن اسکرول بدنه هنگام باز و بسته شدن منوی موبایل
+    navbarCollapse.addEventListener('shown.bs.collapse', lockBodyScroll);
+    navbarCollapse.addEventListener('hidden.bs.collapse', unlockBodyScroll);
 
     // Close mobile menu when clicking outside
     document.addEventListener('click', function(e) {

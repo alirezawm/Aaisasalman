@@ -269,7 +269,8 @@ class TadbirSchedulerService:
             logger.info(f"Running immediate Tadbir sync: {sync_type}")
             
             if sync_type == 'products':
-                return self.sync_service.sync_products(incremental=True)
+                # استفاده از همگام‌سازی کامل برای اطمینان از دریافت تمام کالاهای جدید
+                return self.sync_service.sync_products(incremental=False)
             elif sync_type == 'inventory':
                 return self.sync_service.sync_inventory()
             elif sync_type == 'prices':

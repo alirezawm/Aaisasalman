@@ -155,6 +155,12 @@ git clone https://git.agarvand.ir/Alirezawm/asiasalman.git .
 chown -R root:root /root/application
 chmod -R 755 /root/application
 
+# ایجاد پوشه دیتابیس خارج از پروژه
+mkdir -p /root/data
+chown -R root:root /root/data
+chmod -R 755 /root/data
+print_success "پوشه دیتابیس ایجاد شد: /root/data"
+
 print_success "پروژه آماده شد"
 
 # مرحله 5: ایجاد فایل‌های تنظیمات
@@ -169,7 +175,9 @@ FLASK_APP=app.py
 DOMAIN_NAME=192.168.1.4
 
 # تنظیمات دیتابیس
-SQLALCHEMY_DATABASE_URI=sqlite:///asia_salman.db
+# مسیر دیتابیس به صورت خودکار به /root/data/ تنظیم می‌شود
+# می‌توانید با تنظیم DATABASE_DIR مسیر را تغییر دهید
+# DATABASE_DIR=/root/data
 SQLALCHEMY_TRACK_MODIFICATIONS=False
 
 # تنظیمات آپلود
@@ -544,12 +552,19 @@ docker system prune -f
 
 # پشتیبان‌گیری از دیتابیس
 cd /root/application
-if [ -f "instance/asia_salman.db" ]; then
+if [ -f "/root/data/asia_salman.db" ]; then
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    backup_path="backups/asia_salman_${timestamp}.db"
+    mkdir -p backups
+    cp /root/data/asia_salman.db "$backup_path"
+    echo "Database backed up to $backup_path"
+elif [ -f "instance/asia_salman.db" ]; then
+    # Fallback to old location
     timestamp=$(date +%Y%m%d_%H%M%S)
     backup_path="backups/asia_salman_${timestamp}.db"
     mkdir -p backups
     cp instance/asia_salman.db "$backup_path"
-    echo "Database backed up to $backup_path"
+    echo "Database backed up to $backup_path (old location)"
 fi
 
 # حذف پشتیبان‌های قدیمی (بیش از 30 روز)

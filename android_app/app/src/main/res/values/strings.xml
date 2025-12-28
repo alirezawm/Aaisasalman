@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">آسیا سلمان</string>
+    
+    <!-- Common -->
+    <string name="loading">در حال بارگذاری...</string>
+    <string name="error">خطا</string>
+    <string name="retry">تلاش مجدد</string>
+    <string name="cancel">انصراف</string>
+    <string name="save">ذخیره</string>
+    <string name="delete">حذف</string>
+    <string name="edit">ویرایش</string>
+    <string name="add">افزودن</string>
+    <string name="ok">تایید</string>
+    
+    <!-- Auth -->
+    <string name="login">ورود</string>
+    <string name="phone_number">شماره تلفن</string>
+    <string name="enter_phone">شماره تلفن خود را وارد کنید</string>
+    <string name="send_otp">ارسال کد تایید</string>
+    <string name="verify_otp">تایید کد</string>
+    <string name="enter_otp">کد تایید را وارد کنید</string>
+    <string name="resend_otp">ارسال مجدد کد</string>
+    <string name="otp_sent">کد تایید ارسال شد</string>
+    <string name="invalid_phone">شماره تلفن معتبر نیست</string>
+    <string name="invalid_otp">کد تایید معتبر نیست</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">خانه</string>
+    <string name="nav_shop">فروشگاه</string>
+    <string name="nav_suggestions">پیشنهادات</string>
+    <string name="nav_cart">سبد خرید</string>
+    <string name="nav_profile">پروفایل</string>
+    
+    <!-- Home -->
+    <string name="discounted_products">کالاهای تخفیف‌دار</string>
+    <string name="categories_by_vehicle">دسته‌بندی بر اساس نوع خودرو</string>
+    <string name="categories_by_brand">دسته‌بندی بر اساس برند</string>
+    <string name="categories_by_type">دسته‌بندی بر اساس نوع کالا</string>
+    <string name="partner_brands">برندهای همکار</string>
+    <string name="about_company">درباره شرکت</string>
+    <string name="contact_us">تماس با ما</string>
+    
+    <!-- Products -->
+    <string name="products">محصولات</string>
+    <string name="search_products">جستجوی محصولات</string>
+    <string name="add_to_cart">افزودن به سبد</string>
+    <string name="price_cash">قیمت نقدی</string>
+    <string name="price_check">قیمت چکی</string>
+    <string name="in_stock">موجود</string>
+    <string name="out_of_stock">ناموجود</string>
+    <string name="discount">تخفیف</string>
+    
+    <!-- Cart -->
+    <string name="cart">سبد خرید</string>
+    <string name="empty_cart">سبد خرید شما خالی است</string>
+    <string name="cart_total">جمع کل</string>
+    <string name="checkout">تسویه حساب</string>
+    <string name="quantity">تعداد</string>
+    <string name="remove_item">حذف از سبد</string>
+    
+    <!-- Profile -->
+    <string name="profile">پروفایل</string>
+    <string name="edit_profile">ویرایش پروفایل</string>
+    <string name="full_name">نام و نام خانوادگی</string>
+    <string name="email">ایمیل</string>
+    <string name="company_name">نام شرکت</string>
+    <string name="address">آدرس</string>
+    <string name="wholesale_request">درخواست خریدار عمده</string>
+    <string name="notifications">اعلان‌ها</string>
+    <string name="settings">تنظیمات</string>
+    <string name="logout">خروج</string>
+    
+    <!-- Errors -->
+    <string name="error_network">خطا در اتصال به اینترنت</string>
+    <string name="error_server">خطا در ارتباط با سرور</string>
+    <string name="error_unknown">خطای نامشخص</string>
+</resources>
+

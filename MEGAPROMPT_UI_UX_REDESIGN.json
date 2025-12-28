@@ -1,0 +1,3015 @@
+{
+  "project_info": {
+    "project_name": "Asia Salman Auto Parts - Complete UI/UX Redesign",
+    "version": "2.0.0",
+    "date_created": "2025-01-27",
+    "target": "Android Application - Complete Visual Redesign",
+    "design_philosophy": "Modern, Elegant, User-Friendly, Persian RTL Optimized"
+  },
+
+  "design_system": {
+    "name": "Asia Salman Design System",
+    "version": "2.0",
+    "principles": [
+      "Simplicity and Clarity",
+      "Consistency Across All Screens",
+      "Accessibility First",
+      "Performance Optimized",
+      "Persian/Arabic RTL Support",
+      "Modern Material Design 3",
+      "Smooth Animations",
+      "Intuitive Navigation"
+    ],
+
+    "color_palette": {
+      "primary": {
+        "main": "#DC3545",
+        "light": "#E4606D",
+        "dark": "#C82333",
+        "contrast": "#FFFFFF",
+        "usage": "Main actions, buttons, links, brand identity"
+      },
+      "secondary": {
+        "main": "#FF6B9D",
+        "light": "#FF8BB3",
+        "dark": "#E55A8A",
+        "contrast": "#FFFFFF",
+        "usage": "Secondary actions, accents, highlights"
+      },
+      "accent": {
+        "main": "#00FF00",
+        "light": "#33FF33",
+        "dark": "#00CC00",
+        "contrast": "#000000",
+        "usage": "Success states, positive feedback, special highlights"
+      },
+      "background": {
+        "light": "#FFFFFF",
+        "dark": "#121212",
+        "surface": "#F5F5F5",
+        "surface_dark": "#1E1E1E",
+        "elevated": "#FFFFFF",
+        "elevated_dark": "#2C2C2C"
+      },
+      "text": {
+        "primary_light": "#212529",
+        "primary_dark": "#FFFFFF",
+        "secondary_light": "#6C757D",
+        "secondary_dark": "#B0B0B0",
+        "hint_light": "#ADB5BD",
+        "hint_dark": "#707070",
+        "disabled": "#D0D0D0"
+      },
+      "semantic": {
+        "success": "#28A745",
+        "error": "#DC3545",
+        "warning": "#FFC107",
+        "info": "#17A2B8",
+        "success_light": "#D4EDDA",
+        "error_light": "#F8D7DA",
+        "warning_light": "#FFF3CD",
+        "info_light": "#D1ECF1"
+      },
+      "gradients": {
+        "primary_gradient": ["#DC3545", "#C82333", "#B01E2E"],
+        "secondary_gradient": ["#FF6B9D", "#E55A8A"],
+        "background_gradient": ["#F5F5F5", "#FFFFFF"],
+        "dark_gradient": ["#1E1E1E", "#121212"],
+        "splash_gradient": ["#C82333", "#DC3545", "#B01E2E"]
+      },
+      "shadows": {
+        "elevation_1": "0px 1px 3px rgba(0,0,0,0.12), 0px 1px 2px rgba(0,0,0,0.24)",
+        "elevation_2": "0px 3px 6px rgba(0,0,0,0.16), 0px 3px 6px rgba(0,0,0,0.23)",
+        "elevation_4": "0px 10px 20px rgba(0,0,0,0.19), 0px 6px 6px rgba(0,0,0,0.23)",
+        "elevation_8": "0px 15px 30px rgba(0,0,0,0.25), 0px 10px 10px rgba(0,0,0,0.22)",
+        "inner_shadow": "inset 0px 2px 4px rgba(0,0,0,0.1)"
+      }
+    },
+
+    "typography": {
+      "font_families": {
+        "primary": "Vazir",
+        "secondary": "IRANSans",
+        "fallback": "Roboto",
+        "monospace": "Vazir Code, Roboto Mono"
+      },
+      "scale": {
+        "display_large": {
+          "size": 57,
+          "line_height": 64,
+          "weight": "Bold",
+          "letter_spacing": -0.25,
+          "usage": "Hero titles, major headings"
+        },
+        "display_medium": {
+          "size": 45,
+          "line_height": 52,
+          "weight": "Bold",
+          "letter_spacing": 0,
+          "usage": "Large section titles"
+        },
+        "display_small": {
+          "size": 36,
+          "line_height": 44,
+          "weight": "Bold",
+          "letter_spacing": 0,
+          "usage": "Page titles"
+        },
+        "headline_large": {
+          "size": 32,
+          "line_height": 40,
+          "weight": "Bold",
+          "letter_spacing": 0,
+          "usage": "Section headers"
+        },
+        "headline_medium": {
+          "size": 28,
+          "line_height": 36,
+          "weight": "Bold",
+          "letter_spacing": 0,
+          "usage": "Subsection headers"
+        },
+        "headline_small": {
+          "size": 24,
+          "line_height": 32,
+          "weight": "Bold",
+          "letter_spacing": 0,
+          "usage": "Card titles"
+        },
+        "title_large": {
+          "size": 22,
+          "line_height": 28,
+          "weight": "SemiBold",
+          "letter_spacing": 0,
+          "usage": "Important text, list headers"
+        },
+        "title_medium": {
+          "size": 16,
+          "line_height": 24,
+          "weight": "SemiBold",
+          "letter_spacing": 0.15,
+          "usage": "Button text, labels"
+        },
+        "title_small": {
+          "size": 14,
+          "line_height": 20,
+          "weight": "SemiBold",
+          "letter_spacing": 0.1,
+          "usage": "Small buttons, tabs"
+        },
+        "body_large": {
+          "size": 16,
+          "line_height": 24,
+          "weight": "Regular",
+          "letter_spacing": 0.5,
+          "usage": "Main body text"
+        },
+        "body_medium": {
+          "size": 14,
+          "line_height": 20,
+          "weight": "Regular",
+          "letter_spacing": 0.25,
+          "usage": "Secondary body text"
+        },
+        "body_small": {
+          "size": 12,
+          "line_height": 16,
+          "weight": "Regular",
+          "letter_spacing": 0.4,
+          "usage": "Captions, hints"
+        },
+        "label_large": {
+          "size": 14,
+          "line_height": 20,
+          "weight": "Medium",
+          "letter_spacing": 0.1,
+          "usage": "Labels, form fields"
+        },
+        "label_medium": {
+          "size": 12,
+          "line_height": 16,
+          "weight": "Medium",
+          "letter_spacing": 0.5,
+          "usage": "Small labels"
+        },
+        "label_small": {
+          "size": 11,
+          "line_height": 16,
+          "weight": "Medium",
+          "letter_spacing": 0.5,
+          "usage": "Tiny labels, badges"
+        }
+      },
+      "rtl_support": {
+        "text_direction": "RTL",
+        "text_alignment": "right",
+        "number_direction": "LTR",
+        "special_characters": "Persian/Arabic numerals support"
+      }
+    },
+
+    "spacing_system": {
+      "base_unit": 4,
+      "scale": {
+        "xs": 4,
+        "sm": 8,
+        "md": 16,
+        "lg": 24,
+        "xl": 32,
+        "2xl": 48,
+        "3xl": 64,
+        "4xl": 96
+      },
+      "component_spacing": {
+        "button_padding": "12dp horizontal, 16dp vertical",
+        "card_padding": "16dp",
+        "screen_padding": "16dp-24dp",
+        "section_spacing": "24dp-32dp",
+        "item_spacing": "8dp-16dp"
+      }
+    },
+
+    "border_radius": {
+      "none": 0,
+      "small": 4,
+      "medium": 8,
+      "large": 12,
+      "xlarge": 16,
+      "round": 9999,
+      "card": 12,
+      "button": 8,
+      "input": 8,
+      "chip": 16,
+      "badge": 12
+    },
+
+    "elevation": {
+      "levels": {
+        "0": 0,
+        "1": 1,
+        "2": 2,
+        "3": 4,
+        "4": 8,
+        "5": 12,
+        "6": 16
+      },
+      "usage": {
+        "flat": 0,
+        "card": 2,
+        "button": 2,
+        "dialog": 8,
+        "modal": 12,
+        "floating_action_button": 6
+      }
+    }
+  },
+
+  "component_library": {
+    "buttons": {
+      "primary_button": {
+        "style": "Filled",
+        "height": 56,
+        "padding": "16dp horizontal, 12dp vertical",
+        "border_radius": 8,
+        "elevation": 2,
+        "typography": "title_medium",
+        "states": {
+          "default": {
+            "background": "primary.main",
+            "text_color": "primary.contrast",
+            "elevation": 2
+          },
+          "pressed": {
+            "background": "primary.dark",
+            "elevation": 1,
+            "scale": 0.98
+          },
+          "disabled": {
+            "background": "text.disabled",
+            "text_color": "text.hint",
+            "elevation": 0,
+            "opacity": 0.38
+          },
+          "loading": {
+            "show_indicator": true,
+            "indicator_color": "primary.contrast"
+          }
+        },
+        "animation": {
+          "ripple": true,
+          "scale_on_press": true,
+          "duration": 200
+        }
+      },
+      "secondary_button": {
+        "style": "Outlined",
+        "height": 56,
+        "border_width": 2,
+        "border_color": "primary.main",
+        "background": "transparent",
+        "text_color": "primary.main",
+        "border_radius": 8,
+        "elevation": 0
+      },
+      "text_button": {
+        "style": "Text",
+        "height": 48,
+        "text_color": "primary.main",
+        "background": "transparent",
+        "elevation": 0,
+        "padding": "8dp horizontal"
+      },
+      "icon_button": {
+        "size": 48,
+        "border_radius": 24,
+        "elevation": 0,
+        "ripple": true
+      },
+      "floating_action_button": {
+        "size": 56,
+        "border_radius": 28,
+        "elevation": 6,
+        "background": "primary.main",
+        "icon_color": "primary.contrast",
+        "position": "bottom_right",
+        "margin": "16dp"
+      }
+    },
+
+    "cards": {
+      "standard_card": {
+        "background": "background.elevated",
+        "border_radius": 12,
+        "elevation": 2,
+        "padding": 16,
+        "margin": "8dp vertical",
+        "states": {
+          "default": {
+            "elevation": 2
+          },
+          "pressed": {
+            "elevation": 4,
+            "scale": 0.98
+          },
+          "selected": {
+            "border": "2dp solid primary.main",
+            "elevation": 4
+          }
+        }
+      },
+      "product_card": {
+        "aspect_ratio": "1:1.2",
+        "image_height": "60%",
+        "content_padding": 12,
+        "border_radius": 12,
+        "elevation": 2,
+        "image_style": {
+          "border_radius_top": 12,
+          "content_scale": "Crop"
+        },
+        "badge_position": "top_right",
+        "discount_badge": {
+          "background": "semantic.error",
+          "text_color": "white",
+          "border_radius": 4,
+          "padding": "4dp 8dp",
+          "typography": "label_small"
+        }
+      },
+      "category_card": {
+        "aspect_ratio": "1:1",
+        "border_radius": 12,
+        "elevation": 2,
+        "icon_size": 48,
+        "icon_position": "center",
+        "text_position": "bottom"
+      }
+    },
+
+    "input_fields": {
+      "text_input": {
+        "height": 56,
+        "border_radius": 8,
+        "border_width": 1,
+        "padding": "16dp horizontal, 12dp vertical",
+        "typography": "body_large",
+        "states": {
+          "default": {
+            "border_color": "text.hint",
+            "background": "background.surface"
+          },
+          "focused": {
+            "border_color": "primary.main",
+            "border_width": 2,
+            "background": "background.elevated"
+          },
+          "error": {
+            "border_color": "semantic.error",
+            "helper_text_color": "semantic.error"
+          },
+          "disabled": {
+            "background": "background.surface",
+            "opacity": 0.38
+          }
+        },
+        "label": {
+          "position": "floating",
+          "animation": true,
+          "typography": "label_medium",
+          "color": "text.secondary"
+        },
+        "helper_text": {
+          "position": "below",
+          "typography": "body_small",
+          "spacing": "4dp top"
+        },
+        "leading_icon": {
+          "size": 24,
+          "color": "text.secondary",
+          "padding": "12dp"
+        },
+        "trailing_icon": {
+          "size": 24,
+          "color": "text.secondary",
+          "padding": "12dp"
+        }
+      },
+      "search_field": {
+        "height": 48,
+        "border_radius": 24,
+        "background": "background.surface",
+        "elevation": 1,
+        "icon_position": "leading",
+        "hint": "جستجو...",
+        "clear_button": true
+      },
+      "otp_input": {
+        "field_count": 6,
+        "field_size": 48,
+        "field_spacing": 8,
+        "border_radius": 8,
+        "border_width": 2,
+        "typography": "headline_medium",
+        "auto_focus": true,
+        "auto_submit": true
+      }
+    },
+
+    "navigation": {
+      "bottom_navigation": {
+        "height": 64,
+        "background": "background.elevated",
+        "elevation": 8,
+        "item_height": 56,
+        "icon_size": 24,
+        "label_typography": "label_small",
+        "selected_color": "primary.main",
+        "unselected_color": "text.secondary",
+        "indicator": {
+          "type": "underline",
+          "height": 3,
+          "color": "primary.main",
+          "animation": true
+        },
+        "badge": {
+          "size": 18,
+          "background": "semantic.error",
+          "text_color": "white",
+          "position": "top_right",
+          "offset": "-4dp, -4dp"
+        }
+      },
+      "top_app_bar": {
+        "height": 56,
+        "elevated_height": 64,
+        "background": "primary.main",
+        "text_color": "white",
+        "elevation": 4,
+        "actions_spacing": 8,
+        "icon_size": 24
+      },
+      "navigation_drawer": {
+        "width": 280,
+        "background": "background.elevated",
+        "elevation": 16,
+        "header_height": 160,
+        "item_height": 48,
+        "item_padding": "16dp horizontal",
+        "divider": true
+      }
+    },
+
+    "lists": {
+      "product_list": {
+        "layout": "Grid",
+        "columns": 2,
+        "item_spacing": 12,
+        "padding": 16,
+        "item_aspect_ratio": "1:1.2"
+      },
+      "category_list": {
+        "layout": "Horizontal",
+        "item_width": 120,
+        "item_spacing": 12,
+        "padding": 16
+      },
+      "order_list": {
+        "layout": "Vertical",
+        "item_spacing": 8,
+        "padding": 16,
+        "divider": true
+      }
+    },
+
+    "dialogs": {
+      "standard_dialog": {
+        "width": "90% max 400dp",
+        "border_radius": 16,
+        "elevation": 24,
+        "background": "background.elevated",
+        "padding": 24,
+        "title_typography": "headline_small",
+        "content_typography": "body_medium",
+        "button_spacing": 8
+      },
+      "bottom_sheet": {
+        "border_radius_top": 16,
+        "max_height": "90%",
+        "elevation": 16,
+        "handle": true,
+        "handle_width": 40,
+        "handle_height": 4
+      },
+      "alert_dialog": {
+        "icon_size": 48,
+        "icon_spacing": 16,
+        "title_spacing": 8,
+        "content_spacing": 16,
+        "button_layout": "horizontal"
+      }
+    },
+
+    "badges": {
+      "notification_badge": {
+        "size": 20,
+        "background": "semantic.error",
+        "text_color": "white",
+        "border_radius": 10,
+        "typography": "label_small",
+        "min_width": 20,
+        "padding": "2dp 6dp"
+      },
+      "discount_badge": {
+        "background": "semantic.error",
+        "text_color": "white",
+        "border_radius": 4,
+        "padding": "4dp 8dp",
+        "typography": "label_small",
+        "position": "top_right"
+      },
+      "status_badge": {
+        "border_radius": 12,
+        "padding": "4dp 12dp",
+        "typography": "label_small",
+        "states": {
+          "success": "semantic.success",
+          "pending": "semantic.warning",
+          "error": "semantic.error"
+        }
+      }
+    },
+
+    "chips": {
+      "filter_chip": {
+        "height": 32,
+        "border_radius": 16,
+        "padding": "8dp 16dp",
+        "background": "background.surface",
+        "selected_background": "primary.main",
+        "selected_text_color": "white",
+        "border_width": 1,
+        "border_color": "text.hint"
+      },
+      "choice_chip": {
+        "height": 40,
+        "border_radius": 20,
+        "padding": "8dp 16dp",
+        "typography": "label_medium"
+      }
+    },
+
+    "progress_indicators": {
+      "circular_progress": {
+        "sizes": {
+          "small": 24,
+          "medium": 48,
+          "large": 64
+        },
+        "stroke_width": 4,
+        "color": "primary.main",
+        "animation": "indeterminate"
+      },
+      "linear_progress": {
+        "height": 4,
+        "border_radius": 2,
+        "background": "background.surface",
+        "progress_color": "primary.main",
+        "animation": true
+      },
+      "skeleton_loader": {
+        "background": "background.surface",
+        "shimmer_color": "text.hint",
+        "border_radius": 8,
+        "animation": "shimmer"
+      }
+    },
+
+    "tabs": {
+      "standard_tabs": {
+        "height": 48,
+        "indicator_height": 3,
+        "indicator_color": "primary.main",
+        "selected_text_color": "primary.main",
+        "unselected_text_color": "text.secondary",
+        "typography": "label_medium",
+        "padding": "12dp horizontal"
+      },
+      "scrollable_tabs": {
+        "min_tab_width": 72,
+        "padding": "8dp horizontal"
+      }
+    }
+  },
+
+  "screen_designs": {
+    "splash_screen": {
+      "layout": "Full Screen Centered",
+      "background": {
+        "type": "gradient",
+        "colors": "splash_gradient",
+        "direction": "vertical"
+      },
+      "elements": {
+        "logo": {
+          "position": "top_center",
+          "size": 120,
+          "margin_top": 80,
+          "animation": {
+            "type": "fade_in_scale",
+            "duration": 800,
+            "delay": 0
+          }
+        },
+        "company_name": {
+          "position": "below_logo",
+          "typography": "display_medium",
+          "color": "white",
+          "margin_top": 24,
+          "animation": {
+            "type": "fade_in",
+            "duration": 600,
+            "delay": 200
+          }
+        },
+        "subtitle": {
+          "position": "below_company_name",
+          "typography": "title_medium",
+          "color": "white 80% opacity",
+          "margin_top": 8,
+          "animation": {
+            "type": "fade_in",
+            "duration": 600,
+            "delay": 400
+          }
+        },
+        "loading_indicator": {
+          "position": "center",
+          "type": "circular",
+          "size": 48,
+          "color": "white",
+          "margin_top": 64,
+          "animation": {
+            "type": "rotate",
+            "duration": 1000,
+            "repeat": "infinite"
+          }
+        },
+        "loading_text": {
+          "position": "below_indicator",
+          "typography": "body_medium",
+          "color": "white 70% opacity",
+          "margin_top": 16,
+          "text": "در حال بارگذاری..."
+        },
+        "contact_info": {
+          "position": "bottom",
+          "margin_bottom": 32,
+          "layout": "horizontal",
+          "spacing": 24,
+          "items": [
+            {
+              "icon": "phone",
+              "text": "09190061764",
+              "color": "white 90% opacity"
+            },
+            {
+              "icon": "instagram",
+              "text": "Fazeli_Part",
+              "color": "white 90% opacity"
+            }
+          ],
+          "address": {
+            "text": "آدرس: مشهد رباط طرق 2 پلاک 309",
+            "typography": "body_small",
+            "color": "white 80% opacity",
+            "margin_top": 12
+          }
+        }
+      },
+      "duration": 2500,
+      "transition": {
+        "type": "fade",
+        "duration": 300
+      }
+    },
+
+    "login_screen": {
+      "layout": "Centered with Padding",
+      "background": "background.light",
+      "elements": {
+        "header": {
+          "logo": {
+            "size": 80,
+            "margin_top": 48,
+            "alignment": "center"
+          },
+          "title": {
+            "text": "آسیا سلمان",
+            "typography": "headline_large",
+            "color": "primary.main",
+            "margin_top": 16,
+            "alignment": "center"
+          },
+          "subtitle": {
+            "text": "قطعات خودرو",
+            "typography": "title_medium",
+            "color": "text.secondary",
+            "margin_top": 8,
+            "alignment": "center"
+          }
+        },
+        "form": {
+          "margin_top": 64,
+          "spacing": 24,
+          "phone_input": {
+            "type": "text_input",
+            "label": "شماره تلفن",
+            "placeholder": "09123456789",
+            "leading_icon": "phone",
+            "keyboard_type": "phone",
+            "validation": {
+              "pattern": "^09\\d{9}$",
+              "error_message": "شماره تلفن باید با 09 شروع شود و 11 رقم باشد"
+            }
+          },
+          "otp_input": {
+            "type": "otp_input",
+            "visible_after": "phone_submitted",
+            "label": "کد تایید",
+            "resend_button": {
+              "text": "ارسال مجدد",
+              "countdown": 120,
+              "typography": "body_small"
+            }
+          },
+          "login_button": {
+            "type": "primary_button",
+            "text": "ورود",
+            "full_width": true,
+            "margin_top": 32,
+            "loading_state": true
+          },
+          "skip_button": {
+            "type": "text_button",
+            "text": "رد کردن و ادامه",
+            "margin_top": 16,
+            "alignment": "center"
+          }
+        }
+      },
+      "animations": {
+        "form_enter": {
+          "type": "slide_up_fade",
+          "duration": 400,
+          "delay": 200
+        },
+        "input_focus": {
+          "type": "scale",
+          "scale": 1.02,
+          "duration": 200
+        }
+      }
+    },
+
+    "home_screen": {
+      "layout": "Scrollable Column",
+      "background": "background.light",
+      "sections": {
+        "app_bar": {
+          "type": "top_app_bar",
+          "height": 64,
+          "background": "primary.main",
+          "title": {
+            "text": "آسیا سلمان",
+            "typography": "title_large",
+            "color": "white"
+          },
+          "actions": [
+            {
+              "icon": "shopping_cart",
+              "badge": true,
+              "on_click": "navigate_to_cart"
+            },
+            {
+              "icon": "notifications",
+              "badge": true,
+              "on_click": "navigate_to_notifications"
+            }
+          ]
+        },
+        "banners": {
+          "type": "carousel",
+          "height": 200,
+          "margin": "16dp horizontal",
+          "margin_top": 16,
+          "item_spacing": 12,
+          "indicator": {
+            "type": "dots",
+            "position": "bottom_center",
+            "spacing": 8,
+            "active_color": "primary.main",
+            "inactive_color": "text.hint"
+          },
+          "auto_scroll": {
+            "enabled": true,
+            "interval": 5000,
+            "animation": "smooth"
+          },
+          "card_style": {
+            "border_radius": 16,
+            "elevation": 2
+          }
+        },
+        "discounted_products": {
+          "title": {
+            "text": "کالاهای تخفیف‌دار",
+            "typography": "headline_small",
+            "color": "text.primary",
+            "margin": "16dp horizontal",
+            "margin_top": 24
+          },
+          "layout": "horizontal_scroll",
+          "item_width": 160,
+          "item_spacing": 12,
+          "padding": "16dp horizontal",
+          "show_all_button": {
+            "text": "مشاهده همه",
+            "type": "text_button",
+            "position": "end"
+          }
+        },
+        "categories": {
+          "vehicle_types": {
+            "title": {
+              "text": "دسته‌بندی بر اساس نوع خودرو",
+              "typography": "headline_small",
+              "margin": "16dp horizontal",
+              "margin_top": 32
+            },
+            "layout": "grid",
+            "columns": 2,
+            "item_spacing": 12,
+            "padding": "16dp horizontal"
+          },
+          "brands": {
+            "title": {
+              "text": "دسته‌بندی بر اساس برند",
+              "typography": "headline_small",
+              "margin": "16dp horizontal",
+              "margin_top": 32
+            },
+            "layout": "horizontal_scroll",
+            "item_width": 100,
+            "item_spacing": 12,
+            "padding": "16dp horizontal"
+          },
+          "product_types": {
+            "title": {
+              "text": "دسته‌بندی بر اساس نوع کالا",
+              "typography": "headline_small",
+              "margin": "16dp horizontal",
+              "margin_top": 32
+            },
+            "layout": "grid",
+            "columns": 2,
+            "item_spacing": 12,
+            "padding": "16dp horizontal"
+          }
+        },
+        "partner_brands": {
+          "title": {
+            "text": "برندهای همکار",
+            "typography": "headline_small",
+            "margin": "16dp horizontal",
+            "margin_top": 32
+          },
+          "layout": "horizontal_scroll",
+          "item_width": 80,
+          "item_spacing": 16,
+          "padding": "16dp horizontal",
+          "background": "background.surface",
+          "padding_vertical": 16
+        },
+        "company_info": {
+          "type": "expandable_card",
+          "title": "درباره شرکت",
+          "margin": "16dp horizontal",
+          "margin_top": 32,
+          "content": {
+            "description": "text from API",
+            "typography": "body_medium",
+            "line_height": 24
+          }
+        },
+        "support": {
+          "type": "contact_card",
+          "margin": "16dp horizontal",
+          "margin_bottom": 32,
+          "items": [
+            {
+              "type": "phone",
+              "text": "09190061764",
+              "action": "tel:"
+            },
+            {
+              "type": "whatsapp",
+              "text": "WhatsApp",
+              "action": "wa.me/"
+            },
+            {
+              "type": "telegram",
+              "text": "Telegram",
+              "action": "t.me/"
+            },
+            {
+              "type": "email",
+              "text": "Email",
+              "action": "mailto:"
+            }
+          ]
+        }
+      },
+      "bottom_navigation": {
+        "type": "bottom_navigation",
+        "items": [
+          {
+            "icon": "home",
+            "label": "خانه",
+            "selected": true
+          },
+          {
+            "icon": "shop",
+            "label": "فروشگاه"
+          },
+          {
+            "icon": "star",
+            "label": "پیشنهادات"
+          },
+          {
+            "icon": "shopping_cart",
+            "label": "سبد خرید",
+            "badge": true
+          },
+          {
+            "icon": "person",
+            "label": "پروفایل"
+          }
+        ]
+      }
+    },
+
+    "shop_screen": {
+      "layout": "Column with Search",
+      "app_bar": {
+        "type": "search_app_bar",
+        "search_field": {
+          "type": "search_field",
+          "hint": "جستجوی محصول...",
+          "voice_search": true,
+          "barcode_scanner": true
+        },
+        "filter_button": {
+          "icon": "filter_list",
+          "position": "end"
+        }
+      },
+      "content": {
+        "filters_sheet": {
+          "type": "bottom_sheet",
+          "sections": [
+            {
+              "title": "برند",
+              "type": "multi_select_chips"
+            },
+            {
+              "title": "دسته‌بندی",
+              "type": "multi_select_chips"
+            },
+            {
+              "title": "نوع خودرو",
+              "type": "multi_select_chips"
+            },
+            {
+              "title": "محدوده قیمت",
+              "type": "range_slider"
+            },
+            {
+              "title": "فقط موجود",
+              "type": "switch"
+            },
+            {
+              "title": "مرتب‌سازی",
+              "type": "dropdown"
+            }
+          ],
+          "actions": {
+            "apply": "primary_button",
+            "clear": "text_button"
+          }
+        },
+        "products_grid": {
+          "type": "product_list",
+          "layout": "grid",
+          "columns": 2,
+          "item_spacing": 12,
+          "padding": 16
+        }
+      }
+    },
+
+    "product_details_screen": {
+      "layout": "Scrollable Column",
+      "sections": {
+        "image_gallery": {
+          "type": "viewpager",
+          "height": "50% screen",
+          "indicators": {
+            "type": "dots",
+            "position": "bottom_center"
+          },
+          "zoom": true,
+          "fullscreen": true
+        },
+        "product_info": {
+          "padding": 16,
+          "title": {
+            "typography": "headline_medium",
+            "color": "text.primary",
+            "margin_bottom": 8
+          },
+          "subtitle": {
+            "typography": "body_medium",
+            "color": "text.secondary"
+          },
+          "price_section": {
+            "layout": "row",
+            "spacing": 16,
+            "cash_price": {
+              "label": "قیمت نقدی",
+              "typography": "headline_small",
+              "color": "primary.main"
+            },
+            "check_price": {
+              "label": "قیمت چکی",
+              "typography": "title_large",
+              "color": "text.primary"
+            }
+          },
+          "stock_badge": {
+            "type": "status_badge",
+            "margin_top": 16
+          },
+          "description": {
+            "typography": "body_medium",
+            "margin_top": 24,
+            "line_height": 24
+          }
+        },
+        "quantity_selector": {
+          "type": "stepper",
+          "min": 1,
+          "max": "stock_quantity",
+          "layout": "row",
+          "spacing": 16,
+          "padding": 16
+        },
+        "action_buttons": {
+          "layout": "row",
+          "spacing": 12,
+          "padding": 16,
+          "add_to_cart": {
+            "type": "primary_button",
+            "text": "افزودن به سبد",
+            "flex": 2
+          },
+          "buy_now": {
+            "type": "secondary_button",
+            "text": "خرید فوری",
+            "flex": 1
+          }
+        }
+      }
+    },
+
+    "cart_screen": {
+      "layout": "Column with Tabs",
+      "tabs": {
+        "type": "standard_tabs",
+        "items": [
+          {
+            "label": "نقدی",
+            "icon": "cash"
+          },
+          {
+            "label": "چکی",
+            "icon": "check"
+          }
+        ]
+      },
+      "content": {
+        "items_list": {
+          "type": "vertical_list",
+          "item_spacing": 8,
+          "padding": 16,
+          "item_layout": {
+            "image": {
+              "size": 80,
+              "border_radius": 8
+            },
+            "info": {
+              "title": "title_medium",
+              "sku": "body_small",
+              "price": "title_medium"
+            },
+            "quantity_stepper": {
+              "type": "stepper",
+              "size": "small"
+            },
+            "remove_button": {
+              "type": "icon_button",
+              "icon": "delete",
+              "color": "semantic.error"
+            }
+          }
+        },
+        "summary": {
+          "type": "sticky_bottom",
+          "background": "background.elevated",
+          "elevation": 8,
+          "padding": 16,
+          "items": [
+            {
+              "label": "جمع کل نقدی",
+              "value": "calculated",
+              "typography": "body_medium"
+            },
+            {
+              "label": "جمع کل چکی",
+              "value": "calculated",
+              "typography": "body_medium"
+            },
+            {
+              "label": "جمع کل",
+              "value": "calculated",
+              "typography": "headline_small",
+              "color": "primary.main"
+            }
+          ],
+          "checkout_button": {
+            "type": "primary_button",
+            "text": "تسویه حساب",
+            "full_width": true,
+            "margin_top": 16
+          }
+        }
+      }
+    },
+
+    "profile_screen": {
+      "layout": "Scrollable Column",
+      "header": {
+        "type": "profile_header",
+        "height": 200,
+        "background": "primary.main",
+        "avatar": {
+          "size": 80,
+          "border": "4dp solid white",
+          "position": "center"
+        },
+        "name": {
+          "typography": "headline_medium",
+          "color": "white",
+          "margin_top": 16
+        },
+        "phone": {
+          "typography": "body_medium",
+          "color": "white 80% opacity",
+          "margin_top": 8
+        },
+        "badge": {
+          "type": "user_type_badge",
+          "position": "top_right",
+          "margin": 16
+        }
+      },
+      "sections": {
+        "personal_info": {
+          "type": "section_card",
+          "title": "اطلاعات شخصی",
+          "items": [
+            {
+              "icon": "person",
+              "label": "نام و نام خانوادگی",
+              "value": "user.full_name",
+              "action": "edit"
+            }
+          ]
+        },
+        "orders": {
+          "type": "section_card",
+          "title": "سفارشات",
+          "badge": "order_count",
+          "action": "navigate"
+        },
+        "wallet": {
+          "type": "section_card",
+          "title": "کیف پول",
+          "value": "wallet.balance",
+          "action": "navigate"
+        },
+        "settings": {
+          "type": "section_list",
+          "items": [
+            {
+              "icon": "language",
+              "label": "زبان",
+              "value": "فارسی",
+              "action": "dialog"
+            },
+            {
+              "icon": "dark_mode",
+              "label": "حالت تاریک",
+              "type": "switch",
+              "action": "toggle"
+            }
+          ]
+        }
+      }
+    }
+  },
+
+  "animations": {
+    "principles": [
+      "Smooth and Natural",
+      "Purposeful (not decorative)",
+      "Performance Optimized",
+      "Respect User Preferences"
+    ],
+    "durations": {
+      "instant": 100,
+      "short": 200,
+      "medium": 300,
+      "long": 500,
+      "extra_long": 700
+    },
+    "easing_curves": {
+      "standard": "cubic-bezier(0.4, 0.0, 0.2, 1.0)",
+      "decelerate": "cubic-bezier(0.0, 0.0, 0.2, 1.0)",
+      "accelerate": "cubic-bezier(0.4, 0.0, 1.0, 1.0)",
+      "sharp": "cubic-bezier(0.4, 0.0, 0.6, 1.0)"
+    },
+    "page_transitions": {
+      "slide": {
+        "type": "slide_horizontal",
+        "duration": 300,
+        "easing": "standard"
+      },
+      "fade": {
+        "type": "fade",
+        "duration": 200,
+        "easing": "decelerate"
+      },
+      "scale": {
+        "type": "scale_fade",
+        "duration": 300,
+        "easing": "standard"
+      }
+    },
+    "micro_interactions": {
+      "button_press": {
+        "type": "scale",
+        "scale": 0.95,
+        "duration": 100
+      },
+      "card_lift": {
+        "type": "elevation_increase",
+        "elevation": "+2",
+        "duration": 200
+      },
+      "ripple": {
+        "type": "ripple",
+        "duration": 400,
+        "color": "primary.main 20% opacity"
+      },
+      "swipe_feedback": {
+        "type": "translate",
+        "distance": 8,
+        "duration": 200
+      }
+    },
+    "loading_states": {
+      "skeleton": {
+        "type": "shimmer",
+        "duration": 1000,
+        "repeat": "infinite"
+      },
+      "progress": {
+        "type": "indeterminate",
+        "animation": "smooth"
+      },
+      "pull_to_refresh": {
+        "type": "circular_progress",
+        "threshold": 80,
+        "animation": "bounce"
+      }
+    }
+  },
+
+  "interaction_patterns": {
+    "gestures": {
+      "swipe_right": "go_back",
+      "swipe_left": "next_item",
+      "swipe_down": "refresh",
+      "swipe_up": "scroll",
+      "long_press": "context_menu",
+      "double_tap": "zoom",
+      "pinch": "zoom"
+    },
+    "feedback": {
+      "haptic": {
+        "button_press": "light",
+        "success": "medium",
+        "error": "heavy"
+      },
+      "visual": {
+        "success": "green_checkmark",
+        "error": "red_x",
+        "loading": "spinner"
+      },
+      "audio": {
+        "enabled": false,
+        "optional": true
+      }
+    },
+    "accessibility": {
+      "touch_targets": {
+        "minimum_size": 48,
+        "recommended": 56
+      },
+      "contrast_ratios": {
+        "text": "4.5:1 minimum",
+        "large_text": "3:1 minimum",
+        "ui_components": "3:1 minimum"
+      },
+      "screen_reader": {
+        "support": true,
+        "labels": "descriptive",
+        "hints": "actionable"
+      },
+      "font_scaling": {
+        "support": true,
+        "max_scale": 2.0
+      }
+    }
+  },
+
+  "responsive_design": {
+    "breakpoints": {
+      "small": 360,
+      "medium": 600,
+      "large": 840,
+      "xlarge": 1200
+    },
+    "adaptations": {
+      "small": {
+        "columns": 1,
+        "padding": 12,
+        "font_scale": 1.0
+      },
+      "medium": {
+        "columns": 2,
+        "padding": 16,
+        "font_scale": 1.0
+      },
+      "large": {
+        "columns": 3,
+        "padding": 24,
+        "font_scale": 1.1
+      }
+    },
+    "orientation": {
+      "portrait": "default",
+      "landscape": "optimized_layout"
+    }
+  },
+
+  "dark_mode": {
+    "enabled": true,
+    "system_sync": true,
+    "manual_toggle": true,
+    "color_adaptations": {
+      "background": "#121212",
+      "surface": "#1E1E1E",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#B0B0B0",
+      "primary": "#E4606D",
+      "elevation": "increased"
+    },
+    "transitions": {
+      "duration": 300,
+      "type": "fade"
+    }
+  },
+
+  "rtl_support": {
+    "layout_direction": "RTL",
+    "text_alignment": "right",
+    "icon_mirroring": true,
+    "number_direction": "LTR",
+    "special_cases": {
+      "urls": "LTR",
+      "codes": "LTR",
+      "phone_numbers": "LTR"
+    }
+  },
+
+  "performance_optimizations": {
+    "image_loading": {
+      "lazy_loading": true,
+      "caching": true,
+      "format": "WebP",
+      "compression": "high",
+      "placeholder": "skeleton"
+    },
+    "list_optimization": {
+      "recycler_view": true,
+      "view_holder_pattern": true,
+      "pagination": true,
+      "prefetch": 3
+    },
+    "animation_optimization": {
+      "use_native_animations": true,
+      "reduce_motion": "respect_system",
+      "60fps_target": true
+    },
+    "memory_management": {
+      "image_cache_size": "50MB",
+      "max_cache_age": "7 days",
+      "clear_on_low_memory": true
+    }
+  },
+
+  "accessibility_features": {
+    "screen_reader": {
+      "content_description": "descriptive",
+      "hints": "actionable",
+      "labels": "clear"
+    },
+    "visual": {
+      "high_contrast": true,
+      "large_text": true,
+      "color_blind_support": true
+    },
+    "motor": {
+      "large_touch_targets": true,
+      "gesture_alternatives": true,
+      "voice_control": false
+    },
+    "cognitive": {
+      "clear_labels": true,
+      "error_messages": "helpful",
+      "confirmation_dialogs": true
+    }
+  },
+
+  "implementation_guidelines": {
+    "code_organization": {
+      "ui_components": "Separate composable functions",
+      "theming": "Centralized theme file",
+      "colors": "Color system in theme",
+      "typography": "Typography system in theme",
+      "spacing": "Spacing constants"
+    },
+    "best_practices": [
+      "Use Material Design 3 components",
+      "Follow RTL guidelines strictly",
+      "Test on multiple screen sizes",
+      "Optimize for performance",
+      "Ensure accessibility",
+      "Support dark mode",
+      "Use proper animations",
+      "Handle loading states",
+      "Show error states",
+      "Provide user feedback"
+    ],
+    "testing_requirements": [
+      "Visual regression tests",
+      "Accessibility tests",
+      "Performance tests",
+      "RTL layout tests",
+      "Dark mode tests",
+      "Responsive design tests"
+    ]
+  },
+
+  "deliverables": {
+    "design_files": [
+      "Complete UI mockups",
+      "Component library",
+      "Style guide",
+      "Animation specifications",
+      "Icon set",
+      "Color palette"
+    ],
+    "code_components": [
+      "All UI screens",
+      "Reusable components",
+      "Theme configuration",
+      "Animation utilities",
+      "Navigation setup"
+    ],
+    "documentation": [
+      "Component usage guide",
+      "Style guide",
+      "Animation guide",
+      "Accessibility guide"
+    ]
+  },
+
+  "advanced_ui_patterns": {
+    "empty_states": {
+      "principles": [
+        "Helpful and informative",
+        "Visual and engaging",
+        "Actionable",
+        "Contextual"
+      ],
+      "designs": {
+        "empty_cart": {
+          "icon": "shopping_cart_outline",
+          "icon_size": 80,
+          "icon_color": "text.secondary",
+          "title": "سبد خرید شما خالی است",
+          "title_typography": "headline_small",
+          "description": "محصولات مورد نظر خود را به سبد خرید اضافه کنید",
+          "description_typography": "body_medium",
+          "action_button": {
+            "text": "مشاهده محصولات",
+            "type": "primary_button"
+          },
+          "illustration": "optional_custom_illustration"
+        },
+        "no_search_results": {
+          "icon": "search_off",
+          "title": "نتیجه‌ای یافت نشد",
+          "description": "لطفاً کلمات کلیدی دیگری را امتحان کنید",
+          "suggestions": [
+            "جستجوهای محبوب",
+            "دسته‌بندی‌ها",
+            "برندها"
+          ]
+        },
+        "no_orders": {
+          "icon": "receipt_long",
+          "title": "هنوز سفارشی ثبت نکرده‌اید",
+          "description": "اولین سفارش خود را ثبت کنید",
+          "action_button": {
+            "text": "مشاهده محصولات",
+            "type": "primary_button"
+          }
+        },
+        "no_favorites": {
+          "icon": "favorite_border",
+          "title": "لیست علاقه‌مندی‌های شما خالی است",
+          "description": "محصولات مورد علاقه خود را ذخیره کنید",
+          "action_button": {
+            "text": "جستجوی محصولات",
+            "type": "secondary_button"
+          }
+        },
+        "offline_state": {
+          "icon": "wifi_off",
+          "title": "اتصال به اینترنت برقرار نیست",
+          "description": "لطفاً اتصال اینترنت خود را بررسی کنید",
+          "action_button": {
+            "text": "تلاش مجدد",
+            "type": "primary_button"
+          }
+        }
+      }
+    },
+    "error_states": {
+      "principles": [
+        "Clear error message",
+        "Helpful guidance",
+        "Recovery options",
+        "Non-intrusive"
+      ],
+      "designs": {
+        "network_error": {
+          "icon": "cloud_off",
+          "icon_color": "semantic.error",
+          "title": "خطا در اتصال",
+          "title_typography": "headline_small",
+          "message": "لطفاً اتصال اینترنت خود را بررسی کنید",
+          "actions": [
+            {
+              "text": "تلاش مجدد",
+              "type": "primary_button"
+            },
+            {
+              "text": "رفتن به صفحه اصلی",
+              "type": "text_button"
+            }
+          ]
+        },
+        "server_error": {
+          "icon": "error_outline",
+          "title": "خطای سرور",
+          "message": "متأسفانه مشکلی در سرور رخ داده است",
+          "actions": [
+            {
+              "text": "تلاش مجدد",
+              "type": "primary_button"
+            }
+          ]
+        },
+        "validation_error": {
+          "type": "inline",
+          "position": "below_input",
+          "icon": "error",
+          "color": "semantic.error",
+          "typography": "body_small",
+          "animation": "shake"
+        }
+      }
+    },
+    "onboarding": {
+      "welcome_screens": {
+        "count": 3,
+        "layout": "full_screen",
+        "elements": {
+          "illustration": {
+            "height": "50%",
+            "type": "lottie_or_image"
+          },
+          "title": {
+            "typography": "headline_large",
+            "color": "text.primary",
+            "margin_top": 32
+          },
+          "description": {
+            "typography": "body_large",
+            "color": "text.secondary",
+            "margin_top": 16,
+            "padding": "0 32dp"
+          }
+        },
+        "indicators": {
+          "type": "dots",
+          "position": "bottom_center",
+          "spacing": 8,
+          "margin_bottom": 48
+        },
+        "navigation": {
+          "skip_button": {
+            "position": "top_right",
+            "text": "رد کردن",
+            "type": "text_button"
+          },
+          "next_button": {
+            "position": "bottom",
+            "text": "بعدی",
+            "type": "primary_button",
+            "full_width": true,
+            "margin": "16dp horizontal, 32dp bottom"
+          }
+        },
+        "screens": [
+          {
+            "title": "به آسیا سلمان خوش آمدید",
+            "description": "بهترین قطعات خودرو با کیفیت جهانی",
+            "illustration": "welcome_illustration"
+          },
+          {
+            "title": "جستجوی آسان",
+            "description": "محصولات مورد نظر خود را به راحتی پیدا کنید",
+            "illustration": "search_illustration"
+          },
+          {
+            "title": "خرید سریع و آسان",
+            "description": "سفارش خود را در چند کلیک ثبت کنید",
+            "illustration": "shopping_illustration"
+          }
+        ]
+      }
+    },
+    "haptic_feedback": {
+      "enabled": true,
+      "patterns": {
+        "button_press": {
+          "type": "light_impact",
+          "duration": 10
+        },
+        "success": {
+          "type": "medium_impact",
+          "pattern": "success_pattern"
+        },
+        "error": {
+          "type": "heavy_impact",
+          "pattern": "error_pattern"
+        },
+        "selection": {
+          "type": "selection",
+          "duration": 5
+        }
+      },
+      "settings": {
+        "user_controllable": true,
+        "default_enabled": true
+      }
+    },
+    "voice_ui": {
+      "voice_search": {
+        "button": {
+          "type": "icon_button",
+          "icon": "mic",
+          "size": 48,
+          "position": "search_bar_trailing",
+          "animation": {
+            "pulsing": true,
+            "color": "primary.main"
+          }
+        },
+        "recording_state": {
+          "overlay": "full_screen",
+          "background": "semi_transparent_dark",
+          "visual_feedback": {
+            "waveform": true,
+            "pulsing_circle": true,
+            "color": "primary.main"
+          },
+          "text": "در حال گوش دادن...",
+          "cancel_button": {
+            "position": "bottom_center",
+            "text": "لغو",
+            "type": "text_button"
+          }
+        }
+      }
+    },
+    "smart_features": {
+      "smart_search": {
+        "autocomplete": {
+          "enabled": true,
+          "min_characters": 2,
+          "delay": 300,
+          "max_suggestions": 8
+        },
+        "fuzzy_matching": true,
+        "typo_tolerance": true
+      },
+      "smart_recommendations": {
+        "banner": {
+          "type": "personalized",
+          "position": "home_top",
+          "refresh": "daily"
+        },
+        "product_suggestions": {
+          "type": "ml_based",
+          "position": "product_details_bottom"
+        }
+      },
+      "contextual_actions": {
+        "time_based": {
+          "morning": "show_daily_deals",
+          "evening": "show_flash_sales"
+        },
+        "location_based": {
+          "near_warehouse": "show_fast_delivery"
+        }
+      }
+    },
+    "swipe_actions": {
+      "cart_item": {
+        "swipe_left": {
+          "action": "delete",
+          "icon": "delete",
+          "color": "semantic.error",
+          "background": "semantic.error_light"
+        }
+      },
+      "order_item": {
+        "swipe_left": {
+          "action": "cancel",
+          "icon": "cancel",
+          "color": "semantic.warning"
+        },
+        "swipe_right": {
+          "action": "reorder",
+          "icon": "refresh",
+          "color": "primary.main"
+        }
+      }
+    },
+    "product_comparison": {
+      "comparison_screen": {
+        "layout": "horizontal_scroll_table",
+        "sticky_header": true,
+        "columns": {
+          "max": 4,
+          "min_width": 200
+        },
+        "rows": [
+          {
+            "type": "image",
+            "height": 120
+          },
+          {
+            "type": "name",
+            "typography": "title_medium"
+          },
+          {
+            "type": "price",
+            "show_both": true
+          },
+          {
+            "type": "specifications",
+            "expandable": true
+          }
+        ]
+      }
+    },
+    "order_tracking": {
+      "tracking_screen": {
+        "layout": "vertical_timeline",
+        "steps": [
+          {
+            "status": "completed",
+            "icon": "check_circle",
+            "title": "سفارش ثبت شد",
+            "date": "datetime"
+          },
+          {
+            "status": "in_progress",
+            "icon": "local_shipping",
+            "title": "در حال ارسال",
+            "live_tracking": true
+          }
+        ],
+        "map_view": {
+          "type": "expandable",
+          "shows": "delivery_route",
+          "markers": [
+            "warehouse",
+            "current_location",
+            "destination"
+          ]
+        }
+      }
+    },
+    "live_chat": {
+      "chat_screen": {
+        "layout": "messaging_interface",
+        "header": {
+          "type": "top_app_bar",
+          "title": "پشتیبانی",
+          "subtitle": "آنلاین",
+          "status_indicator": {
+            "type": "dot",
+            "color": "semantic.success"
+          }
+        },
+        "messages": {
+          "layout": "bubble_list",
+          "user_message": {
+            "background": "primary.main",
+            "text_color": "white",
+            "alignment": "end",
+            "border_radius": 16
+          },
+          "support_message": {
+            "background": "background.surface",
+            "text_color": "text.primary",
+            "alignment": "start",
+            "border_radius": 16
+          }
+        },
+        "input_area": {
+          "type": "bottom_bar",
+          "elements": [
+            {
+              "type": "text_input",
+              "hint": "پیام خود را بنویسید...",
+              "multiline": true
+            },
+            {
+              "type": "send_button",
+              "icon": "send"
+            }
+          ]
+        }
+      }
+    }
+  },
+
+  "additional_recommendations": {
+    "design_trends_2025": [
+      "Glassmorphism effects for modals",
+      "Neumorphism accents for cards",
+      "Bold typography hierarchy",
+      "Gradient overlays",
+      "3D product previews",
+      "Micro-interactions everywhere",
+      "Smooth page transitions",
+      "Dark mode first approach",
+      "Minimalist design",
+      "Bold color combinations"
+    ],
+    "ux_improvements": [
+      "Progressive disclosure of information",
+      "Contextual help tooltips",
+      "Smart defaults based on user behavior",
+      "Undo/Redo functionality",
+      "Keyboard shortcuts for power users",
+      "Gesture shortcuts",
+      "Quick action menus",
+      "Smart suggestions based on context",
+      "Predictive actions",
+      "Contextual right-click menus"
+    ],
+    "technical_improvements": [
+      "Offline-first design patterns",
+      "Progressive Web App features",
+      "App shortcuts for quick actions",
+      "Home screen widgets",
+      "Wear OS companion app",
+      "Android Auto integration",
+      "Smart home device integration",
+      "Voice assistant integration (Google Assistant)",
+      "Biometric authentication UI",
+      "Secure encrypted storage"
+    ],
+    "business_features_ui": [
+      "Loyalty program dashboard",
+      "Referral program interface",
+      "Gift cards management",
+      "Subscription management UI",
+      "Bulk order interface",
+      "Invoice management UI",
+      "Credit system display",
+      "Rewards redemption UI"
+    ],
+    "analytics_ui": {
+      "user_dashboard": {
+        "purchase_history": "interactive_charts",
+        "spending_analysis": "visual_breakdown",
+        "favorite_categories": "tag_cloud",
+        "savings_tracker": "progress_visualization"
+      },
+      "insights": {
+        "personalized_recommendations": "ml_based_suggestions",
+        "price_tracking": "history_charts",
+        "trend_analysis": "visual_trends"
+      }
+    },
+    "social_features_ui": {
+      "sharing": {
+        "share_sheet": "bottom_sheet_with_options",
+        "share_preview": "customizable_card",
+        "social_media_integration": true
+      },
+      "reviews": {
+        "review_card": "detailed_with_images",
+        "review_form": "bottom_sheet",
+        "helpful_voting": true
+      },
+      "wishlist_sharing": {
+        "share_list": true,
+        "collaborative_lists": false
+      }
+    },
+    "gamification_ui": {
+      "points_display": {
+        "type": "badge_in_profile",
+        "animation": "confetti_on_earn"
+      },
+      "achievements": {
+        "badges": "circular_with_rarity_colors",
+        "unlock_animation": "scale_fade"
+      },
+      "progress_bars": {
+        "type": "linear_with_percentage",
+        "show_milestones": true
+      },
+      "leaderboard": {
+        "design": "card_list",
+        "top_three": "special_design_with_crown"
+      }
+    },
+    "advanced_animations": {
+      "page_transitions": {
+        "shared_element": {
+          "enabled": true,
+          "elements": ["product_image", "product_card"]
+        },
+        "custom_transitions": "rtl_aware_slide"
+      },
+      "micro_animations": {
+        "add_to_cart": {
+          "type": "icon_fly_animation",
+          "trail": "particles",
+          "duration": 600
+        },
+        "favorite_toggle": {
+          "type": "scale_bounce",
+          "scale": [1.0, 1.3, 1.0]
+        }
+      },
+      "loading_animations": {
+        "skeleton_wave": "shimmer_effect",
+        "progress_ring": "animated_circular"
+      }
+    },
+    "accessibility_enhancements": {
+      "screen_reader": {
+        "descriptive_labels": true,
+        "announcements": "on_state_changes"
+      },
+      "keyboard_navigation": {
+        "tab_order": "logical",
+        "shortcuts": ["Ctrl+F for search", "Ctrl+C for cart"]
+      },
+      "visual_enhancements": {
+        "high_contrast_mode": true,
+        "color_blind_support": "patterns_in_addition_to_colors"
+      }
+    },
+    "performance_ui": {
+      "lazy_loading": "images_lists_sections",
+      "progressive_loading": "skeleton_first_then_content",
+      "optimistic_updates": "cart_favorite_quantity",
+      "caching_strategy": "smart_cache_with_ttl"
+    }
+  },
+
+  "success_criteria": {
+    "visual": [
+      "Modern and elegant design",
+      "Consistent across all screens",
+      "Beautiful animations",
+      "Professional appearance"
+    ],
+    "functional": [
+      "Smooth interactions",
+      "Fast performance",
+      "Intuitive navigation",
+      "Clear feedback"
+    ],
+    "accessibility": [
+      "WCAG 2.1 AA compliance",
+      "Screen reader support",
+      "Keyboard navigation",
+      "High contrast support"
+    ],
+    "user_experience": [
+      "Easy to use",
+      "Pleasant to interact with",
+      "Clear information hierarchy",
+      "Helpful error messages"
+    ]
+  },
+
+  "advanced_features_suggestions": {
+    "visual_enhancements": {
+      "glassmorphism": {
+        "description": "استفاده از افکت شیشه‌ای برای کارت‌ها و دیالوگ‌ها",
+        "implementation": {
+          "background": "semi_transparent",
+          "blur": "backdrop_blur",
+          "border": "thin_white_border",
+          "shadow": "soft_shadow"
+        },
+        "usage": [
+          "Modal dialogs",
+          "Floating cards",
+          "Bottom sheets",
+          "Overlay menus"
+        ]
+      },
+      "neumorphism": {
+        "description": "استایل نئومورفیسم برای دکمه‌ها و کارت‌ها",
+        "implementation": {
+          "shadow_style": "dual_shadow",
+          "background": "subtle_gradient",
+          "border": "soft_inset"
+        },
+        "usage": [
+          "Settings cards",
+          "Toggle switches",
+          "Icon buttons",
+          "Input fields"
+        ]
+      },
+      "gradient_overlays": {
+        "description": "استفاده از gradient overlay روی تصاویر",
+        "implementation": {
+          "type": "linear_gradient",
+          "direction": "bottom_to_top",
+          "colors": ["transparent", "black_60%"],
+          "usage": "Product images, banners"
+        }
+      },
+      "parallax_scrolling": {
+        "description": "افکت parallax در scroll",
+        "implementation": {
+          "speed_ratio": 0.5,
+          "layers": ["background", "content"],
+          "smooth_transition": true
+        },
+        "usage": [
+          "Home screen banners",
+          "Product detail images",
+          "Profile header"
+        ]
+      },
+      "morphing_animations": {
+        "description": "انیمیشن‌های morphing بین صفحات",
+        "implementation": {
+          "shared_element_transition": true,
+          "circular_reveal": true,
+          "shape_morphing": true
+        },
+        "usage": [
+          "Product card to detail",
+          "FAB to full screen",
+          "Search bar expansion"
+        ]
+      },
+      "liquid_animations": {
+        "description": "انیمیشن‌های مایع و روان",
+        "implementation": {
+          "type": "bezier_curves",
+          "smooth_transitions": true,
+          "usage": "Loading states, progress indicators"
+        }
+      },
+      "particle_effects": {
+        "description": "افکت‌های ذره‌ای برای جشن‌ها",
+        "implementation": {
+          "type": "confetti",
+          "triggers": ["order_success", "achievement_unlock"],
+          "performance": "optimized"
+        }
+      },
+      "3d_transforms": {
+        "description": "تبدیلات سه‌بعدی برای کارت‌ها",
+        "implementation": {
+          "rotation_x": "subtle",
+          "rotation_y": "on_swipe",
+          "perspective": "moderate"
+        },
+        "usage": ["Product cards", "Category cards"]
+      }
+    },
+
+    "interactive_elements": {
+      "pull_to_refresh_advanced": {
+        "description": "Pull to refresh با انیمیشن سفارشی",
+        "features": [
+          "Custom loading animation",
+          "Haptic feedback",
+          "Progress indicator",
+          "Success animation"
+        ]
+      },
+      "swipe_actions": {
+        "description": "عملیات swipe روی آیتم‌ها",
+        "actions": [
+          {
+            "direction": "right",
+            "action": "add_to_favorites",
+            "color": "accent.main",
+            "icon": "favorite"
+          },
+          {
+            "direction": "left",
+            "action": "delete",
+            "color": "semantic.error",
+            "icon": "delete"
+          }
+        ],
+        "usage": ["Cart items", "Order items", "Product list"]
+      },
+      "drag_and_drop": {
+        "description": "کشیدن و رها کردن برای مرتب‌سازی",
+        "usage": [
+          "Reorder cart items",
+          "Reorder favorites",
+          "Customize home screen"
+        ],
+        "feedback": {
+          "visual": "elevation_increase",
+          "haptic": "medium"
+        }
+      },
+      "long_press_menu": {
+        "description": "منوی context با long press",
+        "items": [
+          "Share",
+          "Add to favorites",
+          "Compare",
+          "View details"
+        ],
+        "animation": "scale_and_fade"
+      },
+      "haptic_feedback_system": {
+        "description": "سیستم بازخورد لمسی پیشرفته",
+        "levels": {
+          "light": "Selection, toggle",
+          "medium": "Button press, action",
+          "heavy": "Error, important action",
+          "success": "Completion, achievement"
+        },
+        "custom_patterns": {
+          "notification": "short_short_long",
+          "success": "long_short",
+          "error": "long_long"
+        }
+      },
+      "voice_interactions": {
+        "description": "تعاملات صوتی",
+        "features": [
+          "Voice search",
+          "Voice commands",
+          "Voice navigation",
+          "Text to speech for important info"
+        ]
+      }
+    },
+
+    "smart_features": {
+      "adaptive_ui": {
+        "description": "UI سازگار با رفتار کاربر",
+        "features": [
+          "Learn user preferences",
+          "Adapt layout based on usage",
+          "Personalized recommendations",
+          "Smart shortcuts"
+        ]
+      },
+      "predictive_search": {
+        "description": "جستجوی پیش‌بینی‌شده",
+        "features": [
+          "Auto-complete",
+          "Search suggestions",
+          "Recent searches",
+          "Popular searches",
+          "Typo correction"
+        ]
+      },
+      "smart_notifications": {
+        "description": "اعلان‌های هوشمند",
+        "features": [
+          "Priority-based grouping",
+          "Smart timing",
+          "Actionable notifications",
+          "Rich media",
+          "Notification categories"
+        ]
+      },
+      "contextual_actions": {
+        "description": "عملیات زمینه‌ای",
+        "features": [
+          "Quick actions based on context",
+          "Floating action menu",
+          "Context-aware buttons",
+          "Smart suggestions"
+        ]
+      },
+      "intelligent_loading": {
+        "description": "لودینگ هوشمند",
+        "features": [
+          "Preload next content",
+          "Progressive loading",
+          "Skeleton screens",
+          "Optimistic updates"
+        ]
+      }
+    },
+
+    "micro_interactions_advanced": {
+      "button_interactions": {
+        "ripple_effect": {
+          "type": "material_ripple",
+          "color": "primary.main 20%",
+          "duration": 400
+        },
+        "scale_animation": {
+          "scale": 0.95,
+          "duration": 100,
+          "easing": "sharp"
+        },
+        "glow_effect": {
+          "on_focus": true,
+          "color": "primary.main",
+          "blur": 8
+        }
+      },
+      "input_interactions": {
+        "focus_animation": {
+          "border_expansion": true,
+          "label_float": true,
+          "icon_color_change": true
+        },
+        "typing_feedback": {
+          "character_count": true,
+          "validation_realtime": true,
+          "suggestions_dropdown": true
+        }
+      },
+      "list_interactions": {
+        "item_enter": {
+          "type": "staggered_fade",
+          "delay_per_item": 50
+        },
+        "item_exit": {
+          "type": "slide_out",
+          "duration": 300
+        },
+        "item_reorder": {
+          "type": "drag_animation",
+          "feedback": "elevation"
+        }
+      },
+      "card_interactions": {
+        "hover_state": {
+          "elevation_increase": 4,
+          "scale": 1.02
+        },
+        "press_state": {
+          "elevation_decrease": 1,
+          "scale": 0.98
+        },
+        "swipe_reveal": {
+          "background_actions": true,
+          "smooth_transition": true
+        }
+      }
+    },
+
+    "data_visualization": {
+      "charts_and_graphs": {
+        "order_history_chart": {
+          "type": "line_chart",
+          "style": "smooth_curves",
+          "colors": "primary.main",
+          "interactive": true
+        },
+        "spending_breakdown": {
+          "type": "pie_chart",
+          "style": "modern",
+          "animations": true
+        },
+        "price_trend": {
+          "type": "area_chart",
+          "gradient_fill": true
+        }
+      },
+      "progress_visualization": {
+        "order_tracking": {
+          "type": "timeline",
+          "style": "stepped",
+          "icons": true,
+          "animations": true
+        },
+        "profile_completion": {
+          "type": "circular_progress",
+          "animated": true,
+          "color": "primary.main"
+        }
+      },
+      "statistics_cards": {
+        "type": "metric_cards",
+        "layout": "grid",
+        "animations": "count_up",
+        "trend_indicators": true
+      }
+    },
+
+    "personalization": {
+      "themes": {
+        "custom_themes": {
+          "description": "تم‌های سفارشی",
+          "options": [
+            "Light theme",
+            "Dark theme",
+            "Auto (system)",
+            "Custom colors"
+          ]
+        },
+        "accent_colors": {
+          "description": "رنگ‌های تاکیدی قابل تنظیم",
+          "options": [
+            "Red (default)",
+            "Blue",
+            "Green",
+            "Purple",
+            "Orange"
+          ]
+        }
+      },
+      "layout_customization": {
+        "home_screen": {
+          "reorder_sections": true,
+          "hide_sections": true,
+          "custom_sections": true
+        },
+        "navigation": {
+          "customize_tabs": true,
+          "reorder_tabs": true
+        }
+      },
+      "font_customization": {
+        "size": "adjustable",
+        "family": "selectable",
+        "weight": "adjustable"
+      }
+    },
+
+    "gamification_elements": {
+      "achievements": {
+        "description": "دستاوردها و نشان‌ها",
+        "types": [
+          "First order",
+          "Loyal customer",
+          "Review contributor",
+          "Social sharer"
+        ],
+        "visual": {
+          "badge_design": "modern",
+          "animation": "celebration",
+          "notification": "special"
+        }
+      },
+      "progress_tracking": {
+        "description": "ردیابی پیشرفت",
+        "features": [
+          "Order milestones",
+          "Spending milestones",
+          "Profile completion",
+          "Loyalty points"
+        ],
+        "visualization": "progress_bars"
+      },
+      "rewards_display": {
+        "description": "نمایش جوایز",
+        "style": "attractive_cards",
+        "animations": "entrance"
+      }
+    },
+
+    "social_features": {
+      "sharing": {
+        "description": "اشتراک‌گذاری پیشرفته",
+        "options": [
+          "Share product",
+          "Share cart",
+          "Share order",
+          "Share achievement"
+        ],
+        "formats": [
+          "Image with QR",
+          "Deep link",
+          "Social media card"
+        ]
+      },
+      "reviews_visual": {
+        "description": "نمایش بصری نظرات",
+        "features": [
+          "Star ratings visualization",
+          "Review photos gallery",
+          "Helpful votes",
+          "Reviewer badges"
+        ]
+      },
+      "social_proof": {
+        "description": "اثبات اجتماعی",
+        "elements": [
+          "Recently viewed by others",
+          "Popular in your area",
+          "Trending products",
+          "People also bought"
+        ]
+      }
+    },
+
+    "advanced_navigation": {
+      "gesture_navigation": {
+        "description": "ناوبری با ژست",
+        "gestures": [
+          "Swipe from edge: Back",
+          "Swipe up: Home",
+          "Swipe left/right: Navigate tabs",
+          "Long swipe: Quick actions"
+        ]
+      },
+      "breadcrumbs": {
+        "description": "مسیر ناوبری",
+        "style": "minimal",
+        "clickable": true
+      },
+      "quick_navigation": {
+        "description": "ناوبری سریع",
+        "features": [
+          "Floating navigation button",
+          "Quick jump menu",
+          "Recent screens",
+          "Bookmarks"
+        ]
+      },
+      "deep_linking_ui": {
+        "description": "UI برای deep links",
+        "features": [
+          "Smooth transitions",
+          "Loading states",
+          "Error handling",
+          "Fallback screens"
+        ]
+      }
+    },
+
+    "empty_states": {
+      "design_principles": [
+        "Friendly and helpful",
+        "Clear call to action",
+        "Illustrative",
+        "Not intimidating"
+      ],
+      "types": {
+        "empty_cart": {
+          "illustration": "shopping_cart_empty",
+          "title": "سبد خرید شما خالی است",
+          "subtitle": "محصولات مورد نظر خود را اضافه کنید",
+          "action": "مشاهده محصولات"
+        },
+        "no_results": {
+          "illustration": "search_empty",
+          "title": "نتیجه‌ای یافت نشد",
+          "subtitle": "لطفاً کلمات کلیدی دیگری امتحان کنید",
+          "suggestions": true
+        },
+        "no_orders": {
+          "illustration": "order_empty",
+          "title": "هنوز سفارشی ثبت نکرده‌اید",
+          "action": "شروع خرید"
+        },
+        "no_favorites": {
+          "illustration": "favorite_empty",
+          "title": "لیست علاقه‌مندی‌ها خالی است",
+          "action": "افزودن محصول"
+        }
+      }
+    },
+
+    "error_states": {
+      "design_principles": [
+        "Clear error message",
+        "Helpful suggestions",
+        "Retry option",
+        "Not technical"
+      ],
+      "types": {
+        "network_error": {
+          "illustration": "wifi_off",
+          "title": "اتصال به اینترنت برقرار نیست",
+          "message": "لطفاً اتصال اینترنت خود را بررسی کنید",
+          "actions": ["تلاش مجدد", "تنظیمات"]
+        },
+        "server_error": {
+          "illustration": "server_error",
+          "title": "خطا در ارتباط با سرور",
+          "message": "لطفاً چند لحظه صبر کنید و دوباره تلاش کنید",
+          "actions": ["تلاش مجدد"]
+        },
+        "not_found": {
+          "illustration": "404",
+          "title": "صفحه مورد نظر یافت نشد",
+          "actions": ["بازگشت به خانه"]
+        }
+      }
+    },
+
+    "loading_states": {
+      "skeleton_screens": {
+        "description": "صفحه‌های اسکلتی",
+        "types": [
+          "Product list skeleton",
+          "Product detail skeleton",
+          "Profile skeleton",
+          "Cart skeleton"
+        ],
+        "animation": "shimmer"
+      },
+      "progressive_loading": {
+        "description": "لودینگ تدریجی",
+        "strategy": [
+          "Show cached content first",
+          "Load images progressively",
+          "Update content as loaded"
+        ]
+      },
+      "optimistic_updates": {
+        "description": "به‌روزرسانی خوش‌بینانه",
+        "usage": [
+          "Add to cart",
+          "Like product",
+          "Update quantity"
+        ]
+      }
+    },
+
+    "onboarding_experience": {
+      "welcome_screens": {
+        "count": 3,
+        "design": {
+          "illustration": "large_centered",
+          "title": "headline_medium",
+          "description": "body_medium",
+          "skip_button": true
+        },
+        "content": [
+          {
+            "title": "به آسیا سلمان خوش آمدید",
+            "description": "بهترین قطعات خودرو با قیمت‌های رقابتی",
+            "illustration": "welcome_1"
+          },
+          {
+            "title": "جستجوی آسان",
+            "description": "با موتور جستجوی پیشرفته محصول مورد نظر خود را پیدا کنید",
+            "illustration": "welcome_2"
+          },
+          {
+            "title": "خرید سریع",
+            "description": "سفارش خود را ثبت کنید و در سریع‌ترین زمان دریافت کنید",
+            "illustration": "welcome_3"
+          }
+        ]
+      },
+      "feature_highlights": {
+        "description": "برجسته‌سازی ویژگی‌ها",
+        "method": "spotlight",
+        "animations": "smooth"
+      }
+    },
+
+    "search_enhancements": {
+      "visual_search": {
+        "description": "جستجوی بصری",
+        "features": [
+          "Camera search",
+          "Image upload",
+          "Barcode scan",
+          "QR code scan"
+        ]
+      },
+      "voice_search_ui": {
+        "description": "UI جستجوی صوتی",
+        "design": {
+          "waveform_animation": true,
+          "voice_visualization": true,
+          "transcription_display": true
+        }
+      },
+      "search_filters_ui": {
+        "description": "UI فیلترهای جستجو",
+        "design": {
+          "type": "bottom_sheet",
+          "sections": "collapsible",
+          "chips": "selected_highlighted",
+          "apply_button": "sticky"
+        }
+      },
+      "search_suggestions": {
+        "description": "پیشنهادات جستجو",
+        "types": [
+          "Recent searches",
+          "Popular searches",
+          "Trending searches",
+          "Auto-complete"
+        ],
+        "layout": "list_with_icons"
+      }
+    },
+
+    "product_presentation": {
+      "image_gallery_advanced": {
+        "description": "گالری تصویر پیشرفته",
+        "features": [
+          "360 view",
+          "Zoom and pan",
+          "Full screen mode",
+          "Image comparison",
+          "Video support"
+        ]
+      },
+      "product_comparison_ui": {
+        "description": "UI مقایسه محصولات",
+        "layout": "side_by_side_table",
+        "features": [
+          "Highlight differences",
+          "Sync scroll",
+          "Sticky headers"
+        ]
+      },
+      "ar_preview": {
+        "description": "پیش‌نمایش AR",
+        "ui": {
+          "overlay_controls": true,
+          "measurement_tools": true,
+          "placement_guides": true
+        }
+      },
+      "product_videos": {
+        "description": "ویدیو محصولات",
+        "player": {
+          "style": "modern",
+          "controls": "custom",
+          "autoplay": false,
+          "thumbnail": true
+        }
+      }
+    },
+
+    "checkout_enhancements": {
+      "progress_indicator": {
+        "description": "نشانگر پیشرفت checkout",
+        "steps": [
+          "سبد خرید",
+          "اطلاعات تحویل",
+          "پرداخت",
+          "تایید"
+        ],
+        "style": "stepper",
+        "animations": true
+      },
+      "address_selection": {
+        "description": "انتخاب آدرس",
+        "ui": {
+          "map_integration": true,
+          "address_autocomplete": true,
+          "saved_addresses": "cards"
+        }
+      },
+      "payment_methods_ui": {
+        "description": "UI روش‌های پرداخت",
+        "design": {
+          "type": "card_selection",
+          "icons": true,
+          "security_badges": true
+        }
+      },
+      "order_summary_visual": {
+        "description": "خلاصه سفارش بصری",
+        "features": [
+          "Expandable sections",
+          "Item thumbnails",
+          "Price breakdown",
+          "Discount highlights"
+        ]
+      }
+    },
+
+    "notification_center": {
+      "design": {
+        "type": "grouped_list",
+        "categories": [
+          "Orders",
+          "Promotions",
+          "System",
+          "Social"
+        ],
+        "grouping": "by_date"
+      },
+      "interactions": {
+        "swipe_to_dismiss": true,
+        "mark_as_read": true,
+        "action_buttons": true
+      },
+      "rich_notifications": {
+        "description": "اعلان‌های غنی",
+        "features": [
+          "Images",
+          "Action buttons",
+          "Expandable content",
+          "Priority indicators"
+        ]
+      }
+    },
+
+    "accessibility_advanced": {
+      "voice_commands": {
+        "description": "دستورات صوتی",
+        "commands": [
+          "جستجو [نام محصول]",
+          "افزودن به سبد",
+          "مشاهده سفارشات",
+          "باز کردن پروفایل"
+        ]
+      },
+      "high_contrast_mode": {
+        "description": "حالت کنتراست بالا",
+        "color_adjustments": {
+          "background": "pure_white_or_black",
+          "text": "maximum_contrast",
+          "borders": "thick_visible"
+        }
+      },
+      "reduced_motion": {
+        "description": "کاهش حرکت",
+        "respects_system_setting": true,
+        "alternative": "fade_only"
+      },
+      "screen_reader_optimization": {
+        "description": "بهینه‌سازی برای screen reader",
+        "features": [
+          "Descriptive labels",
+          "Logical order",
+          "Skip links",
+          "Landmarks"
+        ]
+      }
+    },
+
+    "performance_ui": {
+      "lazy_loading_visual": {
+        "description": "لودینگ تنبل بصری",
+        "implementation": {
+          "placeholder": "skeleton",
+          "fade_in": true,
+          "progressive": true
+        }
+      },
+      "image_optimization_ui": {
+        "description": "UI بهینه‌سازی تصویر",
+        "features": [
+          "Progressive JPEG",
+          "WebP support",
+          "Lazy loading",
+          "Placeholder blur"
+        ]
+      },
+      "smooth_scrolling": {
+        "description": "اسکرول روان",
+        "techniques": [
+          "RecyclerView optimization",
+          "View recycling",
+          "Prefetching",
+          "60fps target"
+        ]
+      }
+    },
+
+    "analytics_ui": {
+      "user_insights": {
+        "description": "بینش‌های کاربری",
+        "features": [
+          "Purchase history chart",
+          "Spending trends",
+          "Favorite categories",
+          "Recommendation accuracy"
+        ],
+        "privacy": "opt_in"
+      },
+      "app_usage_stats": {
+        "description": "آمار استفاده از اپ",
+        "display": "optional",
+        "privacy": "local_only"
+      }
+    },
+
+    "experimental_features": {
+      "ai_recommendations_ui": {
+        "description": "UI پیشنهادات هوش مصنوعی",
+        "features": [
+          "Personalized carousel",
+          "Explanation why",
+          "Feedback mechanism",
+          "Learning indicator"
+        ]
+      },
+      "blockchain_integration_ui": {
+        "description": "UI یکپارچه‌سازی بلاک‌چین",
+        "features": [
+          "Transaction history",
+          "Wallet display",
+          "Verification badges"
+        ],
+        "optional": true
+      },
+      "vr_showroom": {
+        "description": "نمایشگاه مجازی VR",
+        "ui": {
+          "controls": "intuitive",
+          "navigation": "gaze_based",
+          "interactions": "hand_tracking"
+        },
+        "future_feature": true
+      }
+    }
+  },
+
+  "design_trends_2025": {
+    "current_trends": [
+      "Bold typography",
+      "Gradient backgrounds",
+      "Glassmorphism",
+      "3D elements",
+      "Micro-interactions",
+      "Dark mode first",
+      "Minimalist design",
+      "Bold colors",
+      "Asymmetric layouts",
+      "Animated illustrations"
+    ],
+    "implementation": {
+      "apply_where_appropriate": true,
+      "maintain_brand_identity": true,
+      "test_with_users": true
+    }
+  },
+
+  "user_research_suggestions": {
+    "testing_methods": [
+      "Usability testing",
+      "A/B testing",
+      "User interviews",
+      "Heat maps",
+      "Eye tracking",
+      "Analytics review"
+    ],
+    "metrics_to_track": [
+      "Time to complete task",
+      "Error rate",
+      "User satisfaction",
+      "Retention rate",
+      "Conversion rate",
+      "App rating"
+    ]
+  },
+
+  "future_enhancements": {
+    "short_term": [
+      "Add haptic feedback",
+      "Implement skeleton screens",
+      "Add pull to refresh",
+      "Enhance empty states",
+      "Improve error messages"
+    ],
+    "medium_term": [
+      "Add animations library",
+      "Implement dark mode",
+      "Add voice search",
+      "Enhance accessibility",
+      "Add personalization"
+    ],
+    "long_term": [
+      "AR product preview",
+      "AI recommendations",
+      "Social features",
+      "Gamification",
+      "Advanced analytics"
+    ]
+  }
+}
+

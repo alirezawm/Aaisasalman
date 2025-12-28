@@ -1,0 +1,230 @@
+{
+  "project_name": "طراحی هدر و فوتر مدرن - Dark Theme",
+  "version": "1.2",
+  "description": "مگاپرامپت حرفه‌ای برای ایجاد هدر و فوتر با تم تاریک مشابه تصاویر مرجع",
+  "last_updated": "فوتر ثابت نیست + رنگ متن سفید",
+  "features": [
+    "Glassmorphism (پس‌زمینه شیشه‌ای)",
+    "Fixed Position (موقعیت ثابت)",
+    "Dark Theme",
+    "Responsive Design",
+    "Modern Animations"
+  ],
+  "header": {
+    "background_type": "glassmorphism",
+    "background_color": "rgba(26, 26, 26, 0.7)",
+    "backdrop_filter": "blur(20px) saturate(180%)",
+    "webkit_backdrop_filter": "blur(20px) saturate(180%)",
+    "border": "1px solid rgba(255, 255, 255, 0.1)",
+    "box_shadow": "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+    "text_color": "#FFFFFF",
+    "height": "60-70px",
+    "position": "fixed",
+    "position_details": {
+      "top": "0",
+      "left": "0",
+      "right": "0",
+      "width": "100%"
+    },
+    "z_index": 1000,
+    "elements": {
+      "brand_logo": {
+        "text": "آسیا سلمان™",
+        "font_size": "1.5rem - 1.8rem",
+        "font_weight": "bold",
+        "background_type": "glassmorphism",
+        "background": "rgba(58, 58, 58, 0.6)",
+        "backdrop_filter": "blur(10px) saturate(150%)",
+        "border": "1px solid rgba(255, 255, 255, 0.1)",
+        "box_shadow": "0 2px 8px 0 rgba(0, 0, 0, 0.2)",
+        "hover_effect": {
+          "background": "rgba(58, 58, 58, 0.8)",
+          "backdrop_filter": "blur(15px) saturate(180%)",
+          "transform": "translateY(-2px)",
+          "box_shadow": "0 4px 12px 0 rgba(0, 0, 0, 0.3)"
+        }
+      },
+      "navigation_menu": {
+        "items": ["خانه", "محصولات", "درباره ما", "خدمات", "تماس با ما"],
+        "spacing": "30-40px",
+        "hover_color": "#FF6B9D",
+        "transition": "0.3s ease"
+      },
+      "menu_toggle": {
+        "icon": "...",
+        "position": "left (RTL)",
+        "size": "24px × 24px"
+      },
+      "geometric_shape": {
+        "type": "prism/polygonal",
+        "colors": ["#FF6B9D", "#FF1744"],
+        "position": "bottom-right corner, diagonal",
+        "effects": ["glow", "translucent", "gradient"],
+        "animations": ["rotate", "scale", "fade"],
+        "z_index": 999
+      }
+    }
+  },
+  "footer": {
+    "background_type": "glassmorphism",
+    "background_color": "rgba(10, 10, 10, 0.7)",
+    "backdrop_filter": "blur(20px) saturate(180%)",
+    "webkit_backdrop_filter": "blur(20px) saturate(180%)",
+    "border": "1px solid rgba(255, 255, 255, 0.1)",
+    "box_shadow": "0 -8px 32px 0 rgba(0, 0, 0, 0.37)",
+    "text_color": "#FFFFFF",
+    "text_color_note": "تمام متن‌ها و لینک‌ها سفید (#FFFFFF)",
+    "padding": "60px vertical, 40px horizontal",
+    "position": "relative",
+    "position_note": "فوتر ثابت نیست - در انتهای محتوا قرار می‌گیرد",
+    "layout": "3-column grid (desktop)",
+    "sections": {
+      "site_index": {
+        "title": "فهرست سایت",
+        "links": ["خانه", "محصولات", "درباره ما", "خدمات", "حریم خصوصی"],
+        "link_hover_color": "#FF6B9D"
+      },
+      "social": {
+        "title": "شبکه‌های اجتماعی",
+        "links": ["اینستاگرام", "فیسبوک", "لینکدین", "تلگرام", "واتساپ"]
+      },
+      "contact": {
+        "title": "تماس با ما",
+        "box_background_type": "glassmorphism",
+        "box_background": "rgba(45, 45, 45, 0.6)",
+        "box_backdrop_filter": "blur(10px) saturate(150%)",
+        "box_border": "1px solid rgba(255, 255, 255, 0.1)",
+        "box_border_radius": "8px",
+        "box_shadow": "0 4px 16px 0 rgba(0, 0, 0, 0.2)",
+        "green_dot_color": "#00FF00",
+        "content": [
+          "درباره پروژه‌تان به ما بگویید",
+          "بیایید همکاری کنیم",
+          "♦ +98 51 3333 8881",
+          "♦ نوشتن به ما",
+          "♦ عضویت در خبرنامه"
+        ],
+        "time_display": {
+          "format": "HH:MM:SS (GMT+3:30)",
+          "position": "top-right corner",
+          "color": "#00FF00",
+          "font": "monospace"
+        }
+      },
+      "central_icon": {
+        "type": "abstract star/paper plane",
+        "size": "40px × 40px",
+        "color": "#FFFFFF",
+        "opacity": "0.3-0.5",
+        "position": "center, slightly above midline"
+      },
+      "bottom_branding": {
+        "text": "آسیا سلمان",
+        "font_size": "8rem - 10rem",
+        "font_weight": "bold",
+        "opacity": "0.1-0.2",
+        "position": "bottom, full width"
+      }
+    }
+  },
+  "technical_specs": {
+    "css_framework": "Custom CSS (can use Bootstrap RTL as base)",
+    "glassmorphism": {
+      "enabled": true,
+      "backdrop_filter_support": "Chrome 76+, Firefox 103+, Safari 9+",
+      "fallback": "Solid dark background for older browsers",
+      "performance": "GPU accelerated via backdrop-filter"
+    },
+    "fixed_position": {
+      "header": "Fixed at top, always visible",
+      "footer": "Relative position - not fixed, appears at end of content",
+      "body_padding": "Only padding-top required for header (footer is not fixed)"
+    },
+    "animations": "CSS transforms (GPU accelerated)",
+    "javascript_features": [
+      "Live time display update",
+      "Geometric shape animations",
+      "Mobile menu toggle",
+      "Scroll effect for header (optional)",
+      "Body padding adjustment for fixed header only"
+    ],
+    "responsive_breakpoints": {
+      "mobile": "< 768px",
+      "tablet": "768px - 1024px",
+      "desktop": "> 1024px"
+    }
+  },
+  "color_palette": {
+    "dark_background": "#0a0a0a",
+    "header_background": "#1a1a1a",
+    "section_background": "#2d2d2d",
+    "brand_background": "#3a3a3a",
+    "text_primary": "#FFFFFF",
+    "accent_pink": "#FF6B9D",
+    "accent_red": "#FF1744",
+    "accent_green": "#00FF00"
+  },
+  "typography": {
+    "font_family": "Vazir or IRANSans",
+    "heading_weight": "bold",
+    "body_weight": "medium",
+    "monospace": "for time display"
+  },
+  "animations": {
+    "float": {
+      "duration": "3s",
+      "timing": "ease-in-out",
+      "iteration": "infinite"
+    },
+    "glow": {
+      "duration": "2s",
+      "timing": "ease-in-out",
+      "iteration": "infinite"
+    },
+    "hover_transition": {
+      "duration": "0.3s",
+      "timing": "ease"
+    }
+  },
+  "accessibility": {
+    "contrast_ratio": "WCAG AA compliant",
+    "aria_labels": "required for all interactive elements",
+    "keyboard_navigation": "fully supported",
+    "screen_reader": "semantic HTML"
+  },
+  "implementation_checklist": [
+    "HTML structure for header",
+    "HTML structure for footer",
+    "Glassmorphism background for header (backdrop-filter)",
+    "Glassmorphism background for footer (backdrop-filter)",
+    "Fixed position for header (position: fixed)",
+    "Relative position for footer (position: relative - not fixed)",
+    "Body padding adjustments (only top for header, footer is not fixed)",
+    "White text color (#FFFFFF) for all footer elements",
+    "CSS styles for header (Dark Theme + Glassmorphism)",
+    "CSS styles for footer (Dark Theme + Glassmorphism)",
+    "Border styling (semi-transparent)",
+    "Box-shadow for depth",
+    "Geometric glowing element",
+    "Hover and transition animations",
+    "Live time display",
+    "Central icon",
+    "Bottom branding",
+    "Scroll effect for header (optional)",
+    "Responsive design",
+    "Cross-browser testing (especially Safari for backdrop-filter)",
+    "Fallback styles for older browsers",
+    "Performance optimization",
+    "Accessibility compliance"
+  ],
+  "browser_support": {
+    "backdrop_filter": {
+      "chrome": "76+",
+      "firefox": "103+",
+      "safari": "9+ (requires -webkit-backdrop-filter)",
+      "edge": "79+",
+      "fallback": "Solid background color for unsupported browsers"
+    }
+  }
+}
+

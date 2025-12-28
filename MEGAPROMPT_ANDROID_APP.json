@@ -1,0 +1,1620 @@
+{
+  "project_name": "Asia Salman Auto Parts - Android Application",
+  "version": "1.0.0",
+  "description": "مگا پرامپت حرفه‌ای برای ساخت نرم‌افزار اندروید قطعات خودرو آسیا سلمان",
+  "target_platform": "Android",
+  "minimum_sdk": 21,
+  "target_sdk": 34,
+  "compatibility": "Android 5.0 (Lollipop) تا Android 14+",
+  
+  "technical_requirements": {
+    "architecture": {
+      "pattern": "MVVM (Model-View-ViewModel)",
+      "libraries": [
+        "Android Architecture Components (ViewModel, LiveData, Room)",
+        "Kotlin Coroutines",
+        "Retrofit 2 for API calls",
+        "OkHttp for HTTP client",
+        "Gson for JSON parsing",
+        "Glide for image loading",
+        "Material Design Components 3",
+        "Navigation Component",
+        "Hilt for Dependency Injection"
+      ]
+    },
+    "ui_framework": {
+      "base": "Jetpack Compose (Modern UI) + XML (for compatibility)",
+      "design_system": "Material Design 3",
+      "animations": "Lottie animations, MotionLayout, Shared Element Transitions",
+      "theme": "Dark mode support, RTL support, Persian/Arabic fonts"
+    },
+    "networking": {
+      "base_url": "https://your-domain.com/api/mobile/v1",
+      "authentication": "JWT Bearer Token",
+      "retry_policy": "Exponential backoff with 3 retries",
+      "caching": "OkHttp cache + Room database for offline support",
+      "timeout": {
+        "connect": 30,
+        "read": 30,
+        "write": 30
+      }
+    },
+    "local_storage": {
+      "database": "Room Database",
+      "preferences": "DataStore (replacing SharedPreferences)",
+      "cache": "DiskLruCache for images and API responses"
+    },
+    "performance": {
+      "image_loading": "Glide with memory and disk caching",
+      "pagination": "Paging 3 library for infinite scrolling",
+      "background_work": "WorkManager for background tasks",
+      "memory_management": "LeakCanary for memory leak detection"
+    }
+  },
+
+  "api_endpoints": {
+    "base_url": "/api/mobile/v1",
+    "authentication": {
+      "send_otp": {
+        "endpoint": "/auth/send-otp",
+        "method": "POST",
+        "request": {
+          "phone": "string (required, format: 09123456789)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string",
+          "data": {
+            "expires_in": "integer (seconds)"
+          }
+        }
+      },
+      "verify_otp": {
+        "endpoint": "/auth/verify-otp",
+        "method": "POST",
+        "request": {
+          "phone": "string (required)",
+          "otp_code": "string (required)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string",
+          "data": {
+            "access_token": "string (JWT)",
+            "refresh_token": "string (JWT)",
+            "user": {
+              "id": "integer",
+              "username": "string",
+              "full_name": "string",
+              "phone": "string",
+              "email": "string",
+              "company_name": "string",
+              "is_bulk_buyer": "boolean",
+              "bulk_buyer_approval_status": "string (pending|approved|rejected)",
+              "profile_completion_percentage": "integer"
+            },
+            "expires_in": "integer (seconds)"
+          }
+        }
+      },
+      "refresh_token": {
+        "endpoint": "/auth/refresh-token",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {refresh_token}"
+        },
+        "response": {
+          "success": "boolean",
+          "data": {
+            "access_token": "string"
+          }
+        }
+      },
+      "logout": {
+        "endpoint": "/auth/logout",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {access_token}"
+        }
+      }
+    },
+    "products": {
+      "list": {
+        "endpoint": "/products",
+        "method": "GET",
+        "query_params": {
+          "page": "integer (default: 1)",
+          "per_page": "integer (default: 20, max: 100)",
+          "brand_id": "integer (optional)",
+          "category_id": "integer (optional)",
+          "vehicle_type_id": "integer (optional)",
+          "product_type_id": "integer (optional)",
+          "min_price": "integer (optional)",
+          "max_price": "integer (optional)",
+          "in_stock": "boolean (optional)",
+          "has_discount": "boolean (optional)",
+          "search": "string (optional)"
+        },
+        "response": {
+          "success": "boolean",
+          "data": {
+            "products": [
+              {
+                "id": "integer",
+                "name": "string",
+                "name_fa": "string",
+                "sku": "string",
+                "oem_code": "string",
+                "description": "string",
+                "description_fa": "string",
+                "image_url": "string",
+                "images": ["array of image URLs"],
+                "price_cash": "integer (Rials)",
+                "price_check": "integer (Rials)",
+                "price_cash_bulk": "integer (Rials, if user is bulk buyer)",
+                "price_check_bulk": "integer (Rials, if user is bulk buyer)",
+                "discount_percentage": "float (if has discount)",
+                "discounted_price_cash": "integer (if has discount)",
+                "discounted_price_check": "integer (if has discount)",
+                "stock_quantity": "integer",
+                "is_active": "boolean",
+                "brand": {
+                  "id": "integer",
+                  "name": "string",
+                  "name_fa": "string",
+                  "logo_url": "string"
+                },
+                "category": {
+                  "id": "integer",
+                  "name": "string",
+                  "name_fa": "string"
+                },
+                "vehicle_type": {
+                  "id": "integer",
+                  "name": "string",
+                  "name_fa": "string"
+                },
+                "product_type": {
+                  "id": "integer",
+                  "name": "string",
+                  "name_fa": "string"
+                }
+              }
+            ],
+            "pagination": {
+              "page": "integer",
+              "per_page": "integer",
+              "total": "integer",
+              "pages": "integer",
+              "has_next": "boolean",
+              "has_prev": "boolean"
+            }
+          }
+        }
+      },
+      "detail": {
+        "endpoint": "/products/{id}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {access_token} (optional, for bulk prices)"
+        },
+        "response": {
+          "success": "boolean",
+          "data": {
+            "product": "product object (same as list, with full details)"
+          }
+        }
+      },
+      "search": {
+        "endpoint": "/products/search",
+        "method": "GET",
+        "query_params": {
+          "q": "string (required)",
+          "page": "integer (default: 1)",
+          "per_page": "integer (default: 20)",
+          "filters": "JSON string (optional)"
+        },
+        "response": "same as products list"
+      },
+      "filters": {
+        "endpoint": "/products/filters",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "data": {
+            "brands": ["array of brand objects"],
+            "categories": ["array of category objects"],
+            "vehicle_types": ["array of vehicle type objects"],
+            "product_types": ["array of product type objects"],
+            "price_range": {
+              "min": "integer",
+              "max": "integer"
+            }
+          }
+        }
+      }
+    },
+    "categories": {
+      "list": {
+        "endpoint": "/categories",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "data": {
+            "categories": ["array of category objects"]
+          }
+        }
+      },
+      "vehicle_based": {
+        "endpoint": "/categories/vehicle-based",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "data": {
+            "vehicle_types": [
+              {
+                "id": "integer",
+                "name": "string",
+                "name_fa": "string",
+                "icon_url": "string",
+                "categories": ["array of categories for this vehicle type"]
+              }
+            ]
+          }
+        }
+      },
+      "brand_based": {
+        "endpoint": "/categories/brand-based",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "data": {
+            "brands": [
+              {
+                "id": "integer",
+                "name": "string",
+                "name_fa": "string",
+                "logo_url": "string",
+                "categories": ["array of categories for this brand"]
+              }
+            ]
+          }
+        }
+      },
+      "product_type_based": {
+        "endpoint": "/categories/product-type-based",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "data": {
+            "product_types": [
+              {
+                "id": "integer",
+                "name": "string",
+                "name_fa": "string",
+                "icon_url": "string",
+                "categories": ["array of categories for this product type"]
+              }
+            ]
+          }
+        }
+      },
+      "products": {
+        "endpoint": "/categories/{id}/products",
+        "method": "GET",
+        "query_params": {
+          "page": "integer (default: 1)",
+          "per_page": "integer (default: 20)"
+        },
+        "response": "same as products list"
+      }
+    },
+    "discounts": {
+      "daily_products": {
+        "endpoint": "/discounts/daily-products",
+        "method": "GET",
+        "query_params": {
+          "limit": "integer (default: 20)",
+          "offset": "integer (default: 0)"
+        },
+        "response": {
+          "success": "boolean",
+          "data": {
+            "products": ["array of discounted product objects"],
+            "discount_info": {
+              "name": "string",
+              "name_fa": "string",
+              "discount_percentage": "float"
+            }
+          }
+        }
+      },
+      "monthly_products": {
+        "endpoint": "/discounts/monthly-products",
+        "method": "GET",
+        "query_params": {
+          "limit": "integer (default: 20)",
+          "offset": "integer (default: 0)"
+        },
+        "response": "same as daily_products"
+      }
+    },
+    "cart": {
+      "get": {
+        "endpoint": "/cart",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {access_token} (required)"
+        },
+        "query_params": {
+          "price_type": "string (optional: cash|check)"
+        },
+        "response": {
+          "success": "boolean",
+          "data": {
+            "cash_cart": {
+              "items": [
+                {
+                  "id": "integer (cart_item_id)",
+                  "product": "product object",
+                  "quantity": "integer",
+                  "unit_price_cash": "integer",
+                  "total_price_cash": "integer"
+                }
+              ],
+              "total": "integer",
+              "item_count": "integer"
+            },
+            "check_cart": {
+              "items": ["same structure as cash_cart"],
+              "total": "integer",
+              "item_count": "integer"
+            },
+            "grand_total": "integer",
+            "total_items": "integer"
+          }
+        }
+      },
+      "add": {
+        "endpoint": "/cart",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {access_token} (required)"
+        },
+        "request": {
+          "product_id": "integer (required)",
+          "quantity": "integer (required, min: 1)",
+          "price_type": "string (required: cash|check)",
+          "price_plan": "string (optional: isaco_cash|isaco_1m|isaco_2m|isaco_3m)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string",
+          "data": {
+            "cart_item": "cart item object"
+          }
+        }
+      },
+      "update": {
+        "endpoint": "/cart/{cart_item_id}",
+        "method": "PUT",
+        "headers": {
+          "Authorization": "Bearer {access_token} (required)"
+        },
+        "request": {
+          "quantity": "integer (required, min: 1)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      },
+      "remove": {
+        "endpoint": "/cart/{cart_item_id}",
+        "method": "DELETE",
+        "headers": {
+          "Authorization": "Bearer {access_token} (required)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      },
+      "clear": {
+        "endpoint": "/cart/clear",
+        "method": "DELETE",
+        "headers": {
+          "Authorization": "Bearer {access_token} (required)"
+        },
+        "query_params": {
+          "price_type": "string (optional: cash|check, if not provided clears both)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    "user": {
+      "profile": {
+        "get": {
+          "endpoint": "/user/profile",
+          "method": "GET",
+          "headers": {
+            "Authorization": "Bearer {access_token} (required)"
+          },
+          "response": {
+            "success": "boolean",
+            "data": {
+              "user": {
+                "id": "integer",
+                "username": "string",
+                "full_name": "string",
+                "phone": "string",
+                "email": "string",
+                "company_name": "string",
+                "national_id": "string",
+                "birth_date": "string (ISO date)",
+                "address": "string",
+                "landline_phone": "string",
+                "secondary_phone": "string",
+                "is_bulk_buyer": "boolean",
+                "bulk_buyer_approval_status": "string",
+                "profile_completion_percentage": "integer",
+                "avatar_url": "string",
+                "created_at": "string (ISO datetime)",
+                "last_login": "string (ISO datetime)"
+              }
+            }
+          }
+        },
+        "update": {
+          "endpoint": "/user/profile",
+          "method": "PUT",
+          "headers": {
+            "Authorization": "Bearer {access_token} (required)"
+          },
+          "request": {
+            "full_name": "string (optional)",
+            "email": "string (optional)",
+            "company_name": "string (optional)",
+            "national_id": "string (optional)",
+            "birth_date": "string (optional, ISO date)",
+            "address": "string (optional)",
+            "landline_phone": "string (optional)",
+            "secondary_phone": "string (optional)",
+            "avatar": "file (optional, multipart/form-data)"
+          },
+          "response": {
+            "success": "boolean",
+            "message": "string",
+            "data": {
+              "user": "updated user object"
+            }
+          }
+        }
+      },
+      "bulk_buyer_request": {
+        "endpoint": "/user/bulk-buyer-request",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {access_token} (required)"
+        },
+        "request": {
+          "company_name": "string (required)",
+          "national_id": "string (required)",
+          "address": "string (required)",
+          "landline_phone": "string (required)",
+          "description": "string (optional)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string",
+          "data": {
+            "request_status": "string (pending)"
+          }
+        }
+      },
+      "notifications": {
+        "endpoint": "/user/notifications",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {access_token} (required)"
+        },
+        "query_params": {
+          "page": "integer (default: 1)",
+          "per_page": "integer (default: 20)",
+          "unread_only": "boolean (default: false)"
+        },
+        "response": {
+          "success": "boolean",
+          "data": {
+            "notifications": [
+              {
+                "id": "integer",
+                "title": "string",
+                "message": "string",
+                "type": "string",
+                "is_read": "boolean",
+                "created_at": "string (ISO datetime)",
+                "action_url": "string (optional)"
+              }
+            ],
+            "unread_count": "integer",
+            "pagination": "pagination object"
+          }
+        }
+      },
+      "mark_notification_read": {
+        "endpoint": "/user/notifications/{id}/read",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {access_token} (required)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    "company": {
+      "info": {
+        "endpoint": "/company/info",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "data": {
+            "name": "string",
+            "name_fa": "string",
+            "logo_url": "string",
+            "description": "string",
+            "description_fa": "string",
+            "phone": "string",
+            "support_phone": "string",
+            "email": "string",
+            "address": "string",
+            "about": "string",
+            "about_fa": "string",
+            "partner_brands": [
+              {
+                "id": "integer",
+                "name": "string",
+                "name_fa": "string",
+                "logo_url": "string"
+              }
+            ]
+          }
+        }
+      },
+      "banners": {
+        "endpoint": "/company/banners",
+        "method": "GET",
+        "response": {
+          "success": "boolean",
+          "data": {
+            "banners": [
+              {
+                "id": "integer",
+                "title": "string",
+                "title_fa": "string",
+                "image_url": "string",
+                "link_url": "string (optional)",
+                "position": "string",
+                "is_active": "boolean"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "app_config": {
+      "endpoint": "/app/config",
+      "method": "GET",
+      "response": {
+        "success": "boolean",
+        "data": {
+          "app_version": "string",
+          "min_app_version": "string",
+          "force_update": "boolean",
+          "maintenance_mode": "boolean",
+          "features": {
+            "daily_suggestions_enabled": "boolean",
+            "wholesale_requests_enabled": "boolean",
+            "wallet_enabled": "boolean",
+            "notifications_enabled": "boolean"
+          },
+          "settings": {
+            "default_price_type": "string (cash|check)",
+            "show_bulk_prices": "boolean",
+            "enable_offline_mode": "boolean"
+          },
+          "daily_suggestions": {
+            "enabled": "boolean",
+            "title": "string",
+            "title_fa": "string",
+            "product_ids": ["array of product IDs"],
+            "updated_at": "string (ISO datetime)"
+          }
+        }
+      }
+    }
+  },
+
+  "app_structure": {
+    "splash_screen": {
+      "description": "صفحه ابتدایی با لوگو شرکت و انیمیشن لودینگ",
+      "features": [
+        "نمایش لوگو شرکت با انیمیشن fade in و scale",
+        "انیمیشن لودینگ (Lottie animation یا ProgressBar با انیمیشن)",
+        "بررسی اتصال به اینترنت",
+        "بررسی نسخه اپلیکیشن (force update اگر نیاز باشد)",
+        "بررسی وضعیت maintenance mode",
+        "بارگذاری تنظیمات اولیه از API",
+        "انتقال به صفحه ورود یا صفحه اصلی (اگر لاگین باشد)",
+        "مدت زمان نمایش: 2-3 ثانیه"
+      ],
+      "animations": [
+        "Fade in لوگو (duration: 800ms)",
+        "Scale animation برای لوگو (duration: 1000ms)",
+        "Rotating loader یا Lottie animation",
+        "Smooth transition به صفحه بعدی"
+      ]
+    },
+    "authentication": {
+      "login_screen": {
+        "description": "صفحه ورود با شماره تلفن",
+        "features": [
+          "ورودی شماره تلفن با فرمت ایرانی (09123456789)",
+          "اعتبارسنجی شماره تلفن (شروع با 09 و 11 رقم)",
+          "ارسال OTP با دکمه زیبا و انیمیشن",
+          "نمایش تایمر برای ارسال مجدد OTP (120 ثانیه)",
+          "صفحه تایید OTP با 6 خانه برای کد",
+          "Auto-focus و auto-submit پس از وارد کردن 6 رقم",
+          "انیمیشن shake در صورت خطا",
+          "ذخیره توکن JWT پس از ورود موفق",
+          "انتقال به صفحه اصلی یا تکمیل پروفایل"
+        ],
+        "ui_elements": [
+          "Material Design TextInputLayout برای شماره تلفن",
+          "OTP input با 6 خانه جداگانه",
+          "دکمه ارسال/تایید با ripple effect",
+          "Progress indicator هنگام ارسال",
+          "Error messages با Snackbar"
+        ]
+      },
+      "profile_completion": {
+        "description": "تکمیل اطلاعات پروفایل برای کاربران جدید",
+        "features": [
+          "فرم چند مرحله‌ای (Stepper) برای تکمیل اطلاعات",
+          "مرحله 1: اطلاعات شخصی (نام، نام خانوادگی، ایمیل)",
+          "مرحله 2: اطلاعات تماس (تلفن ثابت، تلفن دوم)",
+          "مرحله 3: اطلاعات شرکت (نام شرکت، کد ملی، آدرس)",
+          "Progress indicator برای نمایش پیشرفت",
+          "ذخیره موقت اطلاعات در صورت بستن اپ",
+          "اعتبارسنجی فیلدها",
+          "انیمیشن transition بین مراحل"
+        ]
+      }
+    },
+    "main_screen": {
+      "description": "صفحه اصلی اپلیکیشن",
+      "layout": {
+        "top_section": {
+          "company_logo": {
+            "position": "بالای صفحه",
+            "size": "medium (120dp height)",
+            "animation": "Fade in on load"
+          },
+          "company_name": {
+            "position": "زیر لوگو",
+            "style": "Bold, large text",
+            "animation": "Slide down"
+          },
+          "banners": {
+            "type": "ViewPager2 با Auto-scroll",
+            "height": "200dp",
+            "indicators": "Dot indicators",
+            "animation": "Fade transition between banners",
+            "tap_action": "باز کردن لینک یا محصول مرتبط"
+          }
+        },
+        "discounted_products": {
+          "title": "کالاهای تخفیف‌دار",
+          "layout": "Horizontal RecyclerView",
+          "card_design": {
+            "image": "Rounded corners, aspect ratio 1:1",
+            "discount_badge": "Red badge با درصد تخفیف",
+            "price": "قیمت اصلی خط خورده + قیمت تخفیف‌دار",
+            "animation": "Scale on click, ripple effect"
+          },
+          "navigation": "انتقال به صفحه لیست محصولات تخفیف‌دار"
+        },
+        "categories_by_vehicle": {
+          "title": "دسته‌بندی بر اساس نوع خودرو",
+          "layout": "Grid layout (2 columns)",
+          "card_design": {
+            "icon": "Vehicle type icon",
+            "name": "نام نوع خودرو",
+            "animation": "Scale and elevation on click"
+          },
+          "navigation": "انتقال به لیست محصولات آن نوع خودرو"
+        },
+        "categories_by_brand": {
+          "title": "دسته‌بندی بر اساس برند",
+          "layout": "Horizontal RecyclerView",
+          "card_design": {
+            "logo": "Brand logo (circular or rounded)",
+            "name": "نام برند",
+            "animation": "Fade in on scroll"
+          },
+          "navigation": "انتقال به لیست محصولات آن برند"
+        },
+        "categories_by_product_type": {
+          "title": "دسته‌بندی بر اساس نوع کالا",
+          "layout": "Grid layout (3 columns)",
+          "card_design": {
+            "icon": "Product type icon",
+            "name": "نام نوع کالا",
+            "animation": "Slide up on appear"
+          },
+          "navigation": "انتقال به لیست محصولات آن نوع کالا"
+        },
+        "bottom_section": {
+          "partner_brands": {
+            "title": "برندهای همکار",
+            "layout": "Horizontal RecyclerView",
+            "design": "Logo carousel با auto-scroll",
+            "animation": "Continuous smooth scroll"
+          },
+          "about_company": {
+            "title": "درباره شرکت",
+            "design": "Expandable card",
+            "content": "توضیحات شرکت از API",
+            "animation": "Expand/collapse animation"
+          },
+          "contact_info": {
+            "phone": "شماره تماس (قابل کلیک برای تماس)",
+            "support_phone": "پشتیبانی (قابل کلیک برای تماس)",
+            "design": "Icon + text با ripple effect"
+          }
+        }
+      },
+      "navigation": {
+        "bottom_navigation": {
+          "items": [
+            {
+              "id": "home",
+              "icon": "home",
+              "label": "خانه",
+              "badge": "optional (for notifications)"
+            },
+            {
+              "id": "shop",
+              "icon": "shopping_bag",
+              "label": "فروشگاه"
+            },
+            {
+              "id": "suggestions",
+              "icon": "star",
+              "label": "پیشنهادات"
+            },
+            {
+              "id": "cart",
+              "icon": "shopping_cart",
+              "label": "سبد خرید",
+              "badge": "تعداد آیتم‌های سبد"
+            },
+            {
+              "id": "profile",
+              "icon": "person",
+              "label": "پروفایل"
+            }
+          ],
+          "animation": "Slide animation between tabs",
+          "selected_indicator": "Animated underline"
+        }
+      }
+    },
+    "shop_screen": {
+      "description": "صفحه فروشگاه با محصولات تخفیف‌دار و جستجو",
+      "features": [
+        "نمایش محصولات تخفیف‌دار در بالای صفحه",
+        "موتور جستجوی حرفه‌ای با فیلترهای پیشرفته",
+        "فیلتر بر اساس: برند، دسته‌بندی، نوع خودرو، نوع کالا، محدوده قیمت",
+        "مرتب‌سازی: قیمت، محبوبیت، جدیدترین",
+        "نمایش محصولات در Grid (2 columns) یا List view",
+        "Pull to refresh",
+        "Infinite scroll (Paging 3)",
+        "Offline support با cache"
+      ],
+      "search": {
+        "input": "SearchBar در بالای صفحه",
+        "features": [
+          "جستجوی زنده (Live search) با debounce 500ms",
+          "پیشنهادات جستجو (Search suggestions)",
+          "جستجوی پیشرفته با فیلترها",
+          "جستجو در: نام محصول، SKU، OEM code",
+          "نتایج مرتب‌سازی شده بر اساس مرتبط بودن",
+          "تاریخچه جستجو (ذخیره 10 جستجوی اخیر)"
+        ],
+        "animation": [
+          "Expand/collapse search bar",
+          "Fade in results",
+          "Shimmer effect هنگام بارگذاری"
+        ]
+      },
+      "product_card": {
+        "design": {
+          "image": "Rounded corners, placeholder while loading",
+          "name": "نام محصول (2 lines max, ellipsis)",
+          "brand": "نام برند",
+          "price": {
+            "cash": "قیمت نقدی (بزرگ و برجسته)",
+            "check": "قیمت چکی (کوچکتر)",
+            "discount": "Badge تخفیف اگر موجود باشد"
+          },
+          "stock": "وضعیت موجودی (موجود/ناموجود)",
+          "add_to_cart": "دکمه افزودن به سبد با انیمیشن"
+        },
+        "animations": [
+          "Scale on click",
+          "Ripple effect",
+          "Add to cart animation (icon moves to cart icon)"
+        ]
+      }
+    },
+    "suggestions_screen": {
+      "description": "صفحه پیشنهادات روز",
+      "features": [
+        "نمایش محصولات خاص که از API دریافت می‌شود",
+        "لیست محصولات با طراحی ویژه",
+        "Pull to refresh",
+        "نمایش توضیحات پیشنهادات",
+        "امکان افزودن مستقیم به سبد از این صفحه"
+      ],
+      "design": {
+        "header": {
+          "title": "پیشنهادات ویژه امروز",
+          "subtitle": "محصولات منتخب برای شما",
+          "icon": "Star icon با animation"
+        },
+        "product_list": {
+          "layout": "List view با cards بزرگ",
+          "card_design": "Similar to shop but larger",
+          "highlight": "Border یا background color برای تاکید"
+        }
+      }
+    },
+    "cart_screen": {
+      "description": "صفحه سبد خرید با تفکیک چکی و نقدی",
+      "layout": {
+        "tabs": {
+          "cash_tab": {
+            "label": "نقدی",
+            "icon": "cash",
+            "badge": "تعداد آیتم‌های نقدی"
+          },
+          "check_tab": {
+            "label": "چکی",
+            "icon": "credit_card",
+            "badge": "تعداد آیتم‌های چکی"
+          },
+          "animation": "Swipe between tabs, slide indicator"
+        },
+        "items_list": {
+          "item_design": {
+            "product_image": "Thumbnail (80dp)",
+            "product_name": "نام محصول",
+            "product_sku": "کد محصول",
+            "quantity_controls": {
+              "decrease_button": "دکمه -",
+              "quantity_display": "تعداد",
+              "increase_button": "دکمه +",
+              "animation": "Scale on click, number change animation"
+            },
+            "unit_price": "قیمت واحد",
+            "total_price": "قیمت کل (بزرگ و برجسته)",
+            "remove_button": "دکمه حذف با confirmation dialog"
+          },
+          "animations": [
+            "Swipe to delete",
+            "Smooth quantity change",
+            "Item removal animation (fade out + slide)"
+          ]
+        },
+        "summary": {
+          "subtotal": "جمع کل آیتم‌های این تب",
+          "total": "جمع کل کل سبد",
+          "design": "Sticky bottom bar",
+          "animation": "Slide up on scroll"
+        },
+        "checkout_button": {
+          "label": "تسویه حساب",
+          "design": "Large, prominent button",
+          "animation": "Pulse animation if cart not empty",
+          "action": "انتقال به صفحه پرداخت"
+        }
+      },
+      "empty_state": {
+        "icon": "Empty cart icon",
+        "message": "سبد خرید شما خالی است",
+        "action": "دکمه رفتن به فروشگاه"
+      }
+    },
+    "checkout_screen": {
+      "description": "صفحه پرداخت و تسویه حساب",
+      "layout": {
+        "order_summary": {
+          "cash_items": "لیست آیتم‌های نقدی",
+          "check_items": "لیست آیتم‌های چکی",
+          "totals": {
+            "cash_total": "جمع نقدی",
+            "check_total": "جمع چکی",
+            "grand_total": "جمع کل"
+          }
+        },
+        "payment_methods": {
+          "cash": {
+            "label": "پرداخت نقدی",
+            "description": "پرداخت در محل یا واریز به حساب",
+            "icon": "cash"
+          },
+          "check": {
+            "label": "پرداخت چکی",
+            "description": "پرداخت با چک",
+            "icon": "credit_card"
+          }
+        },
+        "delivery_info": {
+          "address": "آدرس تحویل (از پروفایل یا قابل ویرایش)",
+          "notes": "یادداشت سفارش (اختیاری)"
+        },
+        "confirm_button": {
+          "label": "تایید و ارسال سفارش",
+          "action": "ارسال درخواست به سرور",
+          "loading_state": "Progress indicator"
+        }
+      },
+      "success_screen": {
+        "icon": "Success checkmark animation",
+        "message": "سفارش شما با موفقیت ثبت شد",
+        "order_number": "شماره سفارش",
+        "actions": [
+          "مشاهده جزئیات سفارش",
+          "بازگشت به صفحه اصلی"
+        ]
+      }
+    },
+    "profile_screen": {
+      "description": "صفحه پروفایل حرفه‌ای کاربر",
+      "sections": {
+        "header": {
+          "avatar": {
+            "size": "Large (120dp)",
+            "shape": "Circular",
+            "default": "Initials یا icon",
+            "edit_action": "تغییر تصویر پروفایل",
+            "animation": "Scale on tap"
+          },
+          "user_info": {
+            "name": "نام کامل",
+            "phone": "شماره تلفن",
+            "company": "نام شرکت (اگر موجود باشد)"
+          },
+          "completion_indicator": {
+            "type": "Circular progress",
+            "percentage": "درصد تکمیل پروفایل",
+            "animation": "Animated progress fill"
+          }
+        },
+        "menu_items": [
+          {
+            "id": "edit_profile",
+            "icon": "edit",
+            "label": "ویرایش پروفایل",
+            "action": "باز کردن صفحه ویرایش"
+          },
+          {
+            "id": "orders",
+            "icon": "receipt",
+            "label": "سفارش‌های من",
+            "badge": "optional (تعداد سفارش‌های جدید)"
+          },
+          {
+            "id": "notifications",
+            "icon": "notifications",
+            "label": "اعلان‌ها",
+            "badge": "تعداد اعلان‌های خوانده نشده"
+          },
+          {
+            "id": "wholesale_request",
+            "icon": "store",
+            "label": "درخواست خریدار عمده",
+            "visible": "فقط اگر تایید نشده باشد",
+            "action": "باز کردن فرم درخواست"
+          },
+          {
+            "id": "wallet",
+            "icon": "account_balance_wallet",
+            "label": "کیف پول",
+            "subtitle": "موجودی: {balance}",
+            "visible": "اگر wallet فعال باشد"
+          },
+          {
+            "id": "addresses",
+            "icon": "location_on",
+            "label": "آدرس‌ها",
+            "action": "مدیریت آدرس‌ها"
+          },
+          {
+            "id": "settings",
+            "icon": "settings",
+            "label": "تنظیمات",
+            "action": "باز کردن تنظیمات"
+          },
+          {
+            "id": "about",
+            "icon": "info",
+            "label": "درباره اپلیکیشن",
+            "action": "نمایش اطلاعات اپ"
+          },
+          {
+            "id": "logout",
+            "icon": "logout",
+            "label": "خروج",
+            "style": "Destructive (red)",
+            "action": "خروج از حساب با confirmation"
+          }
+        ]
+      },
+      "edit_profile": {
+        "fields": [
+          {
+            "name": "full_name",
+            "label": "نام و نام خانوادگی",
+            "type": "text",
+            "required": true
+          },
+          {
+            "name": "email",
+            "label": "ایمیل",
+            "type": "email",
+            "required": false,
+            "validation": "Email format"
+          },
+          {
+            "name": "company_name",
+            "label": "نام شرکت",
+            "type": "text",
+            "required": false
+          },
+          {
+            "name": "national_id",
+            "label": "کد ملی",
+            "type": "text",
+            "required": false,
+            "validation": "10 digits"
+          },
+          {
+            "name": "birth_date",
+            "label": "تاریخ تولد",
+            "type": "date_picker",
+            "required": false
+          },
+          {
+            "name": "address",
+            "label": "آدرس",
+            "type": "multiline_text",
+            "required": false
+          },
+          {
+            "name": "landline_phone",
+            "label": "تلفن ثابت",
+            "type": "phone",
+            "required": false
+          },
+          {
+            "name": "secondary_phone",
+            "label": "تلفن دوم",
+            "type": "phone",
+            "required": false
+          },
+          {
+            "name": "avatar",
+            "label": "تصویر پروفایل",
+            "type": "image_picker",
+            "required": false
+          }
+        ],
+        "save_button": "ذخیره تغییرات",
+        "validation": "اعتبارسنجی فیلدها قبل از ارسال",
+        "loading_state": "Progress indicator"
+      },
+      "wholesale_request": {
+        "form": {
+          "company_name": "نام شرکت (required)",
+          "national_id": "کد ملی (required)",
+          "address": "آدرس (required)",
+          "landline_phone": "تلفن ثابت (required)",
+          "description": "توضیحات (optional)"
+        },
+        "submit_button": "ارسال درخواست",
+        "success_message": "درخواست شما با موفقیت ارسال شد. پس از بررسی، نتیجه به شما اطلاع داده خواهد شد.",
+        "status_display": {
+          "pending": "در انتظار بررسی",
+          "approved": "تایید شده",
+          "rejected": "رد شده"
+        }
+      }
+    },
+    "product_detail_screen": {
+      "description": "صفحه جزئیات محصول",
+      "layout": {
+        "image_gallery": {
+          "type": "ViewPager2",
+          "indicators": "Dot indicators",
+          "zoom": "Pinch to zoom",
+          "fullscreen": "Double tap برای fullscreen"
+        },
+        "product_info": {
+          "name": "نام محصول (بزرگ)",
+          "name_fa": "نام فارسی",
+          "sku": "کد محصول",
+          "oem_code": "کد OEM",
+          "brand": "برند",
+          "category": "دسته‌بندی",
+          "description": "توضیحات (expandable)"
+        },
+        "pricing": {
+          "cash_price": {
+            "label": "قیمت نقدی",
+            "value": "قیمت",
+            "bulk_price": "قیمت عمده (اگر کاربر عمده باشد)"
+          },
+          "check_price": {
+            "label": "قیمت چکی",
+            "value": "قیمت",
+            "bulk_price": "قیمت عمده (اگر کاربر عمده باشد)"
+          },
+          "discount": "Badge تخفیف اگر موجود باشد"
+        },
+        "stock_info": {
+          "quantity": "تعداد موجود",
+          "status": "موجود/ناموجود",
+          "badge": "Color-coded badge"
+        },
+        "quantity_selector": {
+          "decrease": "دکمه -",
+          "quantity": "تعداد",
+          "increase": "دکمه +",
+          "max": "حداکثر موجودی"
+        },
+        "add_to_cart": {
+          "price_type_selector": "Toggle بین نقدی و چکی",
+          "button": "افزودن به سبد خرید",
+          "animation": "Success animation پس از افزودن"
+        },
+        "related_products": {
+          "title": "محصولات مرتبط",
+          "layout": "Horizontal RecyclerView"
+        }
+      }
+    }
+  },
+
+  "design_system": {
+    "colors": {
+      "primary": "#1976D2",
+      "primary_dark": "#1565C0",
+      "primary_light": "#BBDEFB",
+      "secondary": "#FF6F00",
+      "accent": "#FFC107",
+      "background": "#FAFAFA",
+      "surface": "#FFFFFF",
+      "error": "#D32F2F",
+      "success": "#388E3C",
+      "warning": "#F57C00",
+      "text_primary": "#212121",
+      "text_secondary": "#757575",
+      "divider": "#BDBDBD"
+    },
+    "typography": {
+      "font_family": "Vazir, IRANSans, or similar Persian font",
+      "headline1": {
+        "size": "96sp",
+        "weight": "Light"
+      },
+      "headline2": {
+        "size": "60sp",
+        "weight": "Light"
+      },
+      "headline3": {
+        "size": "48sp",
+        "weight": "Regular"
+      },
+      "headline4": {
+        "size": "34sp",
+        "weight": "Regular"
+      },
+      "headline5": {
+        "size": "24sp",
+        "weight": "Regular"
+      },
+      "headline6": {
+        "size": "20sp",
+        "weight": "Medium"
+      },
+      "body1": {
+        "size": "16sp",
+        "weight": "Regular"
+      },
+      "body2": {
+        "size": "14sp",
+        "weight": "Regular"
+      },
+      "button": {
+        "size": "14sp",
+        "weight": "Medium",
+        "uppercase": true
+      },
+      "caption": {
+        "size": "12sp",
+        "weight": "Regular"
+      }
+    },
+    "spacing": {
+      "unit": "8dp",
+      "small": "8dp",
+      "medium": "16dp",
+      "large": "24dp",
+      "xlarge": "32dp"
+    },
+    "elevation": {
+      "card": "2dp",
+      "button": "4dp",
+      "dialog": "24dp"
+    },
+    "border_radius": {
+      "small": "4dp",
+      "medium": "8dp",
+      "large": "16dp",
+      "xlarge": "24dp"
+    },
+    "animations": {
+      "duration": {
+        "short": "200ms",
+        "medium": "300ms",
+        "long": "500ms"
+      },
+      "easing": {
+        "standard": "FastOutSlowInEasing",
+        "decelerate": "LinearOutSlowInEasing",
+        "accelerate": "FastOutLinearInEasing"
+      }
+    }
+  },
+
+  "animations_specifications": {
+    "splash_screen": {
+      "logo_animation": {
+        "type": "Fade in + Scale",
+        "duration": "800ms",
+        "easing": "FastOutSlowInEasing",
+        "scale_from": "0.8",
+        "scale_to": "1.0"
+      },
+      "loading_animation": {
+        "type": "Rotating or Lottie",
+        "duration": "Continuous",
+        "style": "Smooth, professional"
+      }
+    },
+    "page_transitions": {
+      "type": "Shared element transitions + Slide",
+      "duration": "300ms",
+      "easing": "FastOutSlowInEasing"
+    },
+    "button_interactions": {
+      "ripple": "Material ripple effect",
+      "scale": "Scale to 0.95 on press",
+      "duration": "200ms"
+    },
+    "list_animations": {
+      "item_appear": "Slide up + Fade in",
+      "stagger_delay": "50ms per item",
+      "duration": "300ms"
+    },
+    "cart_animations": {
+      "add_to_cart": "Icon flies to cart position",
+      "quantity_change": "Number counter animation",
+      "item_removal": "Fade out + Slide out"
+    },
+    "loading_states": {
+      "shimmer": "Shimmer effect for placeholders",
+      "skeleton": "Skeleton screens for content",
+      "progress": "Circular or linear progress indicators"
+    }
+  },
+
+  "admin_dashboard_features": {
+    "description": "قسمت مدیریت اپلیکیشن اندروید در داشبورد سایت",
+    "location": "/admin/android-app",
+    "features": [
+      {
+        "name": "تنظیمات عمومی",
+        "sections": [
+          {
+            "title": "اطلاعات شرکت",
+            "fields": [
+              "نام شرکت",
+              "لوگو شرکت (آپلود تصویر)",
+              "توضیحات شرکت",
+              "شماره تماس",
+              "شماره پشتیبانی",
+              "ایمیل",
+              "آدرس"
+            ]
+          },
+          {
+            "title": "بنرها",
+            "features": [
+              "مدیریت بنرهای صفحه اصلی",
+              "افزودن/ویرایش/حذف بنر",
+              "تنظیم ترتیب نمایش",
+              "لینک بنر (اختیاری)",
+              "فعال/غیرفعال کردن"
+            ]
+          },
+          {
+            "title": "برندهای همکار",
+            "features": [
+              "مدیریت لیست برندهای همکار",
+              "افزودن/حذف برند",
+              "تنظیم ترتیب نمایش"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "پیشنهادات روز",
+        "features": [
+          "فعال/غیرفعال کردن پیشنهادات",
+          "عنوان پیشنهادات",
+          "انتخاب محصولات برای پیشنهادات",
+          "جستجو و افزودن محصول",
+          "حذف محصول از پیشنهادات",
+          "ذخیره و به‌روزرسانی"
+        ]
+      },
+      {
+        "name": "تنظیمات اپلیکیشن",
+        "sections": [
+          {
+            "title": "نسخه‌گذاری",
+            "fields": [
+              "نسخه فعلی اپ",
+              "حداقل نسخه مورد نیاز",
+              "اجبار به به‌روزرسانی (force update)"
+            ]
+          },
+          {
+            "title": "حالت تعمیرات",
+            "fields": [
+              "فعال/غیرفعال کردن حالت تعمیرات",
+              "پیام نمایشی در حالت تعمیرات"
+            ]
+          },
+          {
+            "title": "قابلیت‌ها",
+            "features": [
+              "فعال/غیرفعال کردن پیشنهادات روز",
+              "فعال/غیرفعال کردن درخواست خریدار عمده",
+              "فعال/غیرفعال کردن کیف پول",
+              "فعال/غیرفعال کردن اعلان‌ها"
+            ]
+          },
+          {
+            "title": "تنظیمات پیش‌فرض",
+            "fields": [
+              "نوع قیمت پیش‌فرض (نقدی/چکی)",
+              "نمایش قیمت‌های عمده",
+              "فعال کردن حالت آفلاین"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "آمار و گزارش‌ها",
+        "features": [
+          "تعداد نصب‌های اپ",
+          "تعداد کاربران فعال",
+          "آمار استفاده از بخش‌های مختلف",
+          "آمار سفارش‌ها از طریق اپ",
+          "نمودارهای آماری"
+        ]
+      },
+      {
+        "name": "اعلان‌های Push",
+        "features": [
+          "ارسال اعلان به تمام کاربران",
+          "ارسال اعلان به گروه خاص",
+          "اعلان‌های خودکار (سفارش جدید، تخفیف جدید و ...)",
+          "تاریخچه اعلان‌ها"
+        ]
+      }
+    ]
+  },
+
+  "additional_features": {
+    "offline_support": {
+      "description": "پشتیبانی از حالت آفلاین",
+      "features": [
+        "ذخیره محصولات در cache",
+        "ذخیره سبد خرید به صورت محلی",
+        "همگام‌سازی خودکار هنگام اتصال به اینترنت",
+        "نمایش وضعیت اتصال",
+        "Queue برای درخواست‌های آفلاین"
+      ]
+    },
+    "notifications": {
+      "description": "سیستم اعلان‌رسانی",
+      "features": [
+        "اعلان‌های Push (Firebase Cloud Messaging)",
+        "اعلان‌های درون‌اپی",
+        "صدا و ویبره برای اعلان‌های مهم",
+        "مدیریت تنظیمات اعلان‌ها",
+        "Badge count روی آیکون اپ"
+      ]
+    },
+    "search_enhancements": {
+      "description": "بهبودهای موتور جستجو",
+      "features": [
+        "جستجوی صوتی (Speech to Text)",
+        "جستجو با اسکن بارکد",
+        "تاریخچه جستجو",
+        "جستجوهای پیشنهادی",
+        "فیلترهای پیشرفته",
+        "ذخیره فیلترهای مورد علاقه"
+      ]
+    },
+    "social_features": {
+      "description": "قابلیت‌های اجتماعی",
+      "features": [
+        "اشتراک‌گذاری محصول",
+        "افزودن به علاقه‌مندی‌ها",
+        "مشاهده محصولات محبوب",
+        "نظرات و امتیازدهی (اگر در API موجود باشد)"
+      ]
+    },
+    "performance_optimizations": {
+      "description": "بهینه‌سازی‌های عملکرد",
+      "features": [
+        "Lazy loading برای تصاویر",
+        "Image compression",
+        "API response caching",
+        "Background sync",
+        "Memory management",
+        "Battery optimization"
+      ]
+    },
+    "accessibility": {
+      "description": "دسترسی‌پذیری",
+      "features": [
+        "پشتیبانی از TalkBack",
+        "کنتراست مناسب",
+        "اندازه فونت قابل تنظیم",
+        "پشتیبانی از RTL",
+        "راهنمای استفاده"
+      ]
+    },
+    "security": {
+      "description": "امنیت",
+      "features": [
+        "ذخیره امن توکن‌ها (EncryptedSharedPreferences)",
+        "Certificate pinning",
+        "ProGuard/R8 برای obfuscation",
+        "Root detection (اختیاری)",
+        "API encryption (اگر نیاز باشد)"
+      ]
+    }
+  },
+
+  "testing_requirements": {
+    "unit_tests": [
+      "ViewModel tests",
+      "Repository tests",
+      "Use case tests",
+      "Utility function tests"
+    ],
+    "integration_tests": [
+      "API integration tests",
+      "Database tests",
+      "Navigation tests"
+    ],
+    "ui_tests": [
+      "Espresso tests for critical flows",
+      "Screenshot tests",
+      "Accessibility tests"
+    ],
+    "performance_tests": [
+      "Memory leak tests",
+      "Network performance",
+      "Startup time",
+      "Scroll performance"
+    ]
+  },
+
+  "deployment": {
+    "build_config": {
+      "debug": {
+        "minify": false,
+        "shrinkResources": false,
+        "signingConfig": "debug"
+      },
+      "release": {
+        "minify": true,
+        "shrinkResources": true,
+        "signingConfig": "release",
+        "proguard_rules": "proguard-rules.pro"
+      }
+    },
+    "version_management": {
+      "version_code": "Incremental integer",
+      "version_name": "Semantic versioning (e.g., 1.0.0)"
+    },
+    "distribution": {
+      "internal_testing": "Google Play Internal Testing",
+      "beta": "Google Play Beta",
+      "production": "Google Play Production"
+    }
+  },
+
+  "documentation_requirements": {
+    "code_documentation": [
+      "KDoc comments for all public functions and classes",
+      "README for project setup",
+      "API integration guide",
+      "Architecture documentation"
+    ],
+    "user_documentation": [
+      "User guide (optional, in-app help)",
+      "FAQ section"
+    ]
+  },
+
+  "future_enhancements": {
+    "phase_2": [
+      "پرداخت آنلاین",
+      "پیگیری سفارش",
+      "چت با پشتیبانی",
+      "برنامه وفاداری",
+      "کوپن تخفیف"
+    ],
+    "phase_3": [
+      "نسخه iOS",
+      "نسخه وب PWA",
+      "هوش مصنوعی برای پیشنهاد محصولات",
+      "واقعیت افزوده برای نمایش محصولات"
+    ]
+  },
+
+  "notes": {
+    "important": [
+      "تمام قیمت‌ها به ریال هستند (نه تومان)",
+      "پشتیبانی کامل از RTL برای فارسی و عربی",
+      "استفاده از فونت‌های فارسی مناسب",
+      "توجه به UX/UI برای کاربران ایرانی",
+      "بهینه‌سازی برای اینترنت کند",
+      "پشتیبانی از تمام اندازه‌های صفحه",
+      "تست روی نسخه‌های مختلف اندروید"
+    ],
+    "api_considerations": [
+      "همه API ها باید JWT authentication داشته باشند (به جز auth endpoints)",
+      "Error handling مناسب برای تمام API calls",
+      "Retry mechanism برای درخواست‌های ناموفق",
+      "Loading states برای تمام عملیات async",
+      "Offline fallback برای API calls"
+    ]
+  }
+}
+

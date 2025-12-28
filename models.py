@@ -289,6 +289,8 @@ class PartSubcategory(db.Model):
 class VehicleType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    image = db.Column(db.String(255), nullable=True)  # Image filename for the app
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -1507,10 +1509,220 @@ class OTPVerification(db.Model):
     def __repr__(self):
         return f'<OTPVerification {self.phone} - {self.code} - Expires: {self.expires_at}>'
 
+class ProductDiscount(db.Model):
+    """جدول تخفیفات محصولات"""
+    __tablename__ = 'product_discount'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)  # نام تخفیف
+    name_fa = db.Column(db.String(200), nullable=False)  # نام فارسی
+    description = db.Column(db.Text)  # توضیحات
+    discount_percentage = db.Column(db.Float, nullable=False)  # درصد تخفیف
+    discount_type = db.Column(db.String(20), default='daily')  # نوع تخفیف: 'daily' یا 'monthly'
+    priority = db.Column(db.Integer, default=0)  # اولویت نمایش (عدد بالاتر = اولویت بیشتر)
+    is_active = db.Column(db.Boolean, default=True)
+    start_date = db.Column(db.DateTime, nullable=True)  # تاریخ شروع
+    end_date = db.Column(db.DateTime, nullable=True)  # تاریخ پایان
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    # Relationships
+    products = db.relationship('Product', secondary='product_discount_products', backref='discounts', lazy=True)
+    creator = db.relationship('User', backref='created_discounts')
+    
+    def is_valid(self):
+        """بررسی اعتبار تخفیف"""
+        now = datetime.utcnow()
+        if not self.is_active:
+            return False
+        if self.start_date and now < self.start_date:
+            return False
+        if self.end_date and now > self.end_date:
+            return False
+        return True
+    
+    def __repr__(self):
+        return f'<ProductDiscount {self.name_fa} - {self.discount_percentage}%>'
+
+class ProductDiscountProduct(db.Model):
+    """جدول ارتباط محصولات با تخفیفات"""
+    __tablename__ = 'product_discount_products'
+    
+    discount_id = db.Column(db.Integer, db.ForeignKey('product_discount.id'), primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Banner(db.Model):
+    """جدول بنرهای صفحه اصلی اپلیکیشن"""
+    __tablename__ = 'banner'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200))
+    title_fa = db.Column(db.String(200))
+    image_url = db.Column(db.String(500), nullable=False)
+    link_url = db.Column(db.String(500))  # لینک مرتبط (اختیاری)
+    position = db.Column(db.String(50), default='homepage')  # homepage, shop, etc.
+    display_order = db.Column(db.Integer, default=0)  # ترتیب نمایش
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    creator = db.relationship('User', backref='created_banners')
+    
+    def __repr__(self):
+        return f'<Banner {self.title_fa or self.title}>'
+
+class AndroidAppConfig(db.Model):
+    """تنظیمات اپلیکیشن اندروید"""
+    __tablename__ = 'android_app_config'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Versioning
+    app_version = db.Column(db.String(20), default='1.0.0')
+    min_app_version = db.Column(db.String(20), default='1.0.0')
+    force_update = db.Column(db.Boolean, default=False)
+    
+    # Maintenance
+    maintenance_mode = db.Column(db.Boolean, default=False)
+    maintenance_message = db.Column(db.Text)
+    
+    # Features
+    daily_suggestions_enabled = db.Column(db.Boolean, default=True)
+    wholesale_requests_enabled = db.Column(db.Boolean, default=True)
+    wallet_enabled = db.Column(db.Boolean, default=True)
+    notifications_enabled = db.Column(db.Boolean, default=True)
+    
+    # Settings
+    default_price_type = db.Column(db.String(10), default='cash')  # cash or check
+    show_bulk_prices = db.Column(db.Boolean, default=True)
+    enable_offline_mode = db.Column(db.Boolean, default=True)
+    
+    # Daily Suggestions
+    daily_suggestions_title = db.Column(db.String(200), default='پیشنهادات ویژه امروز')
+    daily_suggestions_title_fa = db.Column(db.String(200), default='پیشنهادات ویژه امروز')
+    daily_suggestions_product_ids = db.Column(db.Text)  # JSON array of product IDs
+    
+    # Company Info (cached for app)
+    company_name = db.Column(db.String(200))
+    company_name_fa = db.Column(db.String(200))
+    company_logo_url = db.Column(db.String(500))
+    company_description = db.Column(db.Text)
+    company_description_fa = db.Column(db.Text)
+    company_phone = db.Column(db.String(20))
+    company_support_phone = db.Column(db.String(20))
+    company_email = db.Column(db.String(100))
+    company_address = db.Column(db.Text)
+    company_about = db.Column(db.Text)
+    company_about_fa = db.Column(db.Text)
+    
+    # Partner Brands (cached IDs)
+    partner_brand_ids = db.Column(db.Text)  # JSON array of brand IDs
+    
+    # Metadata
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    updater = db.relationship('User', backref='updated_app_configs')
+    
+    def get_daily_suggestions_product_ids(self):
+        """Get daily suggestions product IDs as list"""
+        if self.daily_suggestions_product_ids:
+            try:
+                return json.loads(self.daily_suggestions_product_ids)
+            except:
+                return []
+        return []
+    
+    def set_daily_suggestions_product_ids(self, product_ids):
+        """Set daily suggestions product IDs"""
+        self.daily_suggestions_product_ids = json.dumps(product_ids) if product_ids else None
+    
+    def get_partner_brand_ids(self):
+        """Get partner brand IDs as list"""
+        if self.partner_brand_ids:
+            try:
+                return json.loads(self.partner_brand_ids)
+            except:
+                return []
+        return []
+    
+    def set_partner_brand_ids(self, brand_ids):
+        """Set partner brand IDs"""
+        self.partner_brand_ids = json.dumps(brand_ids) if brand_ids else None
+    
+    @classmethod
+    def get_config(cls):
+        """Get or create app config (singleton)"""
+        config = cls.query.first()
+        if not config:
+            config = cls()
+            db.session.add(config)
+            db.session.commit()
+        return config
+    
+    def __repr__(self):
+        return f'<AndroidAppConfig v{self.app_version}>'
+
 # Event listener to auto-create wallet for new users
 @event.listens_for(User, 'after_insert')
 def create_wallet_for_user(mapper, connection, target):
     """ایجاد خودکار کیف پول برای کاربر جدید"""
     wallet = Wallet(user_id=target.id, balance=0)
     db.session.add(wallet)
-    db.session.flush()
+    # Note: No flush() needed here - the wallet will be included in the same transaction
+    # when the outer commit completes. Calling flush() here causes "Session is already flushing" error.
+
+# Event listeners for Meilisearch sync
+@event.listens_for(Product, 'after_insert')
+@event.listens_for(Product, 'after_update')
+def sync_product_to_search(mapper, connection, target):
+    """همگام‌سازی خودکار محصول با Meilisearch پس از insert/update"""
+    try:
+        from search_sync import get_sync_service
+        sync_service = get_sync_service()
+        # Use a background task or thread to avoid blocking
+        import threading
+        def sync_in_background():
+            try:
+                from app import app
+                with app.app_context():
+                    sync_service.sync_product(target.id)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Background sync failed for product {target.id}: {e}")
+        
+        thread = threading.Thread(target=sync_in_background)
+        thread.daemon = True
+        thread.start()
+    except Exception as e:
+        # Silently fail if search service is not available
+        import logging
+        logging.getLogger(__name__).debug(f"Search sync not available: {e}")
+
+@event.listens_for(Product, 'after_delete')
+def delete_product_from_search(mapper, connection, target):
+    """حذف محصول از Meilisearch پس از delete"""
+    try:
+        from search_sync import get_sync_service
+        sync_service = get_sync_service()
+        # Use a background task to avoid blocking
+        import threading
+        def delete_in_background():
+            try:
+                from app import app
+                with app.app_context():
+                    sync_service.delete_product(target.id)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Background delete failed for product {target.id}: {e}")
+        
+        thread = threading.Thread(target=delete_in_background)
+        thread.daemon = True
+        thread.start()
+    except Exception as e:
+        # Silently fail if search service is not available
+        import logging
+        logging.getLogger(__name__).debug(f"Search delete not available: {e}")

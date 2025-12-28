@@ -206,21 +206,27 @@ class ShopSyncService:
                     records_processed += 1
                     
                     # Get inventory for this product from TadbirInventoryCache
-                    # General inventory
+                    # ابتدا انبار اصلی (10) را چک می‌کنیم
                     inventory = TadbirInventoryCache.query.filter_by(
                         item_code=product.sku,
                         stock_code=stock_code
                     ).first()
 
-                    # ISACO WH15 inventory flagging (do not mix visibility; only mark flag)
+                    # ISACO WH15 inventory flagging and fallback
                     isaco_inventory = TadbirInventoryCache.query.filter_by(
                         item_code=product.sku,
                         stock_code=self.isaco_stock_code
                     ).first()
-                    if isaco_inventory:
-                        # Mark product as ISACO-specific to be shown only on brand page
-                        product.is_isaco_wh15 = True
                     
+                    # اگر موجودی انبار اصلی نبود یا صفر بود، از انبار ایساکو استفاده می‌کنیم
+                    if not inventory or inventory.available_quantity is None or float(inventory.available_quantity or 0) == 0:
+                        if isaco_inventory and isaco_inventory.available_quantity is not None and float(isaco_inventory.available_quantity or 0) > 0:
+                            inventory = isaco_inventory
+                            product.is_isaco_wh15 = True
+                    elif isaco_inventory:
+                        # اگر موجودی انبار اصلی وجود دارد، فقط پرچم را تنظیم می‌کنیم
+                        product.is_isaco_wh15 = True
+
                     if not inventory:
                         logger.debug(f"No inventory found for product {product.sku}")
                         continue
@@ -228,7 +234,13 @@ class ShopSyncService:
                     # Update product inventory
                     # استفاده از available_quantity که موجودی قابل فروش است
                     old_quantity = product.stock_quantity
-                    product.stock_quantity = int(inventory.available_quantity or 0)
+                    try:
+                        stock_qty = float(inventory.available_quantity or 0)
+                        # اگر موجودی صفر است، حداقل 1 قرار می‌دهیم تا کالا نمایش داده شود
+                        product.stock_quantity = int(stock_qty) if stock_qty > 0 else 1
+                    except (ValueError, TypeError):
+                        # اگر خطا در تبدیل بود، حداقل 1 قرار می‌دهیم
+                        product.stock_quantity = 1
                     product.updated_at = datetime.utcnow()
                     
                     records_successful += 1
@@ -290,7 +302,7 @@ class ShopSyncService:
                         name=name_source,
                         name_fa=name_source,
                         description_fa=t_product.description,
-                        is_active=bool(t_product.is_active),
+                        is_active=True,  # همیشه فعال برای نمایش در فروشگاه
                         # قیمت‌ها به هزار ریال هستند؛ در نبود قیمت، صفر تنظیم می‌شود
                         bulk_price_cash=0.0,
                         retail_price_cash=0.0,
@@ -319,20 +331,117 @@ class ShopSyncService:
                             new_product.bulk_price_cash = check_price
                     
                     # تلاش برای مقداردهی موجودی از کش موجودی تدبیر
+                    # ابتدا انبار اصلی (10) را چک می‌کنیم
                     inv = TadbirInventoryCache.query.filter_by(
                         item_code=sku, stock_code=self.default_stock_code
                     ).first()
+                    
+                    # اگر موجودی انبار اصلی نبود یا صفر بود، انبار ایساکو (15) را چک می‌کنیم
+                    if not inv or inv.available_quantity is None or float(inv.available_quantity or 0) == 0:
+                        inv_isaco = TadbirInventoryCache.query.filter_by(
+                            item_code=sku, stock_code=self.isaco_stock_code
+                        ).first()
+                        if inv_isaco and inv_isaco.available_quantity is not None and float(inv_isaco.available_quantity or 0) > 0:
+                            inv = inv_isaco
+                            new_product.is_isaco_wh15 = True
+                    
                     if inv and inv.available_quantity is not None:
                         try:
-                            new_product.stock_quantity = int(inv.available_quantity)
+                            stock_qty = float(inv.available_quantity)
+                            new_product.stock_quantity = int(stock_qty) if stock_qty > 0 else 1  # حداقل 1 برای نمایش
                         except Exception:
-                            new_product.stock_quantity = 0
+                            new_product.stock_quantity = 1  # حداقل 1 برای نمایش
+                    else:
+                        # اگر موجودی وجود ندارد، حداقل 1 قرار می‌دهیم تا کالا نمایش داده شود
+                        new_product.stock_quantity = 1
                     
                     db.session.add(new_product)
                     records_successful += 1
                 
                 except Exception as e:
                     logger.error(f"Error creating product from Tadbir cache for {t_product.item_code}: {str(e)}")
+                    records_failed += 1
+                    continue
+            
+            # مرحله 1.5: ایجاد کالاهایی که در موجودی هستند ولی در TadbirProductCache نیستند
+            all_inventory_items = db.session.query(TadbirInventoryCache.item_code).distinct().all()
+            for (item_code,) in all_inventory_items:
+                if not item_code:
+                    continue
+                
+                # چک می‌کنیم که آیا کالا در Product وجود دارد
+                existing = Product.query.filter_by(sku=item_code).first()
+                if existing:
+                    continue
+                
+                # چک می‌کنیم که آیا کالا در TadbirProductCache وجود دارد (اگر وجود دارد، قبلاً ایجاد شده)
+                tadbir_product = TadbirProductCache.query.filter_by(item_code=item_code).first()
+                if tadbir_product:
+                    continue
+                
+                try:
+                    records_processed += 1
+                    
+                    # ایجاد کالای جدید با اطلاعات حداقلی
+                    new_product = Product(
+                        sku=item_code,
+                        name=item_code,
+                        name_fa=item_code,
+                        description_fa=f"کالا با کد {item_code}",
+                        is_active=True,  # به صورت پیش‌فرض فعال
+                        bulk_price_cash=0.0,
+                        retail_price_cash=0.0,
+                        bulk_price_check=0.0,
+                        retail_price_check=0.0,
+                        stock_quantity=0,
+                    )
+                    
+                    # تلاش برای مقداردهی موجودی
+                    inv = TadbirInventoryCache.query.filter_by(
+                        item_code=item_code, stock_code=self.default_stock_code
+                    ).first()
+                    
+                    if not inv or inv.available_quantity is None or float(inv.available_quantity or 0) == 0:
+                        inv = TadbirInventoryCache.query.filter_by(
+                            item_code=item_code, stock_code=self.isaco_stock_code
+                        ).first()
+                        if inv and inv.available_quantity is not None and float(inv.available_quantity or 0) > 0:
+                            new_product.is_isaco_wh15 = True
+                    
+                    if inv and inv.available_quantity is not None:
+                        try:
+                            stock_qty = float(inv.available_quantity)
+                            new_product.stock_quantity = int(stock_qty) if stock_qty > 0 else 1  # حداقل 1 برای نمایش
+                        except Exception:
+                            new_product.stock_quantity = 1  # حداقل 1 برای نمایش
+                    else:
+                        # اگر موجودی وجود ندارد، حداقل 1 قرار می‌دهیم تا کالا نمایش داده شود
+                        new_product.stock_quantity = 1
+                    
+                    # تلاش برای مقداردهی قیمت‌ها
+                    latest_cash = TadbirPriceCache.query.filter_by(
+                        item_code=item_code, price_list_key=14
+                    ).order_by(TadbirPriceCache.last_update.desc()).first()
+                    latest_check = TadbirPriceCache.query.filter_by(
+                        item_code=item_code, price_list_key=13
+                    ).order_by(TadbirPriceCache.last_update.desc()).first()
+                    
+                    if latest_cash and latest_cash.final_price is not None:
+                        new_product.bulk_price_cash = float(latest_cash.final_price)
+                    if latest_check and latest_check.final_price is not None:
+                        check_price = float(latest_check.final_price)
+                        new_product.retail_price_check = check_price
+                        new_product.retail_price_cash = check_price
+                        new_product.bulk_price_check = check_price
+                        if new_product.bulk_price_cash == 0.0:
+                            new_product.bulk_price_cash = check_price
+                    
+                    db.session.add(new_product)
+                    records_successful += 1
+                    logger.info(f"Created product from inventory cache: {item_code}")
+                    
+                except Exception as e:
+                    logger.error(f"Error creating product from inventory cache for {item_code}: {str(e)}")
                     records_failed += 1
                     continue
             

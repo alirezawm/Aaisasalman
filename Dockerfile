@@ -46,7 +46,7 @@ WORKDIR /usr/src/app
 
 COPY --chown=appuser:appuser . .
 
-# ?? ÓÇÎÊ ÇÓ˜ÑíÊ startup.sh (Èå ÕæÑÊ ˜Çãá ÈÓÊåÔÏå)
+# ?? ï¿½ï¿½ï¿½ï¿½ ï¿½Ó˜ï¿½ï¿½ï¿½ startup.sh (ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 RUN set -eux; \
 cat > /usr/src/app/startup.sh <<'EOF'
 #!/bin/sh
@@ -85,7 +85,7 @@ EOF
 
 RUN chmod +x /usr/src/app/startup.sh && chown appuser:appuser /usr/src/app/startup.sh
 
-# ?? äÕÈ gosu ÈÑÇí ÇÌÑÇí Çãä ˜ÇÑÈÑ appuser
+# ?? ï¿½ï¿½ï¿½ gosu ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ appuser
 ENV GOSU_VERSION=1.16
 RUN set -eux; \
     dpkgArch="$(dpkg --print-architecture)"; \
@@ -93,7 +93,7 @@ RUN set -eux; \
     chmod +x /usr/local/bin/gosu; \
     gosu --version
 
-# ?? ÓÇÎÊ entrypoint.sh (Èå ÕæÑÊ ÕÍíÍ ÈÓÊåÔÏå)
+# ?? ï¿½ï¿½ï¿½ï¿½ entrypoint.sh (ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 RUN set -eux; \
 cat > /usr/local/bin/entrypoint.sh <<'EOF'
 #!/bin/sh

@@ -1,0 +1,14 @@
+# robots.txt for Asia Salman Car Parts Website
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /static/uploads/
+Disallow: /instance/
+
+# Sitemap
+Sitemap: https://asiasalman.com/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+

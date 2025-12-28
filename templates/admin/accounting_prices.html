@@ -150,6 +150,7 @@
                                     <th>حداقل سفارش</th>
                                     <th>آخرین بروزرسانی</th>
                                     <th>کش شده در</th>
+                                    <th>عملیات</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -160,9 +161,9 @@
                                     </td>
                                     <td>
                                         {% if price.price_type == 'retail_check' %}
-                                            <span class="badge bg-info">تکی چکی</span>
+                                            <span class="badge bg-primary">تکی چکی</span>
                                         {% elif price.price_type == 'bulk_check' %}
-                                            <span class="badge bg-warning">عمده چکی</span>
+                                            <span class="badge bg-primary">عمده چکی</span>
                                         {% elif price.price_type == 'bulk_cash' %}
                                             <span class="badge bg-success">عمده نقدی</span>
                                         {% else %}
@@ -204,6 +205,18 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ price.cached_at | persian_datetime }}</td>
+                                    <td>
+                                        {% set product = products_by_sku.get(price.item_code) %}
+                                        {% if product %}
+                                            <a href="{{ url_for('admin_edit_product', product_id=product.id) }}" 
+                                               class="btn btn-sm btn-primary" 
+                                               title="ویرایش کالا">
+                                                <i class="fas fa-edit"></i> ویرایش
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">کالا یافت نشد</span>
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

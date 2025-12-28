@@ -2,7 +2,344 @@
 
 {% block title %}فروشگاه قطعات خودرو | آسیا سلمان - بهترین قیمت‌ها{% endblock %}
 
+{% block extra_css %}
+<style>
+    .product-quantity {
+        min-width: 60px;
+        font-weight: 600;
+    }
+    .quantity-btn {
+        min-width: 35px;
+    }
+    .quantity-input-group {
+        display: flex;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .quantity-input-group .quantity-btn {
+        flex: 0 0 42px;
+    }
+    .quantity-input-group .product-quantity {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+    .floating-add-selected {
+        position: fixed;
+        bottom: 90px;
+        right: 16px;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+        z-index: 1050;
+        font-size: 1.3rem;
+        padding: 0;
+    }
+    .floating-add-selected:disabled {
+        opacity: 0.65;
+        box-shadow: none;
+    }
+    @media (max-width: 576px) {
+        .floating-add-selected {
+            bottom: 100px;
+            right: 12px;
+            width: 76px;
+            height: 76px;
+            font-size: 1.4rem;
+        }
+    }
+    @media (max-width: 576px) {
+        .quantity-input-group {
+            flex-wrap: nowrap;
+        }
+        .quantity-input-group .quantity-btn {
+            min-width: 42px;
+        }
+    }
+    
+    /* Enhanced Product Checkbox Styles */
+    .product-checkbox,
+    #selectAll,
+    #selectAllHeader {
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        min-height: 24px !important;
+        cursor: pointer;
+        border: 2px solid #dc3545 !important;
+        border-radius: 4px;
+        background-color: white;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: relative;
+        margin: 0.5rem;
+    }
+    
+    .product-checkbox:hover,
+    #selectAll:hover,
+    #selectAllHeader:hover {
+        border-color: #c82333 !important;
+        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        transform: scale(1.1);
+    }
+    
+    .product-checkbox:checked,
+    #selectAll:checked,
+    #selectAllHeader:checked {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.5);
+    }
+    
+    .product-checkbox:checked::after,
+    #selectAll:checked::after,
+    #selectAllHeader:checked::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 1;
+    }
+    
+    .product-checkbox:focus,
+    #selectAll:focus,
+    #selectAllHeader:focus {
+        outline: 3px solid rgba(220, 53, 69, 0.3);
+        outline-offset: 2px;
+    }
+    
+    /* Form check wrapper for better alignment */
+    .form-check {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+    }
+    
+    .form-check-label {
+        cursor: pointer;
+        margin-right: 0.5rem;
+        font-weight: 500;
+        user-select: none;
+    }
+    
+    /* Make checkbox column more prominent */
+    table thead th:first-child,
+    table tbody td:first-child {
+        width: 60px !important;
+        min-width: 60px;
+        text-align: center;
+        background-color: #f8f9fa;
+    }
+    
+    table thead th:first-child {
+        background-color: #dc3545;
+        color: white;
+        font-weight: bold;
+    }
+    
+    /* Enhanced Search Bar Styles */
+    .filter-section .input-group {
+        position: relative;
+    }
+    
+    .filter-section .input-group .form-control {
+        padding-right: 45px;
+        border: 2px solid #dc3545;
+        border-radius: 25px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+    
+    .filter-section .input-group .form-control:focus {
+        border-color: #c82333;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+    
+    .filter-section .input-group-text {
+        background: transparent;
+        border: none;
+        padding-right: 15px;
+        color: #dc3545;
+    }
+    
+    /* Search autocomplete styles */
+    .search-autocomplete {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 0.375rem 0.375rem;
+        max-height: 400px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: none;
+        margin-top: 2px;
+    }
+    
+    .search-autocomplete.show {
+        display: block;
+        animation: slideDown 0.2s ease;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .suggestion-group {
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .suggestion-group:last-child {
+        border-bottom: none;
+    }
+    
+    .suggestion-group-header {
+        padding: 0.5rem 1rem;
+        background-color: #f8f9fa;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .search-suggestion {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .search-suggestion:hover,
+    .search-suggestion.active {
+        background-color: #f8f9fa;
+        padding-right: 1.25rem;
+    }
+    
+    .search-suggestion:last-child {
+        border-bottom: none;
+    }
+    
+    .search-suggestion .suggestion-icon {
+        width: 20px;
+        text-align: center;
+        color: #dc3545;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .search-suggestion .suggestion-text {
+        font-weight: 500;
+        color: #212529;
+        flex: 1;
+    }
+    
+    .search-suggestion .suggestion-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    
+    .search-highlight {
+        background-color: #fff3cd;
+        font-weight: 600;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+    
+    /* Loading state */
+    .search-loading {
+        padding: 1rem;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .search-loading::after {
+        content: '...';
+        animation: dots 1.5s steps(4, end) infinite;
+    }
+    
+    @keyframes dots {
+        0%, 20% { content: '.'; }
+        40% { content: '..'; }
+        60%, 100% { content: '...'; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
+<!-- BreadcrumbList Schema -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org/",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "خانه",
+            "item": "{{ url_for('index', _external=True) }}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "فروشگاه",
+            "item": "{{ request.url }}"
+        }
+    ]
+}
+</script>
+
+<!-- CollectionPage Schema -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org/",
+    "@type": "CollectionPage",
+    "name": "فروشگاه قطعات خودرو آسیا سلمان",
+    "description": "فروشگاه آنلاین قطعات خودرو با بهترین قیمت‌ها و کیفیت جهانی",
+    "url": "{{ request.url }}",
+    "mainEntity": {
+        "@type": "ItemList",
+        "numberOfItems": {{ products.total if products else 0 }},
+        "itemListElement": [
+            {% for product in products.items[:10] %}
+            {
+                "@type": "ListItem",
+                "position": {{ loop.index }},
+                "item": {
+                    "@type": "Product",
+                    "name": "{{ product.name_fa|replace('"', '\\"') }}",
+                    "sku": "{{ product.sku }}",
+                    "url": "{{ url_for('product_detail', product_id=product.id, _external=True) }}"
+                }
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }
+}
+</script>
 <div class="container-fluid py-4">
     <div class="row">
         <!-- Main Content -->
@@ -12,12 +349,21 @@
                 <form method="GET" class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label filter-title">جستجو</label>
-                        <div class="input-group">
+                        <div class="input-group position-relative">
                             <span class="input-group-text">
                                 <i class="fas fa-search"></i>
                             </span>
-                            <input type="text" class="form-control" name="search" 
-                                   placeholder="جستجو در کد کالا، نام محصول، برند یا نوع خودرو..." value="{{ current_filters.search or '' }}">
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="search" 
+                                   id="productSearch"
+                                   autocomplete="off"
+                                   aria-label="جستجوی محصولات"
+                                   placeholder="جستجو در کد کالا، نام محصول، برند یا نوع خودرو..." 
+                                   value="{{ current_filters.search or '' }}">
+                            <div class="search-autocomplete" id="searchAutocomplete" role="listbox" aria-label="پیشنهادات جستجو">
+                                <!-- Suggestions will be populated here -->
+                            </div>
                         </div>
                     </div>
                     
@@ -91,16 +437,33 @@
                                     <th width="5%">
                                         <input type="checkbox" id="selectAllHeader" class="form-check-input">
                                     </th>
-                                    <th width="20%">وضعیت موجودی</th>
-                                    <th width="15%">کد کالا</th>
-                                    <th width="25%">نام کالا</th>
+                                    <th width="15%">وضعیت موجودی</th>
+                                    <th width="12%">کد کالا</th>
+                                    <th width="23%">نام کالا</th>
                                     <th width="15%">قیمت</th>
-                                    <th width="10%">مدت تسویه</th>
-                                    <th width="10%">تعداد</th>
+                                    <th width="8%">مدت تسویه</th>
+                                    <th width="22%">عملیات</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {% if products.items|length == 0 %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-search me-2"></i>
+                                            {% if current_filters.search %}
+                                                هیچ محصولی برای "{{ current_filters.search }}" یافت نشد.
+                                                <br>
+                                                <small class="text-muted">لطفاً کلمات کلیدی دیگری را امتحان کنید.</small>
+                                            {% else %}
+                                                هیچ محصولی یافت نشد.
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
                                 {% for product in products.items %}
+                                {% set discount_percent = get_product_discount_percentage(product) %}
                                 <tr>
                                     <td>
                                         <div class="form-check">
@@ -108,7 +471,12 @@
                                                    id="product_{{ product.id }}" data-product-id="{{ product.id }}">
                                         </div>
                                     </td>
-                                    <td>
+                                    <td data-label="وضعیت موجودی">
+                                        {% if discount_percent > 0 %}
+                                        <span class="badge bg-danger mb-1 d-block" style="font-size: 11px;">
+                                            <i class="fas fa-tag me-1"></i>{{ discount_percent }}% تخفیف
+                                        </span>
+                                        {% endif %}
                                         {% if product.stock_quantity > 0 %}
                                             <span class="badge bg-success">
                                                 <i class="fas fa-check me-1"></i>موجود
@@ -119,16 +487,16 @@
                                             </span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td data-label="کد کالا">
                                         <code>{{ product.code or product.sku }}</code>
                                     </td>
-                                    <td>
+                                    <td data-label="نام کالا">
                                         <strong>{{ product.name }}</strong>
                                         {% if product.description %}
                                             <small class="d-block text-muted">{{ product.description[:50] }}...</small>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td data-label="قیمت">
                                         <!-- Price Display Element -->
                                         <div id="price_{{ product.id }}" class="price-display" style="display: none;">
                                             {{ product.bulk_price_cash if can_see_bulk_prices(current_user) else product.retail_price_cash }}
@@ -163,7 +531,7 @@
                                                            data-retail-cash-price="{{ product.retail_price_cash }}"
                                                            data-retail-check-price="{{ product.retail_price_check }}"
                                                            data-bulk-buyer="true">
-                                                    <label class="btn btn-outline-warning btn-xs" for="check_{{ product.id }}">
+                                                    <label class="btn btn-outline-primary btn-xs" for="check_{{ product.id }}">
                                                         <i class="fas fa-file-invoice"></i>
                                                         <div class="d-block">
                                                             <span>چکی عمده</span>
@@ -188,7 +556,7 @@
                                                            data-retail-check-price="{{ product.retail_price_check }}"
                                                            data-bulk-buyer="false"
                                                            checked>
-                                                    <label class="btn btn-outline-warning btn-xs w-100" for="check_{{ product.id }}">
+                                                    <label class="btn btn-outline-primary btn-xs w-100" for="check_{{ product.id }}">
                                                         <i class="fas fa-file-invoice"></i>
                                                         <div class="d-block">
                                                             <span>قیمت چکی</span>
@@ -210,7 +578,7 @@
                                                            data-retail-check-price="{{ product.retail_price_check }}"
                                                            data-bulk-buyer="false"
                                                            checked>
-                                                    <label class="btn btn-outline-warning btn-xs w-100" for="check_{{ product.id }}">
+                                                    <label class="btn btn-outline-primary btn-xs w-100" for="check_{{ product.id }}">
                                                         <i class="fas fa-file-invoice"></i>
                                                         <div class="d-block">
                                                             <span>قیمت چکی</span>
@@ -277,24 +645,26 @@
                                             {% endif %}
                                         </div>
                                     </td>
-                                    <td>
+                                    <td data-label="مدت تسویه">
                                         {% if product.settlement_period > 0 %}
                                             {{ product.settlement_period }} روز
                                         {% else %}
                                             فوری
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="-1">
+                                    <td data-label="عملیات">
+                                        <div class="quantity-input-group mb-2">
+                                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="-1" data-product-id="{{ product.id }}">
                                                 <i class="fas fa-minus"></i>
                                             </button>
-                                            <input type="number" class="form-control text-center" 
-                                                   id="quantity_{{ product.id }}" value="1" min="1">
-                                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="1">
+                                            <input type="number" class="form-control text-center product-quantity" 
+                                                   id="quantity_{{ product.id }}" value="1" min="1"
+                                                   data-product-id="{{ product.id }}">
+                                            <button class="btn btn-outline-danger quantity-btn" type="button" data-change="1" data-product-id="{{ product.id }}">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                         </div>
+                                        
                                         <!-- Points Display -->
                                         <div class="product-points-display mt-1">
                                             <small class="text-muted">
@@ -305,6 +675,7 @@
                                     </td>
                                 </tr>
                                 {% endfor %}
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -360,34 +731,48 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Professional Search Engine -->
+<script src="{{ url_for('static', filename='js/professional_search.js') }}"></script>
 <script>
+// jQuery is now loaded synchronously in base.html, so we can use it directly
 $(document).ready(function() {
     // Initialize quantity controls
     $('.quantity-btn').on('click', function() {
-        var input = $(this).siblings('input');
+        var productId = $(this).data('product-id');
+        var input = $('#quantity_' + productId);
         var currentValue = parseInt(input.val()) || 1;
         var change = $(this).data('change');
-        var newValue = currentValue + change;
+        var maxValue = parseInt(input.attr('max')) || 9999;
+        var newValue = Math.max(1, Math.min(maxValue, currentValue + change));
         
-        if (newValue >= 1) {
             input.val(newValue);
             // Update points when quantity changes
             updateProductPoints(input);
             // Update cart points if available
             if (typeof updateCartPoints === 'function') {
                 updateCartPoints();
-            }
         }
     });
     
     // Update points when quantity input changes manually
     $('input[id^="quantity_"]').on('input change', function() {
+        var maxValue = parseInt($(this).attr('max')) || 9999;
+        var currentValue = parseInt($(this).val()) || 1;
+        if (currentValue > maxValue) {
+            $(this).val(maxValue);
+        }
+        if (currentValue < 1) {
+            $(this).val(1);
+        }
         updateProductPoints($(this));
         // Update cart points if available
         if (typeof updateCartPoints === 'function') {
             updateCartPoints();
         }
     });
+    
+    // Search functionality is now handled by ProfessionalSearchEngine class
+    // The old autocomplete code has been removed to avoid conflicts
     
     // Price calculation
     $('.price-type-radio').on('change', function() {
@@ -418,77 +803,74 @@ $(document).ready(function() {
         }
     });
     
+    // Function to calculate and update points for a product
+    function updateProductPoints(quantityInput) {
+        var productId = quantityInput.attr('id').replace('quantity_', '');
+        var quantity = parseInt(quantityInput.val()) || 1;
+        
+        // Get product price
+        var priceElement = $('#price_' + productId);
+        var price = parseFloat(priceElement.text()) || 0;
+        
+        // Calculate points using the same logic as the backend
+        var totalPrice = price * quantity; // Total price in thousands of rials
+        var basePoints = Math.floor((totalPrice / 100) * 0.05); // 0.05 points per 100k rials
+        var bonusPoints = Math.min((quantity - 1) * 0.005, 0.1); // 0.005 bonus points per additional product, max 0.1
+        var totalPoints = basePoints + bonusPoints;
+        
+        // Update points display
+        var pointsElement = $('.product-points[data-product-id="' + productId + '"]');
+        pointsElement.text(totalPoints.toLocaleString('fa-IR'));
+    }
+
+    // Function to initialize points for all products
+    function initializeProductPoints() {
+        $('input[id^="quantity_"]').each(function() {
+            updateProductPoints($(this));
+        });
+    }
+    
     // Initialize points for all products
     initializeProductPoints();
     
     // Add to cart functionality is handled in main.js
 });
-
-// Function to calculate and update points for a product
-function updateProductPoints(quantityInput) {
-    var productId = quantityInput.attr('id').replace('quantity_', '');
-    var quantity = parseInt(quantityInput.val()) || 1;
-    
-    // Get product price
-    var priceElement = $('#price_' + productId);
-    var price = parseFloat(priceElement.text()) || 0;
-    
-    // Calculate points using the same logic as the backend
-    var totalPrice = price * quantity; // Total price in thousands of rials
-    var basePoints = Math.floor((totalPrice / 100) * 0.05); // 0.05 points per 100k rials
-    var bonusPoints = Math.min((quantity - 1) * 0.005, 0.1); // 0.005 bonus points per additional product, max 0.1
-    var totalPoints = basePoints + bonusPoints;
-    
-    // Update points display
-    var pointsElement = $('.product-points[data-product-id="' + productId + '"]');
-    pointsElement.text(totalPoints.toLocaleString('fa-IR'));
-}
-
-// Function to initialize points for all products
-function initializeProductPoints() {
-    $('input[id^="quantity_"]').each(function() {
-        updateProductPoints($(this));
-    });
-}
 </script>
 {% endblock %}
 
 {% block sticky_mobile_bar %}
 {% if current_user.is_authenticated %}
-<div class="mobile-sticky-cta d-md-none">
-  <div class="container">
-    <div class="d-flex align-items-center justify-content-between gap-2">
-      <div class="flex-grow-1">
-        <div class="small text-muted">محصول انتخاب شده</div>
-        <div class="fw-bold selected-count">0 محصول انتخاب شده</div>
-      </div>
-      <button class="btn btn-success" id="sticky_add_selected" disabled>
-        <i class="fas fa-cart-plus me-1"></i>
-        افزودن انتخاب‌شده‌ها
-      </button>
-    </div>
-  </div>
-</div>
+<button class="btn btn-success floating-add-selected" id="floating_add_selected" aria-label="افزودن انتخاب‌شده‌ها" disabled>
+  <i class="fas fa-cart-plus"></i>
+</button>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  function updateStickyBarState() {
-    const count = document.querySelectorAll('.product-checkbox:checked').length;
-    document.querySelectorAll('.selected-count').forEach(el => el.textContent = count + ' محصول انتخاب شده');
-    const btn = document.getElementById('sticky_add_selected');
-    if (btn) btn.disabled = count === 0;
-  }
-  document.querySelectorAll('.product-checkbox, #selectAll, #selectAllHeader').forEach(el => {
-    el.addEventListener('change', updateStickyBarState);
-  });
   const addBtn = document.getElementById('addSelectedToCart');
-  const stickyBtn = document.getElementById('sticky_add_selected');
-  if (addBtn && stickyBtn) {
-    stickyBtn.addEventListener('click', function(e) {
+  const floatingBtn = document.getElementById('floating_add_selected');
+
+  function updateFloatingButton() {
+    const count = document.querySelectorAll('.product-checkbox:checked').length;
+    if (floatingBtn) {
+      floatingBtn.disabled = count === 0;
+    }
+    // Update selected count in other places (like the main controls)
+    document.querySelectorAll('.selected-count').forEach(el => {
+      el.textContent = count + ' محصول انتخاب شده';
+    });
+  }
+
+  document.querySelectorAll('.product-checkbox, #selectAll, #selectAllHeader').forEach(el => {
+    el.addEventListener('change', updateFloatingButton);
+  });
+
+  if (addBtn && floatingBtn) {
+    floatingBtn.addEventListener('click', function(e) {
       e.preventDefault();
       addBtn.click();
     });
   }
-  updateStickyBarState();
+
+  updateFloatingButton();
 });
 </script>
 {% endif %}

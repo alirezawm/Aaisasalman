@@ -1,14 +1,16 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file, abort, current_app
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
-from sqlalchemy import text
+from sqlalchemy import text, desc, or_, func
 import os
 import json
 import uuid
 import psutil
 import time
+import threading
 from models import *
 from app import app
 import models
@@ -63,6 +65,247 @@ def normalize_sql_expr(col):
     # Convert to lowercase for case-insensitive search
     return func.lower(normalized_col)
 
+def search_with_meilisearch(search_query, filters=None, sort=None, page=1, per_page=12):
+    """
+    جستجو با استفاده از Meilisearch با fallback به SQL search
+    
+    Args:
+        search_query: Query string
+        filters: Dictionary of filters
+        sort: Sort criteria
+        page: Page number
+        per_page: Results per page
+    
+    Returns:
+        Tuple (query, product_ids) where query is SQLAlchemy query and product_ids is list of IDs from Meilisearch
+        If Meilisearch is not available, returns (query, None) for SQL search
+    """
+    try:
+        from search_service import get_search_service
+        
+        search_service = get_search_service()
+        
+        # Try Meilisearch first
+        if search_service.is_available():
+            # Build filters for Meilisearch
+            meilisearch_filters = {}
+            if filters:
+                meilisearch_filters.update(filters)
+            
+            # Always filter active products with stock
+            meilisearch_filters['is_active'] = True
+            meilisearch_filters['stock_quantity'] = '> 0'
+            
+            # Perform search
+            search_results = search_service.search(
+                query=search_query,
+                filters=meilisearch_filters,
+                sort=sort,
+                page=page,
+                per_page=per_page
+            )
+            
+            if search_results.get('from_search_engine') and search_results.get('products'):
+                # Return product IDs to filter SQL query
+                return None, search_results['products'], search_results.get('total', 0)
+    except Exception as e:
+        app.logger.warning(f"Meilisearch search failed, falling back to SQL: {e}")
+    
+    # Fallback to SQL search
+    return None, None, 0
+
+def advanced_product_search(query, search_query):
+    """
+    جستجوی پیشرفته و حرفه‌ای برای کالاها با سیستم اولویت‌بندی کلمات
+    ویژگی‌های این تابع:
+    1. کلمه اول بیشترین اهمیت را دارد (باید حتماً موجود باشد)
+    2. کلمه دوم اهمیت متوسط دارد
+    3. کلمات سوم به بعد کمترین اهمیت را دارند
+    4. نتایج بر اساس امتیاز مرتب‌سازی می‌شوند (مرتبط‌ترین اول)
+    5. پشتیبانی از جستجوی کد عددی (SKU/OEM)
+    """
+    from sqlalchemy import func, case
+    import re
+    
+    if not search_query or not search_query.strip():
+        return query
+    
+    search_query = search_query.strip()
+    
+    # نرمال‌سازی ورودی: حذف فاصله‌های اضافی
+    normalized_query = normalize_fa_text(search_query)
+    # حذف تمام فاصله‌ها برای جستجوی بدون فاصله
+    query_without_spaces = re.sub(r'\s+', '', normalized_query)
+    
+    # تشخیص نوع جستجو: آیا کد عددی است؟
+    is_numeric_code = search_query.isdigit() or (normalized_query.replace(' ', '').isdigit())
+    
+    if is_numeric_code:
+        # اگر کد عددی است: جستجوی دقیق و جزئی در SKU و OEM
+        code_value = search_query.strip()
+        conditions = [
+            Product.sku == code_value,
+            Product.oem_code == code_value,
+            Product.sku.contains(code_value),
+            Product.oem_code.contains(code_value)
+        ]
+        query = query.filter(models.db.or_(*conditions))
+        return query
+    
+    # ---- جستجو با سیستم اولویت‌بندی کلمات ----
+    try:
+        name_norm = normalize_sql_expr(Product.name)
+        name_fa_norm = normalize_sql_expr(Product.name_fa)
+        
+        # تقسیم query به کلمات (حداکثر 5 کلمه برای بهینه‌سازی)
+        words = [w for w in normalized_query.split() if len(w) > 1][:5]
+        
+        # اگر هیچ کلمه معتبر نبود، جستجوی ساده
+        if not words:
+            basic_conditions = [
+                name_norm.contains(normalized_query),
+                name_fa_norm.contains(normalized_query),
+                Product.sku.contains(normalized_query)
+            ]
+            if getattr(Product, 'oem_code', None) is not None:
+                basic_conditions.append(Product.oem_code.contains(normalized_query))
+            query = query.filter(models.db.or_(*basic_conditions))
+            return query
+        
+        # کلمه اول: الزامی است و باید حتماً موجود باشد
+        first_word = words[0]
+        first_word_conds = [
+            name_norm.contains(first_word),
+            name_fa_norm.contains(first_word),
+            Product.sku.contains(first_word)
+        ]
+        if getattr(Product, 'oem_code', None) is not None:
+            first_word_conds.append(Product.oem_code.contains(first_word))
+        
+        # فیلتر کردن محصولاتی که کلمه اول را دارند (الزامی)
+        query = query.filter(models.db.or_(*first_word_conds))
+        
+        # ساخت سیستم امتیازدهی بر اساس اولویت کلمات
+        # استفاده از name_norm و name_fa_norm که قبلاً تعریف شده‌اند (case-insensitive و normalized)
+        
+        # کلمه اول: امتیاز 100 در فیلدهای مهم (name/name_fa/sku/oem)
+        # چون کلمه اول الزامی است، همه نتایج باید آن را داشته باشند
+        # ساخت case statement - اولین condition که match شود استفاده می‌شود
+        first_word_score_conditions = [
+            (name_norm.contains(first_word), 100),
+            (name_fa_norm.contains(first_word), 100),
+            (func.lower(Product.sku).contains(first_word.lower()), 100),
+        ]
+        
+        # اضافه کردن OEM به conditions اگر وجود داشته باشد
+        if getattr(Product, 'oem_code', None) is not None:
+            first_word_score_conditions.append((func.lower(Product.oem_code).contains(first_word.lower()), 100))
+        
+        # ساخت case statement - استفاده از unpack کردن list
+        first_word_important_score = case(
+            *first_word_score_conditions,
+            else_=50  # حداقل امتیاز (چون کلمه اول الزامی است)
+        )
+        
+        total_score = first_word_important_score
+        
+        # کلمه دوم: امتیاز 30 در فیلدهای مهم (اختیاری اما با وزن)
+        if len(words) >= 2:
+            second_word = words[1]
+            second_word_conditions = [
+                (name_norm.contains(second_word), 30),
+                (name_fa_norm.contains(second_word), 30),
+                (func.lower(Product.sku).contains(second_word.lower()), 30),
+            ]
+            if getattr(Product, 'oem_code', None) is not None:
+                second_word_conditions.append((func.lower(Product.oem_code).contains(second_word.lower()), 30))
+            
+            # ساخت case statement - استفاده از unpack کردن list
+            second_word_score = case(
+                *second_word_conditions,
+                else_=0  # اگر کلمه دوم موجود نباشد، امتیاز 0
+            )
+            total_score = total_score + second_word_score
+        
+        # کلمات سوم به بعد: امتیاز 10 در فیلدهای مهم (کاملاً اختیاری)
+        for word in words[2:]:
+            word_score = case(
+                (name_norm.contains(word), 10),
+                (name_fa_norm.contains(word), 10),
+                else_=0
+            )
+            total_score = total_score + word_score
+        
+        # مرتب‌سازی بر اساس امتیاز (مرتبط‌ترین اول)
+        query = query.order_by(total_score.desc())
+        
+        # حذف فیلتر اضافی برای query_without_spaces که باعث حذف نتایج می‌شد
+        # این فیلتر قبلاً باعث می‌شد که وقتی کاربر دو کلمه می‌نوشت، همه نتایج حذف شوند
+        # چون کلمات قبلاً فیلتر شده‌اند و این فیلتر اضافی غیرضروری است
+        
+    except Exception as e:
+        app.logger.error(f"Search normalization/ranking failed: {e}")
+        # Fallback به جستجوی ساده در صورت بروز خطا
+        fallback_conds = [
+            Product.name.contains(search_query),
+            Product.name_fa.contains(search_query),
+            Product.sku.contains(search_query)
+        ]
+        if getattr(Product, 'oem_code', None) is not None:
+            fallback_conds.append(Product.oem_code.contains(search_query))
+        query = query.filter(models.db.or_(*fallback_conds))
+    
+    return query
+
+def search_with_meilisearch(search_query, filters=None, sort=None, page=1, per_page=12):
+    """
+    جستجو با استفاده از Meilisearch با fallback به SQL search
+    
+    Args:
+        search_query: Query string
+        filters: Dictionary of filters
+        sort: Sort criteria
+        page: Page number
+        per_page: Results per page
+    
+    Returns:
+        Tuple (None, product_ids, total) where product_ids is list of IDs from Meilisearch
+        If Meilisearch is not available, returns (None, None, 0) for SQL search fallback
+    """
+    try:
+        from search_service import get_search_service
+        
+        search_service = get_search_service()
+        
+        # Try Meilisearch first
+        if search_service.is_available():
+            # Build filters for Meilisearch
+            meilisearch_filters = {}
+            if filters:
+                meilisearch_filters.update(filters)
+            
+            # Always filter active products with stock
+            meilisearch_filters['is_active'] = True
+            meilisearch_filters['stock_quantity'] = '> 0'
+            
+            # Perform search
+            search_results = search_service.search(
+                query=search_query,
+                filters=meilisearch_filters,
+                sort=sort,
+                page=page,
+                per_page=per_page
+            )
+            
+            if search_results.get('from_search_engine') and search_results.get('products'):
+                # Return product IDs to filter SQL query
+                return None, search_results['products'], search_results.get('total', 0)
+    except Exception as e:
+        app.logger.warning(f"Meilisearch search failed, falling back to SQL: {e}")
+    
+    # Fallback to SQL search
+    return None, None, 0
+
 # -------- ISACO Warehouse 15 helpers --------
 def is_isaco_feature_enabled():
     return app.config.get('ENABLE_ISACO_WH15', False)
@@ -103,11 +346,11 @@ def format_price(price):
 @app.route('/')
 def index():
     """Homepage"""
-    # Get featured products
-    featured_products = Product.query.filter_by(is_featured=True, is_active=True).limit(8).all()
+    # Get featured products - only products with stock available
+    featured_products = Product.query.filter_by(is_featured=True, is_active=True).filter(Product.stock_quantity > 0).limit(8).all()
     
-    # Get latest products
-    latest_products = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).limit(8).all()
+    # Get latest products - only products with stock available
+    latest_products = Product.query.filter_by(is_active=True).filter(Product.stock_quantity > 0).order_by(Product.created_at.desc()).limit(8).all()
     
     # Get announcements
     announcements = Announcement.query.filter_by(is_active=True).order_by(Announcement.created_at.desc()).limit(3).all()
@@ -120,6 +363,113 @@ def index():
                          latest_products=latest_products,
                          announcements=announcements,
                          company_info=company_info)
+
+@app.route('/robots.txt')
+def robots_txt():
+    """Serve robots.txt"""
+    return send_from_directory(app.static_folder, 'robots.txt', mimetype='text/plain')
+
+@app.route('/manifest.json')
+def manifest_json():
+    """Serve manifest.json with dynamic URLs"""
+    from flask import jsonify
+    base_url = request.url_root.rstrip('/')
+    
+    manifest = {
+        "name": "آسیا سلمان - قطعات خودرو",
+        "short_name": "آسیا سلمان",
+        "description": "شرکت بازرگانی قطعات خودرو آسیا سلمان - ارائه بهترین قطعات خودرو با کیفیت جهانی",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#dc3545",
+        "orientation": "portrait-primary",
+        "scope": "/",
+        "lang": "fa",
+        "dir": "rtl",
+        "icons": [
+            {"src": url_for('static', filename='images/favicon-16x16.png', _external=True), "sizes": "16x16", "type": "image/png"},
+            {"src": url_for('static', filename='images/favicon-32x32.png', _external=True), "sizes": "32x32", "type": "image/png"},
+            {"src": url_for('static', filename='images/favicon-48x48.png', _external=True), "sizes": "48x48", "type": "image/png"},
+            {"src": url_for('static', filename='images/favicon-64x64.png', _external=True), "sizes": "64x64", "type": "image/png"},
+            {"src": url_for('static', filename='images/favicon-128x128.png', _external=True), "sizes": "128x128", "type": "image/png"}
+        ],
+        "categories": ["shopping", "business", "automotive"]
+    }
+    
+    response = jsonify(manifest)
+    response.headers['Content-Type'] = 'application/manifest+json'
+    return response
+
+@app.route('/sitemap.xml')
+def sitemap():
+    """Generate sitemap.xml dynamically"""
+    from flask import make_response
+    from xml.etree.ElementTree import Element, SubElement, tostring
+    
+    # Create root element
+    urlset = Element('urlset')
+    urlset.set('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9')
+    urlset.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
+    urlset.set('xsi:schemaLocation', 'http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd')
+    
+    base_url = request.url_root.rstrip('/')
+    
+    # Homepage
+    url = SubElement(urlset, 'url')
+    SubElement(url, 'loc').text = base_url
+    SubElement(url, 'changefreq').text = 'daily'
+    SubElement(url, 'priority').text = '1.0'
+    
+    # Shop page
+    url = SubElement(urlset, 'url')
+    SubElement(url, 'loc').text = f"{base_url}{url_for('shop')}"
+    SubElement(url, 'changefreq').text = 'daily'
+    SubElement(url, 'priority').text = '0.9'
+    
+    # Brands page
+    url = SubElement(urlset, 'url')
+    SubElement(url, 'loc').text = f"{base_url}{url_for('brands')}"
+    SubElement(url, 'changefreq').text = 'weekly'
+    SubElement(url, 'priority').text = '0.8'
+    
+    # About page
+    url = SubElement(urlset, 'url')
+    SubElement(url, 'loc').text = f"{base_url}{url_for('about')}"
+    SubElement(url, 'changefreq').text = 'monthly'
+    SubElement(url, 'priority').text = '0.7'
+    
+    # Guide page
+    url = SubElement(urlset, 'url')
+    SubElement(url, 'loc').text = f"{base_url}{url_for('guide')}"
+    SubElement(url, 'changefreq').text = 'monthly'
+    SubElement(url, 'priority').text = '0.7'
+    
+    # Add active products
+    products = Product.query.filter_by(is_active=True).all()
+    for product in products:
+        url = SubElement(urlset, 'url')
+        SubElement(url, 'loc').text = f"{base_url}{url_for('product_detail', product_id=product.id)}"
+        SubElement(url, 'changefreq').text = 'weekly'
+        SubElement(url, 'priority').text = '0.8'
+        if product.updated_at:
+            SubElement(url, 'lastmod').text = product.updated_at.strftime('%Y-%m-%d')
+    
+    # Add brands
+    brands = Brand.query.filter_by(is_active=True).all()
+    for brand in brands:
+        url = SubElement(urlset, 'url')
+        SubElement(url, 'loc').text = f"{base_url}{url_for('brand_models', brand_id=brand.id)}"
+        SubElement(url, 'changefreq').text = 'weekly'
+        SubElement(url, 'priority').text = '0.7'
+    
+    # Create XML string
+    xml_string = '<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(urlset, encoding='unicode')
+    
+    # Create response
+    response = make_response(xml_string)
+    response.headers['Content-Type'] = 'application/xml'
+    return response
 
 @app.route('/about')
 def about():
@@ -137,6 +487,9 @@ def shop():
     """Shop page with products"""
     page = request.args.get('page', 1, type=int)
     per_page = 12
+    apply_early_filters = os.getenv('SHOP_APPLY_FILTERS_EARLY', '').strip().lower() in (
+        '1', 'true', 'yes', 'on'
+    )
     
     # Get filter parameters
     brand_id = request.args.get('brand_id', type=int)
@@ -147,55 +500,126 @@ def shop():
     # Build query - only show products with stock available
     query = Product.query.filter_by(is_active=True).filter(Product.stock_quantity > 0)
 
-    # Filter out Isaco products if user doesn't have permission to see them
-    from app import can_see_isaco_products
-    if not can_see_isaco_products(current_user):
-        # Exclude Isaco products for users without permission
-        isaco_brand_id = app.config.get('ISACO_BRAND_ID')
-        if isaco_brand_id:
-            query = query.filter(Product.brand_id != isaco_brand_id)
+    if apply_early_filters:
+        if brand_id:
+            query = query.filter_by(brand_id=brand_id)
+        
+        if category_id:
+            query = query.filter_by(category_id=category_id)
+        
+        if vehicle_type_id:
+            # Filter by vehicle type through the relationship
+            query = query.join(ProductVehicleType).filter(
+                ProductVehicleType.vehicle_type_id == vehicle_type_id
+            )
+
+    # نمایش همه محصولات (شامل ایساکو) برای همه کاربران
     
-    if brand_id:
-        query = query.filter_by(brand_id=brand_id)
-    
-    if category_id:
-        query = query.filter_by(category_id=category_id)
-    
-    if vehicle_type_id:
-        # Filter by vehicle type through the relationship
-        query = query.join(ProductVehicleType).filter(
-            ProductVehicleType.vehicle_type_id == vehicle_type_id
-        )
+    # Try Meilisearch search first if search query exists
+    product_ids = None
+    total_results = 0
+    use_meilisearch = False
     
     if search_query:
-        try:
-            norm_q = normalize_fa_text(search_query)
-            name_norm = normalize_sql_expr(Product.name)
-            name_fa_norm = normalize_sql_expr(Product.name_fa)
-
-            query = query.filter(
-                models.db.or_(
-                    name_norm.contains(norm_q),
-                    name_fa_norm.contains(norm_q),
-                    Product.sku.contains(norm_q),
-                    Product.oem_code.contains(norm_q)
-                )
-            )
-        except Exception as e:
-            # Fallback to simple search if normalization fails
-            app.logger.error(f"Search normalization failed: {e}")
-            query = query.filter(
-                models.db.or_(
-                    Product.name.contains(search_query),
-                    Product.name_fa.contains(search_query),
-                    Product.sku.contains(search_query),
-                    Product.oem_code.contains(search_query)
-                )
-            )
+        # Build filters for Meilisearch
+        filters = {}
+        if brand_id:
+            filters['brand_id'] = brand_id
+        if category_id:
+            filters['category_id'] = category_id
+        if vehicle_type_id:
+            # Meilisearch can filter by array field using IN
+            filters['vehicle_type_ids'] = [vehicle_type_id]
+        
+        # Try Meilisearch search
+        _, product_ids, total_results = search_with_meilisearch(
+            search_query=search_query,
+            filters=filters,
+            page=page,
+            per_page=per_page
+        )
+        
+        # Check if we got valid results from Meilisearch
+        if product_ids and len(product_ids) > 0:
+            use_meilisearch = True
+            app.logger.info(f"Using Meilisearch results: {len(product_ids)} products found for query '{search_query}'")
+        else:
+            app.logger.info(f"Meilisearch returned no results, falling back to SQL search for query '{search_query}'")
     
-    products = query.paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    if use_meilisearch and product_ids:
+        # Use Meilisearch results - filter by product IDs and preserve order
+        query = Product.query.filter(
+            Product.id.in_(product_ids),
+            Product.is_active == True,
+            Product.stock_quantity > 0
+        )
+        
+        # Preserve order from Meilisearch by using CASE statement
+        from sqlalchemy import case
+        order_case = case({pid: idx for idx, pid in enumerate(product_ids)}, value=Product.id)
+        query = query.order_by(order_case)
+        
+        # Get products
+        products_list = query.all()
+        
+        # Create pagination-like object compatible with Flask-SQLAlchemy pagination
+        class Pagination:
+            def __init__(self, items, page, per_page, total):
+                self.items = items
+                self.page = page
+                self.per_page = per_page
+                self.total = total
+                self.pages = (total + per_page - 1) // per_page if total > 0 else 1
+                self.has_prev = page > 1
+                self.has_next = page < self.pages
+                self.prev_num = page - 1 if self.has_prev else None
+                self.next_num = page + 1 if self.has_next else None
+                
+                # Additional methods for compatibility
+                def iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2):
+                    """Generate page numbers for pagination"""
+                    last = self.pages
+                    for num in range(1, last + 1):
+                        if num <= left_edge or \
+                           (num > self.page - left_current - 1 and num < self.page + right_current) or \
+                           num > last - right_edge:
+                            yield num
+                
+                self.iter_pages = iter_pages
+        
+        products = Pagination(products_list, page, per_page, total_results)
+    else:
+        # Fallback to SQL search - rebuild query to ensure it's clean
+        query = Product.query.filter_by(is_active=True).filter(Product.stock_quantity > 0)
+        
+        # Apply filters
+        if brand_id:
+            query = query.filter_by(brand_id=brand_id)
+        
+        if category_id:
+            query = query.filter_by(category_id=category_id)
+        
+        if vehicle_type_id:
+            # Filter by vehicle type through the relationship
+            query = query.join(ProductVehicleType).filter(
+                ProductVehicleType.vehicle_type_id == vehicle_type_id
+            )
+        
+        if search_query:
+            # استفاده از جستجوی پیشرفته SQL
+            app.logger.info(f"Applying SQL search filter for query: '{search_query}'")
+            query = advanced_product_search(query, search_query)
+            app.logger.info(f"SQL search query built, executing pagination...")
+        
+        products = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Log results for debugging
+        if search_query:
+            app.logger.info(f"SQL search returned {products.total} total results, {len(products.items)} on page {page}")
+            if products.total == 0:
+                app.logger.warning(f"No results found for search query: '{search_query}'. Check if products exist in database.")
     
     # Get brands, categories, and vehicle types for filters
     brands = Brand.query.filter_by(is_active=True).all()
@@ -264,26 +688,7 @@ def brand_products(brand_id):
     # Build query for products of this brand - only show products with stock available
     query = Product.query.filter_by(brand_id=brand_id, is_active=True).filter(Product.stock_quantity > 0)
 
-    # If ISACO brand, only show ISACO WH15 or items with ISACO prices
-    # But only if user has permission to see Isaco products
-    if is_isaco_feature_enabled() and is_isaco_brand(brand_id):
-        from sqlalchemy import or_
-        from app import can_see_isaco_products
-        
-        # Only filter Isaco products if user can see them
-        if can_see_isaco_products(current_user):
-            query = query.filter(
-                or_(
-                    Product.is_isaco_wh15 == True,
-                    (Product.isaco_cash.isnot(None)) |
-                    (Product.isaco_1m.isnot(None)) |
-                    (Product.isaco_2m.isnot(None)) |
-                    (Product.isaco_3m.isnot(None))
-                )
-            )
-        else:
-            # If user can't see Isaco products, show no products for Isaco brand
-            query = query.filter(Product.id == -1)  # This will return no results
+    # نمایش تمام محصولات ایساکو برای همه کاربران
     
     if category_id:
         query = query.filter_by(category_id=category_id)
@@ -366,13 +771,7 @@ def category_products(category_id):
         is_active=True
     )
     
-    # Filter out Isaco products if user doesn't have permission to see them
-    from app import can_see_isaco_products
-    if not can_see_isaco_products(current_user):
-        # Exclude Isaco products for users without permission
-        isaco_brand_id = app.config.get('ISACO_BRAND_ID')
-        if isaco_brand_id:
-            query = query.filter(Product.brand_id != isaco_brand_id)
+    # نمایش همه محصولات (شامل ایساکو) برای همه کاربران
     
     products = query.paginate(
         page=page, per_page=per_page, error_out=False
@@ -418,13 +817,56 @@ def bulk_conditions():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """User login with phone number and OTP"""
+    """User login with phone number and OTP or username and password"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
     if request.method == 'POST':
-        # Check if this is a phone submission
-        if request.form.get('action') == 'send_otp':
+        action = request.form.get('action')
+        
+        # Username/Password login
+        if action == 'username_login':
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            
+            if not username:
+                flash('لطفاً نام کاربری را وارد کنید.', 'error')
+                return render_template('login.html')
+            
+            if not password:
+                flash('لطفاً رمز عبور را وارد کنید.', 'error')
+                return render_template('login.html')
+            
+            # Find user by username
+            user = User.query.filter_by(username=username).first()
+            
+            if not user:
+                flash('نام کاربری یا رمز عبور اشتباه است.', 'error')
+                return render_template('login.html')
+            
+            # Check password
+            if not check_password_hash(user.password_hash, password):
+                flash('نام کاربری یا رمز عبور اشتباه است.', 'error')
+                return render_template('login.html')
+            
+            # Check if user is active
+            if not user.is_active:
+                flash('حساب کاربری شما غیرفعال است. لطفاً با پشتیبانی تماس بگیرید.', 'error')
+                return render_template('login.html')
+            
+            # Login user
+            login_user(user, remember=True)
+            user.last_login = datetime.utcnow()
+            models.db.session.commit()
+            
+            # Redirect to next page or index
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('index'))
+        
+        # Phone/OTP login
+        elif action == 'send_otp':
             from sms_service import sms_service
             
             phone = request.form.get('phone')
@@ -445,8 +887,8 @@ def login():
             result = sms_service.send_otp(clean_phone)
             
             if result['success']:
-                # Delete any existing OTP for this phone
-                OTPVerification.query.filter_by(phone=clean_phone, verified=False).delete()
+                # Delete ALL existing OTP records for this phone (both verified and unverified)
+                OTPVerification.query.filter_by(phone=clean_phone).delete()
                 
                 # Store verification data in database
                 expires_at = sms_service.get_expiration_time()
@@ -470,6 +912,139 @@ def login():
             return redirect(url_for('phone_verification', phone=clean_phone, source='login'))
     
     return render_template('login.html')
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Forgot password - send OTP to user's phone"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'send_otp':
+            identifier = request.form.get('identifier', '').strip()
+            
+            if not identifier:
+                flash('لطفاً نام کاربری یا شماره تلفن را وارد کنید.', 'error')
+                return render_template('forgot_password.html')
+            
+            # Check if identifier is phone number or username
+            clean_identifier = ''.join(filter(str.isdigit, identifier))
+            is_phone = len(clean_identifier) >= 10 and (clean_identifier.startswith('09') or clean_identifier.startswith('9'))
+            
+            user = None
+            if is_phone:
+                # Search by phone
+                clean_phone = clean_identifier
+                if not clean_phone.startswith('09'):
+                    if clean_phone.startswith('9'):
+                        clean_phone = '0' + clean_phone
+                    else:
+                        flash('شماره تلفن باید با 09 شروع شود', 'error')
+                        return render_template('forgot_password.html')
+                
+                user = User.query.filter_by(phone=clean_phone).first()
+            else:
+                # Search by username
+                user = User.query.filter_by(username=identifier).first()
+            
+            if not user:
+                # Don't reveal if user exists or not for security
+                flash('اگر حساب کاربری با این اطلاعات وجود داشته باشد، کد تأیید به شماره تلفن ثبت شده ارسال خواهد شد.', 'info')
+                return render_template('forgot_password.html')
+            
+            if not user.is_active:
+                flash('حساب کاربری شما غیرفعال است. لطفاً با پشتیبانی تماس بگیرید.', 'error')
+                return render_template('forgot_password.html')
+            
+            # Send OTP to user's phone
+            from sms_service import sms_service
+            result = sms_service.send_otp(user.phone)
+            
+            if result['success']:
+                # Delete ALL existing OTP records for this phone (both verified and unverified)
+                OTPVerification.query.filter_by(phone=user.phone).delete()
+                
+                # Store verification data in database
+                expires_at = sms_service.get_expiration_time()
+                otp_record = OTPVerification(
+                    phone=user.phone,
+                    code=result['code'],
+                    source='forgot_password',
+                    expires_at=expires_at
+                )
+                models.db.session.add(otp_record)
+                models.db.session.commit()
+                
+                # Store user ID in session for password reset
+                session['password_reset_user_id'] = user.id
+                session['password_reset_phone'] = user.phone
+                
+                current_app.logger.info(f"Password reset OTP sent - Phone: {user.phone}, Code: {result['code']}")
+                
+                # Redirect to phone verification page
+                return redirect(url_for('phone_verification', phone=user.phone, source='forgot_password'))
+            else:
+                flash(result.get('message', 'خطا در ارسال کد تأیید. لطفاً دوباره تلاش کنید.'), 'error')
+                return render_template('forgot_password.html')
+    
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    """Reset password after OTP verification"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    # Check if user is verified for password reset
+    user_id = session.get('password_reset_user_id')
+    reset_phone = session.get('password_reset_phone')
+    phone_verified = session.get('phone_verified', False)
+    verified_phone = session.get('verified_phone')
+    
+    if not user_id or not phone_verified or verified_phone != reset_phone:
+        flash('لطفاً ابتدا کد تأیید را وارد کنید.', 'error')
+        return redirect(url_for('forgot_password'))
+    
+    user = User.query.get(user_id)
+    if not user:
+        flash('کاربر یافت نشد.', 'error')
+        session.pop('password_reset_user_id', None)
+        session.pop('password_reset_phone', None)
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Validation
+        if not new_password or not confirm_password:
+            flash('لطفاً تمام فیلدها را پر کنید.', 'error')
+            return render_template('reset_password.html')
+        
+        if new_password != confirm_password:
+            flash('رمزهای عبور مطابقت ندارند.', 'error')
+            return render_template('reset_password.html')
+        
+        if len(new_password) < 6:
+            flash('رمز عبور باید حداقل 6 کاراکتر باشد.', 'error')
+            return render_template('reset_password.html')
+        
+        # Update password
+        user.password_hash = generate_password_hash(new_password)
+        models.db.session.commit()
+        
+        # Clear session data
+        session.pop('password_reset_user_id', None)
+        session.pop('password_reset_phone', None)
+        session.pop('phone_verified', None)
+        session.pop('verified_phone', None)
+        
+        flash('رمز عبور شما با موفقیت تغییر یافت. اکنون می‌توانید وارد شوید.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('reset_password.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -509,8 +1084,8 @@ def register():
             result = sms_service.send_otp(clean_phone)
             
             if result['success']:
-                # Delete any existing OTP for this phone
-                OTPVerification.query.filter_by(phone=clean_phone, verified=False).delete()
+                # Delete ALL existing OTP records for this phone (both verified and unverified)
+                OTPVerification.query.filter_by(phone=clean_phone).delete()
                 
                 # Store verification data in database
                 expires_at = sms_service.get_expiration_time()
@@ -635,8 +1210,8 @@ def register():
         else:
             flash('ثبت نام با موفقیت انجام شد.', 'success')
         
-        # Auto-login user after registration
-        login_user(user)
+        # Auto-login user after registration with persistent session
+        login_user(user, remember=True)
         
         # Update last login
         try:
@@ -736,8 +1311,8 @@ def send_otp():
     result = sms_service.send_otp(clean_phone)
     
     if result['success']:
-        # Delete any existing OTP for this phone
-        OTPVerification.query.filter_by(phone=clean_phone, verified=False).delete()
+        # Delete ALL existing OTP records for this phone (both verified and unverified)
+        OTPVerification.query.filter_by(phone=clean_phone).delete()
         
         # Store verification data in database
         expires_at = sms_service.get_expiration_time()
@@ -826,6 +1401,39 @@ def verify_otp():
         current_app.logger.info(f"OTP verification result: {result}")
         
         if result['success']:
+            # Handle forgot password flow
+            if source == 'forgot_password':
+                # Check if user exists
+                try:
+                    user = User.query.filter_by(phone=clean_phone).first()
+                except Exception as e:
+                    current_app.logger.error(f"Database error while checking user: {e}")
+                    return jsonify({'success': False, 'message': 'خطا در بررسی اطلاعات کاربر. لطفاً دوباره تلاش کنید.'})
+                
+                if not user:
+                    return jsonify({'success': False, 'message': 'کاربری با این شماره تلفن یافت نشد.'})
+                
+                if not user.is_active:
+                    return jsonify({'success': False, 'message': 'حساب کاربری شما غیرفعال است.'})
+                
+                # Mark phone as verified and store user ID in session
+                session['phone_verified'] = True
+                session['verified_phone'] = clean_phone
+                session['password_reset_user_id'] = user.id
+                session['password_reset_phone'] = clean_phone
+                
+                # Mark OTP as verified
+                otp_record.verified = True
+                otp_record.verified_at = datetime.utcnow()
+                models.db.session.commit()
+                
+                return jsonify({
+                    'success': True, 
+                    'message': 'کد تأیید صحیح است. لطفاً رمز عبور جدید را وارد کنید',
+                    'action': 'reset_password',
+                    'redirect': url_for('reset_password')
+                })
+            
             # Check if user exists
             try:
                 user = User.query.filter_by(phone=clean_phone).first()
@@ -839,7 +1447,8 @@ def verify_otp():
                     return jsonify({'success': False, 'message': 'حساب کاربری شما غیرفعال است.'})
                 
                 try:
-                    login_user(user)
+                    # Use remember=True to persist login across browser sessions
+                    login_user(user, remember=True)
                 except Exception as e:
                     current_app.logger.error(f"Login error: {e}")
                     return jsonify({'success': False, 'message': 'خطا در ورود به سیستم. لطفاً دوباره تلاش کنید.'})
@@ -907,6 +1516,597 @@ def verify_otp():
             'success': False, 
             'message': 'خطای غیرمنتظره رخ داد. لطفاً دوباره تلاش کنید.'
         })
+
+# ==================== MOBILE API ENDPOINTS ====================
+
+@app.route('/api/mobile/v1/auth/send-otp', methods=['POST'])
+def mobile_send_otp():
+    """Mobile API: Send OTP to phone number"""
+    from sms_service import sms_service
+    
+    try:
+        current_app.logger.info(f"Mobile send-otp request received - Method: {request.method}, Content-Type: {request.content_type}, Is JSON: {request.is_json}")
+        
+        # Support both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            phone = data.get('phone') if data else None
+            current_app.logger.info(f"Received JSON data: {data}")
+        else:
+            phone = request.form.get('phone')
+            current_app.logger.info(f"Received form data - phone: {phone}")
+        
+        if not phone:
+            current_app.logger.warning("Mobile send-otp: Phone number missing")
+            return jsonify({
+                'success': False,
+                'message': 'شماره تلفن الزامی است'
+            }), 400
+        
+        # Clean phone number
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        if not clean_phone.startswith('09'):
+            if clean_phone.startswith('9'):
+                clean_phone = '0' + clean_phone
+            else:
+                current_app.logger.warning(f"Mobile send-otp: Invalid phone format - {phone} -> {clean_phone}")
+                return jsonify({
+                    'success': False,
+                    'message': 'شماره تلفن باید با 09 شروع شود'
+                }), 400
+        
+        current_app.logger.info(f"Mobile send-otp: Sending OTP to {clean_phone}")
+        
+        # Send OTP
+        result = sms_service.send_otp(clean_phone)
+        
+        current_app.logger.info(f"Mobile send-otp: SMS service result - Success: {result.get('success')}, Message: {result.get('message')}")
+        
+        if result['success']:
+            # Ensure code is stored as string
+            otp_code = str(result['code']).strip()
+            
+            # Delete ALL existing OTP records for this phone (both verified and unverified)
+            # This ensures we don't have multiple OTP records causing confusion
+            try:
+                # First, get count before delete
+                before_count = OTPVerification.query.filter_by(phone=clean_phone).count()
+                current_app.logger.info(f"Before delete: {before_count} OTP records found for {clean_phone}")
+                
+                # Delete all records
+                deleted_count = OTPVerification.query.filter_by(phone=clean_phone).delete()
+                models.db.session.commit()
+                
+                # Verify deletion
+                after_count = OTPVerification.query.filter_by(phone=clean_phone).count()
+                current_app.logger.info(f"After delete: {deleted_count} records deleted, {after_count} records remaining for {clean_phone}")
+                
+                if after_count > 0:
+                    current_app.logger.warning(f"WARNING: {after_count} OTP records still exist after delete for {clean_phone}")
+            except Exception as delete_error:
+                models.db.session.rollback()
+                current_app.logger.error(f"Error deleting existing OTP records: {delete_error}", exc_info=True)
+            
+            # Store verification data in database
+            expires_at = sms_service.get_expiration_time()
+            otp_record = OTPVerification(
+                phone=clean_phone,
+                code=otp_code,
+                source='login',
+                expires_at=expires_at
+            )
+            models.db.session.add(otp_record)
+            try:
+                models.db.session.commit()
+                time_until_expiry = (expires_at - datetime.utcnow()).total_seconds()
+                current_app.logger.info(f"Mobile OTP sent and stored - Phone: {clean_phone}, Code: {otp_code}, Expires at: {expires_at}, Now: {datetime.utcnow()}, Time until expiry: {time_until_expiry} seconds")
+                
+                # Verify the record was actually saved
+                saved_record = OTPVerification.query.filter_by(phone=clean_phone, code=otp_code, verified=False).first()
+                if saved_record:
+                    current_app.logger.info(f"OTP record verified in database - ID: {saved_record.id}, Verified: {saved_record.verified}, Expires: {saved_record.expires_at}")
+                else:
+                    current_app.logger.error(f"OTP record NOT found in database after commit! Checking all records...")
+                    all_records = OTPVerification.query.filter_by(phone=clean_phone).all()
+                    for rec in all_records:
+                        current_app.logger.error(f"  Found record ID: {rec.id}, Code: {rec.code}, Verified: {rec.verified}, Expires: {rec.expires_at}")
+            except Exception as commit_error:
+                models.db.session.rollback()
+                current_app.logger.error(f"Failed to commit OTP record: {commit_error}", exc_info=True)
+                return jsonify({
+                    'success': False,
+                    'message': 'خطا در ذخیره کد تایید'
+                }), 500
+            
+            return jsonify({
+                'success': True,
+                'message': result['message'],
+                'data': {
+                    'expires_in': 120  # 2 minutes
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': result['message']
+            }), 400
+    except Exception as e:
+        current_app.logger.error(f"Error in mobile_send_otp: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در ارسال کد تایید'
+        }), 500
+
+@app.route('/api/mobile/v1/auth/verify-otp', methods=['POST'])
+def mobile_verify_otp():
+    """Mobile API: Verify OTP and return JWT token"""
+    from flask_jwt_extended import create_access_token, create_refresh_token
+    from sms_service import sms_service
+    
+    try:
+        # Support both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            phone = data.get('phone') if data else None
+            otp_code = data.get('otp_code') if data else None
+        else:
+            phone = request.form.get('phone')
+            otp_code = request.form.get('otp_code')
+        
+        if not phone or not otp_code:
+            return jsonify({
+                'success': False,
+                'message': 'شماره تلفن و کد تایید الزامی است'
+            }), 400
+        
+        # Clean phone number
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        if not clean_phone.startswith('09'):
+            if clean_phone.startswith('9'):
+                clean_phone = '0' + clean_phone
+        
+        # Get stored verification data from database
+        # First, check all OTP records for this phone (for debugging)
+        all_otp_records = OTPVerification.query.filter_by(phone=clean_phone).all()
+        current_app.logger.info(f"All OTP records for {clean_phone}: {len(all_otp_records)} records found")
+        for record in all_otp_records:
+            current_app.logger.info(f"  - Record ID: {record.id}, Verified: {record.verified}, Source: {record.source}, Expires: {record.expires_at}, Now: {datetime.utcnow()}, Expired: {datetime.utcnow() > record.expires_at}")
+        
+        # Get valid OTP record
+        otp_record = OTPVerification.query.filter_by(
+            phone=clean_phone,
+            verified=False,
+            source='login'
+        ).filter(OTPVerification.expires_at > datetime.utcnow()).first()
+        
+        if not otp_record:
+            # Check if there's an expired OTP
+            expired_otp = OTPVerification.query.filter_by(
+                phone=clean_phone,
+                verified=False,
+                source='login'
+            ).first()
+            
+            if expired_otp:
+                current_app.logger.warning(f"OTP verification failed - Expired OTP found for phone: {clean_phone}, Expires at: {expired_otp.expires_at}, Now: {datetime.utcnow()}")
+                return jsonify({
+                    'success': False,
+                    'message': 'کد تایید منقضی شده است. لطفاً دوباره درخواست کنید'
+                }), 400
+            else:
+                current_app.logger.warning(f"OTP verification failed - No OTP record found for phone: {clean_phone}")
+                return jsonify({
+                    'success': False,
+                    'message': 'کد تایید یافت نشد. لطفاً دوباره درخواست کنید'
+                }), 400
+        
+        # Log for debugging
+        current_app.logger.info(f"OTP verification attempt - Phone: {clean_phone}, User code: '{otp_code}' (type: {type(otp_code)}, len: {len(str(otp_code))}), Stored code: '{otp_record.code}' (type: {type(otp_record.code)}, len: {len(str(otp_record.code))})")
+        current_app.logger.info(f"OTP record details - ID: {otp_record.id}, Verified: {otp_record.verified}, Source: {otp_record.source}, Expires: {otp_record.expires_at}, Now: {datetime.utcnow()}, Expired: {datetime.utcnow() > otp_record.expires_at}")
+        
+        # Verify OTP
+        result = sms_service.verify_otp(otp_code, otp_record.code, otp_record.expires_at)
+        
+        current_app.logger.info(f"OTP verification result - Success: {result.get('success')}, Message: {result.get('message')}")
+        
+        if not result['success']:
+            return jsonify({
+                'success': False,
+                'message': result['message']
+            }), 400
+        
+        # Check if user exists
+        user = User.query.filter_by(phone=clean_phone).first()
+        
+        if not user:
+            # User doesn't exist - OTP is valid, return success with registration flag
+            # Don't mark OTP as verified yet - will be marked after successful registration
+            current_app.logger.info(f"User not found for phone: {clean_phone}, OTP is valid for registration")
+            
+            return jsonify({
+                'success': True,  # OTP verification was successful
+                'message': 'کد تایید صحیح است. لطفاً ثبت نام کنید',
+                'code': 'USER_NOT_FOUND',
+                'data': {
+                    'phone': clean_phone,
+                    'otp_verified': True,
+                    'requires_registration': True,
+                    'otp_code': otp_code  # Store OTP code for registration
+                }
+            }), 200  # Return 200 instead of 404 to indicate OTP is valid
+        
+        if not user.is_active:
+            return jsonify({
+                'success': False,
+                'message': 'حساب کاربری شما غیرفعال است'
+            }), 403
+        
+        # Mark OTP as verified
+        otp_record.verified = True
+        otp_record.verified_at = datetime.utcnow()
+        
+        # Update last login
+        user.last_login = datetime.utcnow()
+        models.db.session.commit()
+        
+        # Create JWT tokens
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
+        
+        # Prepare user data
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'full_name': user.full_name,
+            'phone': user.phone,
+            'email': user.email,
+            'company_name': user.company_name,
+            'national_id': user.national_id,
+            'birth_date': user.birth_date.isoformat() if user.birth_date else None,
+            'address': user.address,
+            'landline_phone': user.landline_phone,
+            'secondary_phone': user.secondary_phone,
+            'is_bulk_buyer': user.is_bulk_buyer,
+            'bulk_buyer_approval_status': user.bulk_buyer_approval_status,
+            'profile_completion_percentage': user.profile_completion_percentage if hasattr(user, 'profile_completion_percentage') else 0,
+            'avatar_url': user.avatar_url if hasattr(user, 'avatar_url') else None
+        }
+        
+        return jsonify({
+            'success': True,
+            'message': 'ورود موفقیت‌آمیز',
+            'data': {
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'user': user_data,
+                'expires_in': 604800  # 7 days
+            }
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error in mobile_verify_otp: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در تایید کد'
+        }), 500
+
+@app.route('/api/mobile/v1/auth/login', methods=['POST'])
+def mobile_login():
+    """Mobile API: Login with username and password"""
+    from flask_jwt_extended import create_access_token, create_refresh_token
+    from werkzeug.security import check_password_hash
+    
+    try:
+        # Support both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            username = data.get('username') if data else None
+            password = data.get('password') if data else None
+        else:
+            username = request.form.get('username')
+            password = request.form.get('password')
+        
+        if not username or not password:
+            return jsonify({
+                'success': False,
+                'message': 'نام کاربری و رمز عبور الزامی است'
+            }), 400
+        
+        # Find user by username
+        user = User.query.filter_by(username=username).first()
+        
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'نام کاربری یا رمز عبور اشتباه است'
+            }), 401
+        
+        # Check password
+        if not check_password_hash(user.password_hash, password):
+            return jsonify({
+                'success': False,
+                'message': 'نام کاربری یا رمز عبور اشتباه است'
+            }), 401
+        
+        # Check if user is active
+        if not user.is_active:
+            return jsonify({
+                'success': False,
+                'message': 'حساب کاربری شما غیرفعال است'
+            }), 403
+        
+        # Update last login
+        user.last_login = datetime.utcnow()
+        models.db.session.commit()
+        
+        # Create JWT tokens
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
+        
+        # Prepare user data
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'full_name': user.full_name,
+            'phone': user.phone,
+            'email': user.email,
+            'company_name': user.company_name,
+            'national_id': user.national_id,
+            'birth_date': user.birth_date.isoformat() if user.birth_date else None,
+            'address': user.address,
+            'landline_phone': user.landline_phone,
+            'secondary_phone': user.secondary_phone,
+            'is_bulk_buyer': user.is_bulk_buyer,
+            'bulk_buyer_approval_status': user.bulk_buyer_approval_status,
+            'profile_completion_percentage': user.profile_completion_percentage if hasattr(user, 'profile_completion_percentage') else 0,
+            'avatar_url': user.avatar_url if hasattr(user, 'avatar_url') else None
+        }
+        
+        current_app.logger.info(f"Mobile user logged in with username - Username: {username}, User ID: {user.id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'ورود موفقیت‌آمیز',
+            'data': {
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'user': user_data,
+                'expires_in': 604800  # 7 days
+            }
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error in mobile_login: {e}", exc_info=True)
+        models.db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'خطا در ورود'
+        }), 500
+
+@app.route('/api/mobile/v1/auth/register', methods=['POST'])
+def mobile_register():
+    """Mobile API: Register new user after OTP verification"""
+    from flask_jwt_extended import create_access_token, create_refresh_token
+    from werkzeug.security import generate_password_hash
+    from sms_service import sms_service
+    
+    try:
+        # Support both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            phone = data.get('phone') if data else None
+            otp_code = data.get('otp_code') if data else None
+            full_name = data.get('full_name') if data else None
+            email = data.get('email') if data else None
+            company_name = data.get('company_name') if data else None
+            is_bulk_buyer = data.get('is_bulk_buyer', False) if data else False
+        else:
+            phone = request.form.get('phone')
+            otp_code = request.form.get('otp_code')
+            full_name = request.form.get('full_name')
+            email = request.form.get('email')
+            company_name = request.form.get('company_name')
+            is_bulk_buyer = request.form.get('is_bulk_buyer') == 'true'
+        
+        # Validate required fields
+        if not phone or not otp_code or not full_name:
+            return jsonify({
+                'success': False,
+                'message': 'شماره تلفن، کد تایید و نام کامل الزامی است'
+            }), 400
+        
+        # Clean phone number
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        if not clean_phone.startswith('09'):
+            if clean_phone.startswith('9'):
+                clean_phone = '0' + clean_phone
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'شماره تلفن باید با 09 شروع شود'
+                }), 400
+        
+        # Check if user already exists
+        existing_user = User.query.filter_by(phone=clean_phone).first()
+        if existing_user:
+            return jsonify({
+                'success': False,
+                'message': 'این شماره تلفن قبلاً ثبت شده است'
+            }), 400
+        
+        # Verify OTP
+        otp_record = OTPVerification.query.filter_by(
+            phone=clean_phone,
+            verified=False,
+            source='login'
+        ).filter(OTPVerification.expires_at > datetime.utcnow()).first()
+        
+        if not otp_record:
+            return jsonify({
+                'success': False,
+                'message': 'کد تایید معتبر نیست. لطفاً دوباره درخواست کنید'
+            }), 400
+        
+        # Verify OTP code
+        result = sms_service.verify_otp(otp_code, otp_record.code, otp_record.expires_at)
+        
+        if not result['success']:
+            return jsonify({
+                'success': False,
+                'message': result['message']
+            }), 400
+        
+        # Generate username from phone if not provided
+        username = clean_phone
+        
+        # Check if username already exists
+        if User.query.filter_by(username=username).first():
+            username = f"{clean_phone}_{int(datetime.utcnow().timestamp())}"
+        
+        # Create user
+        user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(clean_phone),  # Use phone as default password
+            full_name=full_name,
+            phone=clean_phone,
+            company_name=company_name,
+            is_bulk_buyer=is_bulk_buyer,
+            user_type='bulk_buyer' if is_bulk_buyer else 'regular',
+            bulk_buyer_approval_status='pending' if is_bulk_buyer else 'approved',
+            phone_verified=True
+        )
+        
+        models.db.session.add(user)
+        
+        # Mark OTP as verified
+        otp_record.verified = True
+        otp_record.verified_at = datetime.utcnow()
+        
+        models.db.session.commit()
+        
+        # Update last login
+        user.last_login = datetime.utcnow()
+        models.db.session.commit()
+        
+        # Create JWT tokens
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
+        
+        # Prepare user data
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'full_name': user.full_name,
+            'phone': user.phone,
+            'email': user.email,
+            'company_name': user.company_name,
+            'is_bulk_buyer': user.is_bulk_buyer,
+            'bulk_buyer_approval_status': user.bulk_buyer_approval_status,
+            'profile_completion_percentage': 0
+        }
+        
+        current_app.logger.info(f"Mobile user registered successfully - Phone: {clean_phone}, User ID: {user.id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'ثبت نام با موفقیت انجام شد',
+            'data': {
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'user': user_data,
+                'expires_in': 604800  # 7 days
+            }
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error in mobile_register: {e}", exc_info=True)
+        models.db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'خطا در ثبت نام'
+        }), 500
+
+@app.route('/api/mobile/v1/auth/refresh-token', methods=['POST'])
+def mobile_refresh_token():
+    """Mobile API: Refresh access token"""
+    from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, get_jwt
+    
+    try:
+        # Get refresh token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({
+                'success': False,
+                'message': 'توکن معتبر نیست'
+            }), 401
+        
+        # Verify refresh token and get user ID
+        from flask_jwt_extended import decode_token
+        token = auth_header.split(' ')[1]
+        
+        try:
+            decoded = decode_token(token)
+            user_id = decoded.get('sub')
+            
+            if not user_id:
+                return jsonify({
+                    'success': False,
+                    'message': 'توکن معتبر نیست'
+                }), 401
+            
+            # Check if user exists and is active
+            user = User.query.get(user_id)
+            if not user or not user.is_active:
+                return jsonify({
+                    'success': False,
+                    'message': 'کاربر یافت نشد یا غیرفعال است'
+                }), 401
+            
+            # Create new access token
+            access_token = create_access_token(identity=user.id)
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'access_token': access_token,
+                    'expires_in': 604800  # 7 days
+                }
+            })
+        except Exception as e:
+            current_app.logger.error(f"Token decode error: {e}")
+            return jsonify({
+                'success': False,
+                'message': 'توکن معتبر نیست'
+            }), 401
+            
+    except Exception as e:
+        current_app.logger.error(f"Error in mobile_refresh_token: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در تازه‌سازی توکن'
+        }), 500
+
+@app.route('/api/mobile/v1/auth/logout', methods=['POST'])
+@jwt_required()
+def mobile_logout():
+    """Mobile API: Logout user"""
+    try:
+        # JWT token will be invalidated on client side
+        # Here we can log the logout event if needed
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if user:
+            user.last_login = datetime.utcnow()
+            models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'با موفقیت خارج شدید'
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error in mobile_logout: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در خروج'
+        }), 500
 
 @app.route('/logout')
 @login_required
@@ -1077,21 +2277,67 @@ def wallet():
 @login_required
 def cart():
     """Shopping cart page"""
-    cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+    # فیلتر بر اساس نوع قیمت اگر ارائه شده باشد
+    price_type = request.args.get('price_type')
+    
+    # دریافت تمام آیتم‌های سبد خرید برای محاسبه cash_items و check_items
+    all_cart_items = Cart.query.filter_by(user_id=current_user.id, is_saved_for_later=False).all()
+    
+    # جدا کردن آیتم‌های نقدی و چکی برای نمایش در فیلترها
+    cash_items = [item for item in all_cart_items if item.price_type == 'cash']
+    check_items = [item for item in all_cart_items if item.price_type == 'check']
+    cash_total = sum(item.get_total_price() for item in cash_items)
+    check_total = sum(item.get_total_price() for item in check_items)
+    
+    # فیلتر کردن آیتم‌ها بر اساس price_type اگر ارائه شده باشد
+    if price_type:
+        cart_items = [item for item in all_cart_items if item.price_type == price_type]
+    else:
+        cart_items = all_cart_items
+    
+    # مرتب‌سازی بر اساس زمان افزودن
+    cart_items = sorted(cart_items, key=lambda x: x.created_at)
     total_amount = sum(item.get_total_price() for item in cart_items)
     
     return render_template('cart.html', 
-                         cart_items=cart_items, 
-                         total_amount=total_amount)
+                         cart_items=cart_items,
+                         cash_items=cash_items,
+                         check_items=check_items,
+                         total_amount=total_amount,
+                         cash_total=cash_total,
+                         check_total=check_total,
+                         price_type=price_type)
 
 @app.route('/add-to-cart', methods=['POST'])
 @login_required
 def add_to_cart():
     """Add product to cart"""
-    product_id = request.form.get('product_id', type=int)
-    quantity = request.form.get('quantity', 1, type=int)
-    price_type = request.form.get('price_type', 'cash')
-    price_plan = request.form.get('price_plan')  # ISACO plan when applicable
+    payload = request.get_json(silent=True) or {}
+    is_ajax = request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    product_id = payload.get('product_id', request.form.get('product_id', type=int))
+    quantity = payload.get('quantity', request.form.get('quantity', 1, type=int))
+    price_type = payload.get('price_type', request.form.get('price_type', 'cash'))
+    price_plan = payload.get('price_plan', request.form.get('price_plan'))  # ISACO plan when applicable
+
+    try:
+        product_id = int(product_id) if product_id is not None else None
+    except (TypeError, ValueError):
+        product_id = None
+
+    try:
+        quantity = int(quantity) if quantity is not None else 1
+    except (TypeError, ValueError):
+        quantity = 1
+
+    price_type = price_type or 'cash'
+
+    if not product_id:
+        message = 'شناسه محصول معتبر نیست.'
+        if is_ajax:
+            return jsonify({'success': False, 'message': message}), 400
+        flash(message, 'danger')
+        return redirect(request.referrer or url_for('shop'))
     
     product = Product.query.get_or_404(product_id)
     
@@ -1108,11 +2354,17 @@ def add_to_cart():
         if has_valid_isaco_pricing:
             # Product has valid Isaco pricing, require plan selection
             if not price_plan or price_plan not in isaco_allowed_plans():
-                flash('لطفاً یکی از گزینه‌های ایساکو را انتخاب کنید (نقدی/یک‌ماهه/دوماهه/سه‌ماهه).', 'danger')
+                message = 'لطفاً یکی از گزینه‌های ایساکو را انتخاب کنید (نقدی/یک‌ماهه/دوماهه/سه‌ماهه).'
+                if is_ajax:
+                    return jsonify({'success': False, 'message': message}), 400
+                flash(message, 'danger')
                 return redirect(request.referrer or url_for('brand_products', brand_id=app.config.get('ISACO_BRAND_ID')))
             unit_price_candidate = get_isaco_unit_price(product, price_plan)
             if not unit_price_candidate or unit_price_candidate <= 0:
-                flash('قیمت انتخاب‌شده برای این کالا معتبر نیست.', 'danger')
+                message = 'قیمت انتخاب‌شده برای این کالا معتبر نیست.'
+                if is_ajax:
+                    return jsonify({'success': False, 'message': message}), 400
+                flash(message, 'danger')
                 return redirect(request.referrer or url_for('brand_products', brand_id=app.config.get('ISACO_BRAND_ID')))
         else:
             # Product is marked as Isaco but has no valid Isaco pricing, use regular pricing
@@ -1122,7 +2374,10 @@ def add_to_cart():
                 unit_price_candidate = product.retail_price_cash if price_type == 'cash' else product.retail_price_check
             
             if not unit_price_candidate or unit_price_candidate <= 0:
-                flash('قیمت انتخاب‌شده برای این کالا معتبر نیست.', 'danger')
+                message = 'قیمت انتخاب‌شده برای این کالا معتبر نیست.'
+                if is_ajax:
+                    return jsonify({'success': False, 'message': message}), 400
+                flash(message, 'danger')
                 return redirect(request.referrer or url_for('brand_products', brand_id=app.config.get('ISACO_BRAND_ID')))
 
     # Check if item already exists in cart (include plan)
@@ -1162,8 +2417,16 @@ def add_to_cart():
         models.db.session.add(cart_item)
     
     models.db.session.commit()
-    flash('محصول به سبد خرید اضافه شد.', 'success')
     
+    # Check if request wants JSON response (AJAX)
+    if is_ajax:
+        return jsonify({
+            'success': True,
+            'message': 'محصول به سبد خرید اضافه شد.',
+            'cart_count': Cart.query.filter_by(user_id=current_user.id, is_saved_for_later=False).count()
+        })
+    
+    flash('محصول به سبد خرید اضافه شد.', 'success')
     return redirect(request.referrer or url_for('shop'))
 
 @app.route('/remove-from-cart/<int:cart_item_id>', methods=['POST'])
@@ -1235,8 +2498,11 @@ def create_invoice():
     models.db.session.add(invoice)
     models.db.session.flush()  # Get the invoice ID
     
-    # Create invoice items
-    for cart_item in cart_items:
+    # Create invoice items - به ترتیب افزودن به سبد خرید (مرتب‌سازی بر اساس created_at)
+    # مرتب‌سازی آیتم‌های سبد خرید بر اساس زمان افزودن
+    sorted_cart_items = sorted(cart_items, key=lambda x: x.created_at)
+    
+    for cart_item in sorted_cart_items:
         invoice_item = InvoiceItem(
             invoice_id=invoice.id,
             product_id=cart_item.product_id,
@@ -1275,11 +2541,43 @@ def invoices():
     page = request.args.get('page', 1, type=int)
     per_page = 10
     
-    invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(
+    query = Invoice.query.filter_by(user_id=current_user.id)
+    invoices = query.order_by(
         Invoice.created_at.desc()
     ).paginate(page=page, per_page=per_page, error_out=False)
     
-    return render_template('invoices.html', invoices=invoices)
+    # Build stats for the current user's invoices to match the profile template context.
+    all_invoices = query.all()
+    total_invoices = len(all_invoices)
+    pending_approval = len([inv for inv in all_invoices if inv.approval_status == 'pending'])
+    approved = len([inv for inv in all_invoices if inv.approval_status == 'approved'])
+    rejected = len([inv for inv in all_invoices if inv.approval_status == 'rejected'])
+    under_review = len([inv for inv in all_invoices if inv.approval_status == 'under_review'])
+    total_pending_amount = sum([inv.total_amount for inv in all_invoices if inv.approval_status == 'pending'])
+    total_approved_amount = sum([inv.total_amount for inv in all_invoices if inv.approval_status == 'approved'])
+    
+    stats = {
+        'total_invoices': total_invoices,
+        'pending_approval': pending_approval,
+        'approved': approved,
+        'rejected': rejected,
+        'under_review': under_review,
+        'total_pending_amount': total_pending_amount,
+        'total_approved_amount': total_approved_amount
+    }
+    
+    current_filters = {
+        'approval_status': '',
+        'payment_type': '',
+        'user_search': '',
+        'date_from': '',
+        'date_to': ''
+    }
+    
+    return render_template('profile_customer_invoices.html',
+                           invoices=invoices,
+                           stats=stats,
+                           current_filters=current_filters)
 
 @app.route('/invoice/<int:invoice_id>')
 @login_required
@@ -2763,6 +4061,661 @@ def admin_vehicle_types():
     vehicle_types = VehicleType.query.all()
     return render_template('admin/vehicle_types.html', vehicle_types=vehicle_types)
 
+# ==================== DISCOUNT MANAGEMENT ROUTES ====================
+
+@app.route('/admin/android-app')
+@login_required
+def admin_android_app():
+    """Admin Android App Management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    # Get app config
+    config = AndroidAppConfig.get_config()
+    
+    # Get banners
+    banners = Banner.query.order_by(Banner.display_order.asc(), Banner.created_at.desc()).all()
+    
+    # Get company info
+    company_info = CompanyInfo.query.first()
+    
+    # Get all brands for partner brands selection
+    all_brands = Brand.query.filter_by(is_active=True).all()
+    
+    # Get daily suggestions products
+    daily_suggestions_products = []
+    product_ids = config.get_daily_suggestions_product_ids()
+    if product_ids:
+        products = Product.query.filter(Product.id.in_(product_ids)).all()
+        daily_suggestions_products = products
+    
+    return render_template('admin/android_app.html',
+                         config=config,
+                         banners=banners,
+                         company_info=company_info,
+                         all_brands=all_brands,
+                         daily_suggestions_products=daily_suggestions_products)
+
+@app.route('/admin/discounts', endpoint='admin_discounts')
+@login_required
+def admin_discounts():
+    """Admin discounts management"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    discount_type = request.args.get('type', 'all')  # all, daily, monthly
+    status = request.args.get('status', 'all')  # all, active, inactive
+    search = request.args.get('search', '')
+    
+    query = ProductDiscount.query
+    
+    # Filter by type
+    if discount_type != 'all':
+        query = query.filter(ProductDiscount.discount_type == discount_type)
+    
+    # Filter by status
+    if status == 'active':
+        query = query.filter(ProductDiscount.is_active == True)
+    elif status == 'inactive':
+        query = query.filter(ProductDiscount.is_active == False)
+    
+    # Search
+    if search:
+        query = query.filter(
+            or_(
+                ProductDiscount.name_fa.contains(search),
+                ProductDiscount.name.contains(search),
+                ProductDiscount.description.contains(search)
+            )
+        )
+    
+    discounts = query.order_by(ProductDiscount.priority.desc(), ProductDiscount.created_at.desc()).all()
+    
+    # Count products for each discount
+    for discount in discounts:
+        discount.product_count = len(discount.products)
+    
+    return render_template('admin/discounts.html', 
+                         discounts=discounts,
+                         discount_type=discount_type,
+                         status=status,
+                         search=search)
+
+@app.route('/admin/discounts/<int:discount_id>')
+@login_required
+def admin_discount_detail(discount_id):
+    """Admin discount detail page"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    discount = ProductDiscount.query.get_or_404(discount_id)
+    products = discount.products  # This is already a list, no need for .all()
+    
+    return render_template('admin/discount_detail.html', 
+                         discount=discount,
+                         products=products)
+
+# ==================== DISCOUNT API ROUTES ====================
+
+@app.route('/api/admin/discounts', methods=['GET'])
+@login_required
+def api_admin_discounts_list():
+    """API: List all discounts"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    discount_type = request.args.get('type', 'all')
+    status = request.args.get('status', 'all')
+    search = request.args.get('search', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    query = ProductDiscount.query
+    
+    if discount_type != 'all':
+        query = query.filter(ProductDiscount.discount_type == discount_type)
+    
+    if status == 'active':
+        query = query.filter(ProductDiscount.is_active == True)
+    elif status == 'inactive':
+        query = query.filter(ProductDiscount.is_active == False)
+    
+    if search:
+        query = query.filter(
+            or_(
+                ProductDiscount.name_fa.contains(search),
+                ProductDiscount.name.contains(search)
+            )
+        )
+    
+    pagination = query.order_by(ProductDiscount.priority.desc(), ProductDiscount.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    discounts = []
+    for discount in pagination.items:
+        discounts.append({
+            'id': discount.id,
+            'name': discount.name,
+            'name_fa': discount.name_fa,
+            'description': discount.description,
+            'discount_percentage': discount.discount_percentage,
+            'discount_type': discount.discount_type,
+            'priority': discount.priority,
+            'is_active': discount.is_active,
+            'start_date': discount.start_date.isoformat() if discount.start_date else None,
+            'end_date': discount.end_date.isoformat() if discount.end_date else None,
+            'product_count': len(discount.products),
+            'created_at': discount.created_at.isoformat(),
+            'is_valid': discount.is_valid()
+        })
+    
+    return jsonify({
+        'success': True,
+        'discounts': discounts,
+        'pagination': {
+            'page': pagination.page,
+            'pages': pagination.pages,
+            'per_page': pagination.per_page,
+            'total': pagination.total
+        }
+    })
+
+@app.route('/api/admin/discounts/<int:discount_id>', methods=['GET'])
+@login_required
+def api_admin_discount_get(discount_id):
+    """API: Get discount details"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    discount = ProductDiscount.query.get_or_404(discount_id)
+    
+    products = []
+    for product in discount.products:
+        products.append({
+            'id': product.id,
+            'name': product.name,
+            'name_fa': product.name_fa,
+            'sku': product.sku,
+            'primary_image': product.primary_image,
+            'brand': {
+                'id': product.brand.id if product.brand else None,
+                'name': product.brand.name if product.brand else None,
+                'name_fa': product.brand.name_fa if product.brand else None
+            } if product.brand else None,
+            'retail_price_cash': product.retail_price_cash,
+            'stock_quantity': product.stock_quantity
+        })
+    
+    return jsonify({
+        'success': True,
+        'discount': {
+            'id': discount.id,
+            'name': discount.name,
+            'name_fa': discount.name_fa,
+            'description': discount.description,
+            'discount_percentage': discount.discount_percentage,
+            'discount_type': discount.discount_type,
+            'priority': discount.priority,
+            'is_active': discount.is_active,
+            'start_date': discount.start_date.isoformat() if discount.start_date else None,
+            'end_date': discount.end_date.isoformat() if discount.end_date else None,
+            'created_at': discount.created_at.isoformat(),
+            'products': products
+        }
+    })
+
+@app.route('/api/admin/discounts/create', methods=['POST'])
+@login_required
+def api_admin_discount_create():
+    """API: Create new discount"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        discount = ProductDiscount(
+            name=data.get('name'),
+            name_fa=data.get('name_fa'),
+            description=data.get('description', ''),
+            discount_percentage=float(data.get('discount_percentage', 0)),
+            discount_type=data.get('discount_type', 'daily'),
+            priority=int(data.get('priority', 0)),
+            is_active=data.get('is_active', True),
+            created_by=current_user.id
+        )
+        
+        # Parse dates if provided
+        if data.get('start_date'):
+            discount.start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00'))
+        if data.get('end_date'):
+            discount.end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00'))
+        
+        db.session.add(discount)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'تخفیف با موفقیت ایجاد شد',
+            'discount_id': discount.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'خطا در ایجاد تخفیف: {str(e)}'}), 400
+
+@app.route('/api/admin/discounts/<int:discount_id>/update', methods=['PUT'])
+@login_required
+def api_admin_discount_update(discount_id):
+    """API: Update discount"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    discount = ProductDiscount.query.get_or_404(discount_id)
+    data = request.get_json()
+    
+    try:
+        if 'name' in data:
+            discount.name = data['name']
+        if 'name_fa' in data:
+            discount.name_fa = data['name_fa']
+        if 'description' in data:
+            discount.description = data['description']
+        if 'discount_percentage' in data:
+            discount.discount_percentage = float(data['discount_percentage'])
+        if 'discount_type' in data:
+            discount.discount_type = data['discount_type']
+        if 'priority' in data:
+            discount.priority = int(data['priority'])
+        if 'is_active' in data:
+            discount.is_active = data['is_active']
+        if 'start_date' in data:
+            discount.start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00')) if data['start_date'] else None
+        if 'end_date' in data:
+            discount.end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00')) if data['end_date'] else None
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'تخفیف با موفقیت به‌روزرسانی شد'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'خطا در به‌روزرسانی تخفیف: {str(e)}'}), 400
+
+@app.route('/api/admin/discounts/<int:discount_id>/delete', methods=['DELETE'])
+@login_required
+def api_admin_discount_delete(discount_id):
+    """API: Delete discount"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    discount = ProductDiscount.query.get_or_404(discount_id)
+    
+    try:
+        # Remove all product associations
+        ProductDiscountProduct.query.filter_by(discount_id=discount_id).delete()
+        
+        db.session.delete(discount)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'تخفیف با موفقیت حذف شد'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'خطا در حذف تخفیف: {str(e)}'}), 400
+
+@app.route('/api/admin/discounts/<int:discount_id>/toggle-status', methods=['POST'])
+@login_required
+def api_admin_discount_toggle_status(discount_id):
+    """API: Toggle discount status"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    discount = ProductDiscount.query.get_or_404(discount_id)
+    
+    try:
+        discount.is_active = not discount.is_active
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'وضعیت تخفیف تغییر کرد',
+            'is_active': discount.is_active
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'خطا در تغییر وضعیت: {str(e)}'}), 400
+
+@app.route('/api/admin/discounts/search-products', methods=['GET'])
+@login_required
+def api_admin_discount_search_products():
+    """API: Search products for adding to discount"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    query_text = request.args.get('query', '')
+    discount_id = request.args.get('discount_id', type=int)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 12, type=int)
+    
+    if not query_text or len(query_text) < 2:
+        return jsonify({
+            'success': True,
+            'products': [],
+            'pagination': {'page': 1, 'pages': 0, 'per_page': per_page, 'total': 0}
+        })
+    
+    # Build search query
+    search_query = Product.query.filter(Product.is_active == True)
+    
+    # Exclude products already in this discount
+    if discount_id:
+        existing_product_ids = db.session.query(ProductDiscountProduct.product_id).filter_by(
+            discount_id=discount_id
+        ).subquery()
+        search_query = search_query.filter(~Product.id.in_(existing_product_ids))
+    
+    # Search in name, name_fa, sku, oem_code
+    search_query = search_query.filter(
+        or_(
+            Product.name.contains(query_text),
+            Product.name_fa.contains(query_text),
+            Product.sku.contains(query_text),
+            Product.oem_code.contains(query_text)
+        )
+    )
+    
+    # Paginate
+    pagination = search_query.order_by(Product.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    products = []
+    for product in pagination.items:
+        products.append({
+            'id': product.id,
+            'name': product.name,
+            'name_fa': product.name_fa,
+            'sku': product.sku,
+            'oem_code': product.oem_code,
+            'primary_image': product.primary_image or url_for('static', filename='images/default-product.png'),
+            'brand': {
+                'id': product.brand.id if product.brand else None,
+                'name_fa': product.brand.name_fa if product.brand else None
+            } if product.brand else None,
+            'retail_price_cash': product.retail_price_cash,
+            'stock_quantity': product.stock_quantity
+        })
+    
+    return jsonify({
+        'success': True,
+        'products': products,
+        'pagination': {
+            'page': pagination.page,
+            'pages': pagination.pages,
+            'per_page': pagination.per_page,
+            'total': pagination.total
+        }
+    })
+
+@app.route('/api/admin/discounts/<int:discount_id>/add-product', methods=['POST'])
+@login_required
+def api_admin_discount_add_product(discount_id):
+    """API: Add product to discount"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    discount = ProductDiscount.query.get_or_404(discount_id)
+    data = request.get_json()
+    product_id = data.get('product_id')
+    
+    if not product_id:
+        return jsonify({'success': False, 'message': 'شناسه محصول الزامی است'}), 400
+    
+    product = Product.query.get_or_404(product_id)
+    
+    # Check if already added
+    existing = ProductDiscountProduct.query.filter_by(
+        discount_id=discount_id,
+        product_id=product_id
+    ).first()
+    
+    if existing:
+        return jsonify({'success': False, 'message': 'این محصول قبلاً به تخفیف اضافه شده است'}), 400
+    
+    try:
+        discount_product = ProductDiscountProduct(
+            discount_id=discount_id,
+            product_id=product_id
+        )
+        db.session.add(discount_product)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'محصول با موفقیت به تخفیف اضافه شد'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'خطا در افزودن محصول: {str(e)}'}), 400
+
+@app.route('/api/admin/discounts/<int:discount_id>/remove-product', methods=['DELETE'])
+@login_required
+def api_admin_discount_remove_product(discount_id):
+    """API: Remove product from discount"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    discount = ProductDiscount.query.get_or_404(discount_id)
+    product_id = request.args.get('product_id', type=int)
+    
+    if not product_id:
+        return jsonify({'success': False, 'message': 'شناسه محصول الزامی است'}), 400
+    
+    try:
+        ProductDiscountProduct.query.filter_by(
+            discount_id=discount_id,
+            product_id=product_id
+        ).delete()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'محصول با موفقیت از تخفیف حذف شد'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'خطا در حذف محصول: {str(e)}'}), 400
+
+@app.route('/api/admin/discounts/<int:discount_id>/products', methods=['GET'])
+@login_required
+def api_admin_discount_products(discount_id):
+    """API: Get discount products"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    discount = ProductDiscount.query.get_or_404(discount_id)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Get products with pagination
+    products_query = Product.query.join(ProductDiscountProduct).filter(
+        ProductDiscountProduct.discount_id == discount_id
+    )
+    
+    pagination = products_query.order_by(Product.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    products = []
+    for product in pagination.items:
+        products.append({
+            'id': product.id,
+            'name': product.name,
+            'name_fa': product.name_fa,
+            'sku': product.sku,
+            'primary_image': product.primary_image or url_for('static', filename='images/default-product.png'),
+            'brand': {
+                'id': product.brand.id if product.brand else None,
+                'name_fa': product.brand.name_fa if product.brand else None
+            } if product.brand else None,
+            'retail_price_cash': product.retail_price_cash,
+            'stock_quantity': product.stock_quantity
+        })
+    
+    return jsonify({
+        'success': True,
+        'products': products,
+        'pagination': {
+            'page': pagination.page,
+            'pages': pagination.pages,
+            'per_page': pagination.per_page,
+            'total': pagination.total
+        }
+    })
+
+# ==================== PUBLIC DISCOUNT API ROUTES ====================
+
+@app.route('/api/discounts/daily-products', methods=['GET'])
+def api_discounts_daily_products():
+    """API: Get daily discount products (public)"""
+    limit = request.args.get('limit', 20, type=int)
+    offset = request.args.get('offset', 0, type=int)
+    
+    # Get active daily discounts
+    now = datetime.utcnow()
+    discounts = ProductDiscount.query.filter(
+        ProductDiscount.discount_type == 'daily',
+        ProductDiscount.is_active == True,
+        or_(
+            ProductDiscount.start_date.is_(None),
+            ProductDiscount.start_date <= now
+        ),
+        or_(
+            ProductDiscount.end_date.is_(None),
+            ProductDiscount.end_date >= now
+        )
+    ).order_by(ProductDiscount.priority.desc(), ProductDiscount.created_at.desc()).all()
+    
+    # Collect all products from active discounts
+    products_dict = {}
+    for discount in discounts:
+        for product in discount.products:
+            if product.is_active and product.stock_quantity > 0:
+                # Use product_id as key to avoid duplicates
+                if product.id not in products_dict:
+                    # Calculate discounted price using CHECK price (not cash)
+                    original_price = product.retail_price_check * 1000  # Convert to full Rials
+                    discount_amount = original_price * (discount.discount_percentage / 100)
+                    discounted_price = original_price - discount_amount
+                    
+                    products_dict[product.id] = {
+                        'id': product.id,
+                        'name': product.name,
+                        'name_fa': product.name_fa,
+                        'sku': product.sku,
+                        'primary_image': product.primary_image or url_for('static', filename='images/default-product.png'),
+                        'brand': {
+                            'id': product.brand.id if product.brand else None,
+                            'name': product.brand.name if product.brand else None,
+                            'name_fa': product.brand.name_fa if product.brand else None
+                        } if product.brand else None,
+                        'original_price': original_price,
+                        'discounted_price': discounted_price,
+                        'discount_percentage': discount.discount_percentage,
+                        'discount_amount': discount_amount,
+                        'stock_quantity': product.stock_quantity,
+                        'price_type': 'check',  # Mark as check price
+                        'discount_info': {
+                            'discount_id': discount.id,
+                            'discount_name': discount.name,
+                            'discount_name_fa': discount.name_fa
+                        }
+                    }
+    
+    # Convert to list and apply pagination
+    products_list = list(products_dict.values())
+    total = len(products_list)
+    products_list = products_list[offset:offset+limit]
+    
+    return jsonify({
+        'success': True,
+        'products': products_list,
+        'total': total
+    })
+
+@app.route('/api/discounts/monthly-products', methods=['GET'])
+def api_discounts_monthly_products():
+    """API: Get monthly discount products (public)"""
+    limit = request.args.get('limit', 20, type=int)
+    offset = request.args.get('offset', 0, type=int)
+    
+    # Get active monthly discounts
+    now = datetime.utcnow()
+    discounts = ProductDiscount.query.filter(
+        ProductDiscount.discount_type == 'monthly',
+        ProductDiscount.is_active == True,
+        or_(
+            ProductDiscount.start_date.is_(None),
+            ProductDiscount.start_date <= now
+        ),
+        or_(
+            ProductDiscount.end_date.is_(None),
+            ProductDiscount.end_date >= now
+        )
+    ).order_by(ProductDiscount.priority.desc(), ProductDiscount.created_at.desc()).all()
+    
+    # Collect all products from active discounts
+    products_dict = {}
+    for discount in discounts:
+        for product in discount.products:
+            if product.is_active and product.stock_quantity > 0:
+                # Use product_id as key to avoid duplicates
+                if product.id not in products_dict:
+                    # Calculate discounted price using CHECK price (not cash)
+                    original_price = product.retail_price_check * 1000  # Convert to full Rials
+                    discount_amount = original_price * (discount.discount_percentage / 100)
+                    discounted_price = original_price - discount_amount
+                    
+                    products_dict[product.id] = {
+                        'id': product.id,
+                        'name': product.name,
+                        'name_fa': product.name_fa,
+                        'sku': product.sku,
+                        'primary_image': product.primary_image or url_for('static', filename='images/default-product.png'),
+                        'brand': {
+                            'id': product.brand.id if product.brand else None,
+                            'name': product.brand.name if product.brand else None,
+                            'name_fa': product.brand.name_fa if product.brand else None
+                        } if product.brand else None,
+                        'original_price': original_price,
+                        'discounted_price': discounted_price,
+                        'discount_percentage': discount.discount_percentage,
+                        'discount_amount': discount_amount,
+                        'stock_quantity': product.stock_quantity,
+                        'price_type': 'check',  # Mark as check price
+                        'discount_info': {
+                            'discount_id': discount.id,
+                            'discount_name': discount.name,
+                            'discount_name_fa': discount.name_fa
+                        }
+                    }
+    
+    # Convert to list and apply pagination
+    products_list = list(products_dict.values())
+    total = len(products_list)
+    products_list = products_list[offset:offset+limit]
+    
+    return jsonify({
+        'success': True,
+        'products': products_list,
+        'total': total
+    })
+
 @app.route('/admin/audit-logs')
 @login_required
 def admin_audit_logs():
@@ -2960,58 +4913,668 @@ def admin_reject_bulk_buyer(user_id):
 
 @app.route('/api/search')
 def api_search():
-    """Search API endpoint"""
+    """
+    جستجوی پیشرفته محصولات با پشتیبانی از Meilisearch و SQL fallback
+    پشتیبانی از فیلترها، مرتب‌سازی و analytics tracking
+    """
     try:
-        query = request.args.get('q', '')
+        query = request.args.get('q', '').strip()
         limit = request.args.get('limit', 10, type=int)
+        page = request.args.get('page', 1, type=int)
+        per_page = min(limit, 100)  # Max 100 results per page
+        
+        # Get filters
+        brand_id = request.args.get('brand_id', type=int)
+        category_id = request.args.get('category_id', type=int)
+        vehicle_type_id = request.args.get('vehicle_type_id', type=int)
+        min_price = request.args.get('min_price', type=float)
+        max_price = request.args.get('max_price', type=float)
+        in_stock = request.args.get('in_stock', type=str)
+        sort = request.args.get('sort', 'relevance')  # relevance, price_asc, price_desc, newest, stock
+        
+        # Build filters dict
+        filters = {}
+        if brand_id:
+            filters['brand_id'] = brand_id
+        if category_id:
+            filters['category_id'] = category_id
+        if vehicle_type_id:
+            filters['vehicle_type_ids'] = [vehicle_type_id]  # Array for Meilisearch
+        if min_price is not None:
+            filters['retail_price_cash'] = f'>= {min_price}'
+        if max_price is not None:
+            if 'retail_price_cash' in filters:
+                # Combine with AND
+                filters['retail_price_cash'] = f'{min_price if min_price else 0} TO {max_price}'
+            else:
+                filters['retail_price_cash'] = f'<= {max_price}'
+        
+        # Stock filter
+        if in_stock == 'true':
+            filters['stock_quantity'] = '> 0'
+        elif in_stock == 'false':
+            filters['stock_quantity'] = '= 0'
+        else:
+            filters['stock_quantity'] = '>= 0'  # All products
+        
+        filters['is_active'] = True
+        
+        # Build sort criteria
+        sort_criteria = None
+        if sort == 'price_asc':
+            sort_criteria = ['retail_price_cash:asc']
+        elif sort == 'price_desc':
+            sort_criteria = ['retail_price_cash:desc']
+        elif sort == 'newest':
+            sort_criteria = ['created_at:desc']
+        elif sort == 'stock':
+            sort_criteria = ['stock_quantity:desc']
+        # 'relevance' is default, no sort needed (Meilisearch handles it)
         
         if not query:
-            return jsonify([])
-        
-        # Try normalized search first
-        try:
-            norm_q = normalize_fa_text(query)
-            name_norm = normalize_sql_expr(Product.name)
-            name_fa_norm = normalize_sql_expr(Product.name_fa)
-            
-            products = Product.query.filter(
-                models.db.or_(
-                    name_norm.contains(norm_q),
-                    name_fa_norm.contains(norm_q),
-                    Product.sku.contains(norm_q),
-                    Product.oem_code.contains(norm_q)
-                ),
-                Product.is_active == True
-            ).limit(limit).all()
-        except Exception as e:
-            # Fallback to simple search
-            app.logger.error(f"API search normalization failed: {e}")
-            products = Product.query.filter(
-                models.db.or_(
-                    Product.name.contains(query),
-                    Product.name_fa.contains(query),
-                    Product.sku.contains(query),
-                    Product.oem_code.contains(query)
-                ),
-                Product.is_active == True
-            ).limit(limit).all()
-        
-        results = []
-        for product in products:
-            results.append({
-                'id': product.id,
-                'name': product.name_fa,
-                'sku': product.sku,
-                'price': product.retail_price_cash,
-                'image': product.primary_image,
-                'url': url_for('product_detail', product_id=product.id)
+            return jsonify({
+                'results': [],
+                'total': 0,
+                'page': page,
+                'per_page': per_page,
+                'filters_applied': filters
             })
         
-        return jsonify(results)
+        # Track search for analytics (async, don't block)
+        user_id = current_user.id if current_user.is_authenticated else None
+        if user_id:
+            try:
+                from threading import Thread
+                def track_search_async():
+                    try:
+                        search_history = UserSearchHistory(
+                            user_id=user_id,
+                            search_query=query,
+                            search_filters=json.dumps(filters) if filters else None,
+                            results_count=0  # Will be updated after search
+                        )
+                        db.session.add(search_history)
+                        db.session.commit()
+                    except Exception as e:
+                        app.logger.error(f"Search tracking error: {e}")
+                
+                Thread(target=track_search_async, daemon=True).start()
+            except Exception as e:
+                app.logger.warning(f"Failed to start search tracking thread: {e}")
+        
+        # Try Meilisearch first
+        try:
+            from search_service import get_search_service
+            
+            search_service = get_search_service()
+            if search_service.is_available():
+                # Perform search
+                search_results = search_service.search(
+                    query=query,
+                    filters=filters,
+                    sort=sort_criteria,
+                    page=page,
+                    per_page=per_page,
+                    highlight=True
+                )
+                
+                if search_results.get('from_search_engine') and search_results.get('hits'):
+                    # Get product IDs
+                    product_ids = [hit['id'] for hit in search_results['hits']]
+                    total_results = search_results.get('total', 0)
+                    
+                    # Fetch products from database with relationships
+                    from sqlalchemy.orm import joinedload
+                    products = Product.query.options(
+                        joinedload(Product.brand),
+                        joinedload(Product.category),
+                        joinedload(Product.subcategory)
+                    ).filter(Product.id.in_(product_ids)).all()
+                    
+                    # Sort by Meilisearch order
+                    product_dict = {p.id: p for p in products}
+                    products = [product_dict[pid] for pid in product_ids if pid in product_dict]
+                    
+                    results = []
+                    for idx, product in enumerate(products):
+                        # Get highlighted text if available
+                        hit = next((h for h in search_results['hits'] if h['id'] == product.id), None)
+                        highlighted_name = hit.get('_formatted', {}).get('name_fa') if hit else None
+                        highlighted_name_fa = hit.get('_formatted', {}).get('name_fa') if hit else None
+                        
+                        results.append({
+                            'id': product.id,
+                            'name': product.name or '',
+                            'name_fa': product.name_fa or product.name or '',
+                            'highlighted_name': highlighted_name or product.name_fa or product.name or '',
+                            'sku': product.sku or '',
+                            'oem_code': product.oem_code or '',
+                            'price': float(product.retail_price_cash or 0),
+                            'bulk_price_cash': float(product.bulk_price_cash or 0),
+                            'bulk_price_check': float(product.bulk_price_check or 0),
+                            'retail_price_check': float(product.retail_price_check or 0),
+                            'stock_quantity': product.stock_quantity or 0,
+                            'image': product.primary_image or '',
+                            'brand': {
+                                'id': product.brand.id if product.brand else None,
+                                'name': product.brand.name if product.brand else '',
+                                'name_fa': product.brand.name_fa if product.brand else ''
+                            },
+                            'category': {
+                                'id': product.category.id if product.category else None,
+                                'name': product.category.category_name if product.category else '',
+                                'name_fa': product.category.category_name_fa if product.category else ''
+                            },
+                            'is_featured': product.is_featured or False,
+                            'url': url_for('product_detail', product_id=product.id, _external=True),
+                            'rank': idx + 1
+                        })
+                    
+                    # Update search tracking with results count
+                    if user_id:
+                        try:
+                            recent_search = UserSearchHistory.query.filter_by(
+                                user_id=user_id,
+                                search_query=query
+                            ).order_by(UserSearchHistory.created_at.desc()).first()
+                            if recent_search and recent_search.results_count == 0:
+                                recent_search.results_count = total_results
+                                db.session.commit()
+                        except Exception:
+                            pass
+                    
+                    return jsonify({
+                        'results': results,
+                        'total': total_results,
+                        'page': page,
+                        'per_page': per_page,
+                        'filters_applied': filters,
+                        'sort': sort,
+                        'from_search_engine': True
+                    })
+        except Exception as e:
+            app.logger.warning(f"Meilisearch search failed, falling back to SQL: {e}")
+        
+        # Fallback to SQL search
+        db_query = Product.query.filter_by(is_active=True)
+        
+        # Apply stock filter
+        if in_stock == 'true':
+            db_query = db_query.filter(Product.stock_quantity > 0)
+        elif in_stock == 'false':
+            db_query = db_query.filter(Product.stock_quantity == 0)
+        
+        # Apply brand filter
+        if brand_id:
+            db_query = db_query.filter(Product.brand_id == brand_id)
+        
+        # Apply category filter
+        if category_id:
+            db_query = db_query.filter(Product.category_id == category_id)
+        
+        # Apply vehicle type filter
+        if vehicle_type_id:
+            from sqlalchemy import and_
+            db_query = db_query.join(ProductVehicleType).filter(
+                ProductVehicleType.vehicle_type_id == vehicle_type_id
+            )
+        
+        # Apply price filters
+        if min_price is not None:
+            db_query = db_query.filter(Product.retail_price_cash >= min_price)
+        if max_price is not None:
+            db_query = db_query.filter(Product.retail_price_cash <= max_price)
+        
+        # Apply search query
+        if query:
+            db_query = advanced_product_search(db_query, query)
+        
+        # Apply sorting
+        if sort == 'price_asc':
+            db_query = db_query.order_by(Product.retail_price_cash.asc())
+        elif sort == 'price_desc':
+            db_query = db_query.order_by(Product.retail_price_cash.desc())
+        elif sort == 'newest':
+            db_query = db_query.order_by(Product.created_at.desc())
+        elif sort == 'stock':
+            db_query = db_query.order_by(Product.stock_quantity.desc())
+        
+        # Get total count before pagination
+        total_results = db_query.count()
+        
+        # Apply pagination
+        products = db_query.offset((page - 1) * per_page).limit(per_page).all()
+        
+        results = []
+        for idx, product in enumerate(products):
+            results.append({
+                'id': product.id,
+                'name': product.name or '',
+                'name_fa': product.name_fa or product.name or '',
+                'highlighted_name': product.name_fa or product.name or '',
+                'sku': product.sku or '',
+                'oem_code': product.oem_code or '',
+                'price': float(product.retail_price_cash or 0),
+                'bulk_price_cash': float(product.bulk_price_cash or 0),
+                'bulk_price_check': float(product.bulk_price_check or 0),
+                'retail_price_check': float(product.retail_price_check or 0),
+                'stock_quantity': product.stock_quantity or 0,
+                'image': product.primary_image or '',
+                'brand': {
+                    'id': product.brand.id if product.brand else None,
+                    'name': product.brand.name if product.brand else '',
+                    'name_fa': product.brand.name_fa if product.brand else ''
+                },
+                'category': {
+                    'id': product.category.id if product.category else None,
+                    'name': product.category.category_name if product.category else '',
+                    'name_fa': product.category.category_name_fa if product.category else ''
+                },
+                'is_featured': product.is_featured or False,
+                'url': url_for('product_detail', product_id=product.id, _external=True),
+                'rank': idx + 1
+            })
+        
+        # Update search tracking
+        if user_id:
+            try:
+                recent_search = UserSearchHistory.query.filter_by(
+                    user_id=user_id,
+                    search_query=query
+                ).order_by(UserSearchHistory.created_at.desc()).first()
+                if recent_search and recent_search.results_count == 0:
+                    recent_search.results_count = total_results
+                    db.session.commit()
+            except Exception:
+                pass
+        
+        return jsonify({
+            'results': results,
+            'total': total_results,
+            'page': page,
+            'per_page': per_page,
+            'filters_applied': filters,
+            'sort': sort,
+            'from_search_engine': False
+        })
         
     except Exception as e:
         app.logger.error(f"API search error: {e}")
-        return jsonify({'error': 'Search failed'}), 500
+        import traceback
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': 'Search failed', 'message': str(e)}), 500
+
+@app.route('/api/search/suggestions')
+def api_search_suggestions():
+    """
+    دریافت پیشنهادات جستجوی هوشمند
+    شامل: برندها، مدل‌ها، محصولات، دسته‌بندی‌ها
+    """
+    try:
+        query = request.args.get('q', '').strip()
+        limit = request.args.get('limit', 10, type=int)
+        context = request.args.get('context', '{}')  # JSON string with brand_id, category_id, etc.
+        
+        if not query or len(query) < 2:
+            return jsonify({'suggestions': []})
+        
+        try:
+            context_dict = json.loads(context) if context else {}
+        except:
+            context_dict = {}
+        
+        suggestions = []
+        norm_query = normalize_fa_text(query)
+        
+        # 1. Brand suggestions (حداکثر 3)
+        try:
+            brands = Brand.query.filter(
+                or_(
+                    normalize_sql_expr(Brand.name).contains(norm_query),
+                    normalize_sql_expr(Brand.name_fa).contains(norm_query),
+                    Brand.name.ilike(f'%{query}%'),
+                    Brand.name_fa.ilike(f'%{query}%')
+                ),
+                Brand.is_active == True
+            ).limit(3).all()
+            
+            for brand in brands:
+                suggestions.append({
+                    'type': 'brand',
+                    'text': brand.name,
+                    'text_fa': brand.name_fa,
+                    'id': brand.id,
+                    'icon': 'fas fa-car',
+                    'relevance': 0.95 if (query.lower() in brand.name.lower() or query in brand.name_fa) else 0.85
+                })
+        except Exception as e:
+            app.logger.warning(f"Brand suggestions error: {e}")
+        
+        # 2. Model suggestions (اگر brand_id در context باشد)
+        if context_dict.get('brand_id'):
+            try:
+                models_query = VehicleModel.query.filter(
+                    VehicleModel.brand_id == context_dict['brand_id'],
+                    or_(
+                        normalize_sql_expr(VehicleModel.model_name).contains(norm_query),
+                        normalize_sql_expr(VehicleModel.model_name_fa).contains(norm_query),
+                        VehicleModel.model_name.ilike(f'%{query}%'),
+                        VehicleModel.model_name_fa.ilike(f'%{query}%')
+                    ),
+                    VehicleModel.is_active == True
+                ).limit(3).all()
+                
+                for model in models_query:
+                    suggestions.append({
+                        'type': 'model',
+                        'text': model.model_name,
+                        'text_fa': model.model_name_fa,
+                        'id': model.id,
+                        'icon': 'fas fa-car-side',
+                        'relevance': 0.90
+                    })
+            except Exception as e:
+                app.logger.warning(f"Model suggestions error: {e}")
+        
+        # 3. Category suggestions (حداکثر 2)
+        try:
+            categories = PartCategory.query.filter(
+                or_(
+                    normalize_sql_expr(PartCategory.category_name).contains(norm_query),
+                    normalize_sql_expr(PartCategory.category_name_fa).contains(norm_query),
+                    PartCategory.category_name.ilike(f'%{query}%'),
+                    PartCategory.category_name_fa.ilike(f'%{query}%')
+                ),
+                PartCategory.is_active == True
+            ).limit(2).all()
+            
+            for category in categories:
+                suggestions.append({
+                    'type': 'category',
+                    'text': category.category_name,
+                    'text_fa': category.category_name_fa,
+                    'id': category.id,
+                    'icon': category.icon_class or 'fas fa-cog',
+                    'relevance': 0.80
+                })
+        except Exception as e:
+            app.logger.warning(f"Category suggestions error: {e}")
+        
+        # 4. Product suggestions (حداکثر 5)
+        try:
+            from search_service import get_search_service
+            
+            search_service = get_search_service()
+            if search_service.is_available():
+                # Use Meilisearch for product suggestions
+                product_suggestions = search_service.search_suggestions(query, 5)
+                for suggestion_text in product_suggestions:
+                    # Try to find product by name
+                    product = Product.query.filter(
+                        or_(
+                            Product.name_fa.ilike(f'%{suggestion_text}%'),
+                            Product.name.ilike(f'%{suggestion_text}%')
+                        ),
+                        Product.is_active == True
+                    ).first()
+                    
+                    if product:
+                        suggestions.append({
+                            'type': 'product',
+                            'text': product.name,
+                            'text_fa': product.name_fa,
+                            'id': product.id,
+                            'sku': product.sku,
+                            'icon': 'fas fa-box',
+                            'relevance': 0.75
+                        })
+            else:
+                # Fallback to SQL search
+                products = Product.query.filter(
+                    or_(
+                        normalize_sql_expr(Product.name).contains(norm_query),
+                        normalize_sql_expr(Product.name_fa).contains(norm_query),
+                        Product.name.ilike(f'%{query}%'),
+                        Product.name_fa.ilike(f'%{query}%'),
+                        Product.sku.ilike(f'%{query}%')
+                    ),
+                    Product.is_active == True
+                ).limit(5).all()
+                
+                for product in products:
+                    suggestions.append({
+                        'type': 'product',
+                        'text': product.name,
+                        'text_fa': product.name_fa,
+                        'id': product.id,
+                        'sku': product.sku,
+                        'icon': 'fas fa-box',
+                        'relevance': 0.75
+                    })
+        except Exception as e:
+            app.logger.warning(f"Product suggestions error: {e}")
+        
+        # Sort by relevance and limit
+        suggestions.sort(key=lambda x: x.get('relevance', 0), reverse=True)
+        suggestions = suggestions[:limit]
+        
+        return jsonify({'suggestions': suggestions})
+        
+    except Exception as e:
+        app.logger.error(f"Search suggestions error: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
+        return jsonify({'suggestions': []})
+
+@app.route('/admin/search')
+@login_required
+def admin_search_management():
+    """Search index management page (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        from search_service import get_search_service
+        from search_config import SearchConfig
+        
+        search_service = get_search_service()
+        is_available = search_service.is_available()
+        
+        stats = None
+        if is_available:
+            try:
+                stats = search_service.index.get_stats()
+            except Exception as e:
+                app.logger.error(f"Failed to get stats: {e}")
+        
+        return render_template('admin/search_management.html',
+                             is_available=is_available,
+                             stats=stats,
+                             config=SearchConfig.get_config())
+        
+    except Exception as e:
+        app.logger.error(f"Search management page error: {e}")
+        return render_template('admin/search_management.html',
+                             is_available=False,
+                             stats=None,
+                             config=None,
+                             error=str(e))
+
+@app.route('/admin/search/sync', methods=['POST'])
+@login_required
+def admin_sync_search():
+    """Sync all products to search index (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        from search_sync import get_sync_service
+        
+        sync_service = get_sync_service()
+        result = sync_service.sync_all_products()
+        
+        if result['success']:
+            flash(f'همگام‌سازی با موفقیت انجام شد: {result["synced"]} محصول', 'success')
+        else:
+            flash(f'خطا در همگام‌سازی: {result["message"]}', 'error')
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        app.logger.error(f"Search sync error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/search/track-click', methods=['POST'])
+def api_track_search_click():
+    """Track product click from search results"""
+    try:
+        data = request.get_json()
+        product_id = data.get('product_id')
+        query = data.get('query', '')
+        rank = data.get('rank', 0)
+        
+        if not product_id:
+            return jsonify({'success': False, 'message': 'Product ID required'}), 400
+        
+        user_id = current_user.id if current_user.is_authenticated else None
+        
+        if user_id:
+            try:
+                # Update the most recent search history with clicked product
+                recent_search = UserSearchHistory.query.filter(
+                    UserSearchHistory.user_id == user_id,
+                    UserSearchHistory.search_query == query,
+                    UserSearchHistory.clicked_product_id.is_(None)
+                ).order_by(UserSearchHistory.created_at.desc()).first()
+                
+                if recent_search:
+                    recent_search.clicked_product_id = product_id
+                    db.session.commit()
+            except Exception as e:
+                app.logger.error(f"Click tracking error: {e}")
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        app.logger.error(f"Track click error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/search/analytics', methods=['GET'])
+@login_required
+def api_search_analytics():
+    """Get search analytics (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        days = request.args.get('days', 30, type=int)
+        date_from = datetime.utcnow() - timedelta(days=days)
+        
+        # Popular searches
+        popular_searches = db.session.query(
+            UserSearchHistory.search_query,
+            func.count(UserSearchHistory.id).label('count')
+        ).filter(
+            UserSearchHistory.created_at >= date_from,
+            UserSearchHistory.search_query.isnot(None)
+        ).group_by(
+            UserSearchHistory.search_query
+        ).order_by(
+            func.count(UserSearchHistory.id).desc()
+        ).limit(10).all()
+        
+        # Searches with no results
+        no_result_searches = db.session.query(
+            UserSearchHistory.search_query,
+            func.count(UserSearchHistory.id).label('count')
+        ).filter(
+            UserSearchHistory.created_at >= date_from,
+            UserSearchHistory.results_count == 0,
+            UserSearchHistory.search_query.isnot(None)
+        ).group_by(
+            UserSearchHistory.search_query
+        ).order_by(
+            func.count(UserSearchHistory.id).desc()
+        ).limit(10).all()
+        
+        # Total searches
+        total_searches = UserSearchHistory.query.filter(
+            UserSearchHistory.created_at >= date_from
+        ).count()
+        
+        # Searches with clicks
+        searches_with_clicks = UserSearchHistory.query.filter(
+            UserSearchHistory.created_at >= date_from,
+            UserSearchHistory.clicked_product_id.isnot(None)
+        ).count()
+        
+        # Conversion rate
+        conversion_rate = (searches_with_clicks / total_searches * 100) if total_searches > 0 else 0
+        
+        # Average results per search
+        avg_results = db.session.query(
+            func.avg(UserSearchHistory.results_count)
+        ).filter(
+            UserSearchHistory.created_at >= date_from,
+            UserSearchHistory.results_count > 0
+        ).scalar() or 0
+        
+        return jsonify({
+            'popular_searches': [
+                {'query': q, 'count': c} for q, c in popular_searches
+            ],
+            'no_result_searches': [
+                {'query': q, 'count': c} for q, c in no_result_searches
+            ],
+            'conversion_rate': round(conversion_rate, 2),
+            'total_searches': total_searches,
+            'searches_with_clicks': searches_with_clicks,
+            'avg_results_per_search': round(float(avg_results), 2),
+            'period_days': days
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Search analytics error: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/search/status', methods=['GET'])
+@login_required
+def admin_search_status():
+    """Get search index status (admin only)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        from search_service import get_search_service
+        from search_config import SearchConfig
+        
+        search_service = get_search_service()
+        
+        if not search_service.is_available():
+            return jsonify({
+                'available': False,
+                'message': 'Meilisearch در دسترس نیست'
+            })
+        
+        try:
+            # Get index stats
+            stats = search_service.index.get_stats()
+            return jsonify({
+                'available': True,
+                'index_name': SearchConfig.INDEX_NAME,
+                'stats': stats
+            })
+        except Exception as e:
+            return jsonify({
+                'available': False,
+                'message': f'خطا در دریافت آمار: {str(e)}'
+            })
+        
+    except Exception as e:
+        app.logger.error(f"Search status error: {e}")
+        return jsonify({'available': False, 'message': str(e)}), 500
 
 @app.route('/api/cart-count')
 def api_cart_count():
@@ -3827,10 +6390,15 @@ def admin_accounting_prices():
         page=page, per_page=per_page, error_out=False
     )
     
+    # ایجاد دیکشنری برای دسترسی سریع به محصولات بر اساس کد کالا
+    item_codes = [price.item_code for price in prices.items]
+    products_by_sku = {p.sku: p for p in Product.query.filter(Product.sku.in_(item_codes)).all()}
+    
     return render_template('admin/accounting_prices.html',
                          prices=prices,
                          stats=stats,
-                         current_filters=current_filters)
+                         current_filters=current_filters,
+                         products_by_sku=products_by_sku)
 
 @app.route('/admin/accounting/settings', methods=['GET', 'POST'])
 @login_required
@@ -4136,6 +6704,100 @@ def api_accounting_sync_prices_to_products():
         return jsonify({
             'success': False,
             'message': f'خطا در همگام‌سازی قیمت‌ها: {str(e)}'
+        }), 500
+
+# === Simple concurrency guard for full refresh ===
+_full_refresh_lock = threading.Lock()
+
+@app.route('/api/accounting/sync/full-refresh', methods=['POST'])
+@login_required
+def api_accounting_full_refresh():
+    """دریافت کالاهای جدید تدبیر و بروزرسانی قیمت/موجودی فروشگاه"""
+    if not current_user.is_admin:
+        return jsonify({
+            'success': False,
+            'message': 'شما دسترسی لازم برای این عملیات را ندارید'
+        }), 403
+    
+    try:
+        import threading
+        from tadbir_sync_service import TadbirSyncService
+        from shop_sync_service import get_shop_sync_service
+
+        # Prevent concurrent runs
+        acquired = _full_refresh_lock.acquire(blocking=False)
+        if not acquired:
+            return jsonify({
+                'success': False,
+                'message': 'همگام‌سازی کامل در حال اجراست، لطفاً صبر کنید.'
+            }), 429
+
+        payload = request.get_json() or {}
+        sync_products_flag = payload.get('sync_products', True)
+        sync_inventory_flag = payload.get('sync_inventory', True)
+        sync_prices_flag = payload.get('sync_prices', True)
+        sync_shop_flag = payload.get('sync_shop', True)
+        stock_code = str(payload.get('stock_code', '10'))
+        include_isaco_stock = payload.get('include_isaco_stock', True)
+        isaco_stock_code = str(app.config.get('ISACO_WAREHOUSE_ID', 15))
+
+        def run_sync_in_background():
+            """اجرای همگام‌سازی در پس‌زمینه"""
+            try:
+                from app import app as flask_app
+                with flask_app.app_context():
+                    sync_service = TadbirSyncService()
+                    shop_sync_service = get_shop_sync_service()
+                    
+                    # 1) Pull latest data from Tadbir (configurable)
+                    if sync_products_flag:
+                        sync_service.sync_products(incremental=False)
+                    if sync_inventory_flag:
+                        sync_service.sync_inventory(stock_code=stock_code)
+                        if include_isaco_stock and isaco_stock_code != stock_code:
+                            sync_service.sync_inventory(stock_code=isaco_stock_code)
+                    if sync_prices_flag:
+                        sync_service.sync_prices()
+
+                    # 2) Push updates into shop (new products + price/inventory update)
+                    if sync_shop_flag:
+                        if sync_products_flag:
+                            shop_sync_service.sync_shop_products()
+                        if sync_inventory_flag:
+                            shop_sync_service.sync_shop_inventory(stock_code=stock_code)
+                            if include_isaco_stock and isaco_stock_code != stock_code:
+                                shop_sync_service.sync_shop_inventory(stock_code=isaco_stock_code)
+                        if sync_prices_flag:
+                            shop_sync_service.sync_shop_prices()
+                    
+                    app.logger.info("Full refresh sync completed successfully")
+            except Exception as e:
+                app.logger.error(f"Full refresh sync failed: {str(e)}")
+            finally:
+                _full_refresh_lock.release()
+
+        # اجرای عملیات در پس‌زمینه
+        sync_thread = threading.Thread(target=run_sync_in_background, daemon=True)
+        sync_thread.start()
+
+        return jsonify({
+            'success': True,
+            'message': 'همگام‌سازی کامل شروع شد. این عملیات ممکن است چند دقیقه طول بکشد. لطفاً وضعیت را از تاریخچه همگام‌سازی بررسی کنید.',
+            'status': 'started',
+            'stock_code': stock_code,
+            'isaco_stock_code': isaco_stock_code,
+            'include_isaco_stock': include_isaco_stock
+        })
+
+    except Exception as e:
+        try:
+            if _full_refresh_lock.locked():
+                _full_refresh_lock.release()
+        except Exception:
+            pass
+        return jsonify({
+            'success': False,
+            'message': f'خطا در همگام‌سازی کامل: {str(e)}'
         }), 500
 
 @app.route('/api/accounting/validate-decimal', methods=['POST'])
@@ -4785,7 +7447,7 @@ def admin_points_analytics():
     top_users = analytics.get_top_users_by_points(20)
     points_trend = analytics.get_points_trend(90)
     
-    return render_template('admin/points/analytics.html',
+    return render_template('admin/points/dashboard.html',
                          statistics=statistics,
                          top_users=top_users,
                          points_trend=points_trend)
@@ -4811,10 +7473,80 @@ def admin_expire_points():
 
 # ==================== STATIC FILES ====================
 
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """Serve static files - works as fallback if nginx doesn't handle them"""
+    try:
+        from flask import send_from_directory, abort, current_app
+        import os
+        
+        # Get static folder path - use absolute path
+        static_folder = current_app.static_folder
+        if not static_folder:
+            static_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+        
+        # Ensure we have absolute path
+        if not os.path.isabs(static_folder):
+            static_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), static_folder)
+        
+        file_path = os.path.join(static_folder, filename)
+        
+        # Check if file exists
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            # Determine MIME type based on extension
+            mimetype = None
+            if filename.endswith('.png'):
+                mimetype = 'image/png'
+            elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
+                mimetype = 'image/jpeg'
+            elif filename.endswith('.ico'):
+                mimetype = 'image/x-icon'
+            elif filename.endswith('.css'):
+                mimetype = 'text/css'
+            elif filename.endswith('.js'):
+                mimetype = 'application/javascript'
+            elif filename.endswith('.svg'):
+                mimetype = 'image/svg+xml'
+            
+            # Add cache headers
+            response = send_from_directory(static_folder, filename, mimetype=mimetype)
+            response.headers['Cache-Control'] = 'public, max-age=31536000'  # 1 year
+            return response
+        else:
+            # Log for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Static file not found: {file_path} (static_folder: {static_folder}, filename: {filename})")
+            abort(404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error serving static file {filename}: {e}", exc_info=True)
+        from flask import abort
+        abort(404)
+
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
     """Serve uploaded files"""
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    try:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        # Check if file exists
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+        else:
+            # Try to find file in root uploads directory (for backward compatibility)
+            # If filename is like 'products/product_xxx.png', try just 'product_xxx.png'
+            if filename.startswith('products/'):
+                alt_filename = filename.replace('products/', '', 1)
+                alt_path = os.path.join(app.config['UPLOAD_FOLDER'], alt_filename)
+                if os.path.exists(alt_path) and os.path.isfile(alt_path):
+                    return send_from_directory(app.config['UPLOAD_FOLDER'], alt_filename)
+            # Return 404 if file not found
+            from flask import abort
+            abort(404)
+    except Exception as e:
+        from flask import abort
+        abort(404)
 
 # ==================== ROLE MANAGEMENT API ROUTES ====================
 
@@ -6469,6 +9201,238 @@ def admin_user_password(user_id):
         flash(f'خطا در مدیریت رمز عبور: {str(e)}', 'error')
         return redirect(url_for('admin_user_detail', user_id=user_id))
 
+# ==================== ANDROID APP ADMIN API ====================
+
+@app.route('/api/admin/android-app/general-settings', methods=['POST'])
+@login_required
+def api_admin_android_app_general_settings():
+    """API: Update general settings for Android app"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        config = AndroidAppConfig.get_config()
+        
+        # Update company info
+        config.company_name = request.form.get('company_name', config.company_name)
+        config.company_name_fa = request.form.get('company_name_fa', config.company_name_fa)
+        config.company_phone = request.form.get('company_phone', config.company_phone)
+        config.company_support_phone = request.form.get('company_support_phone', config.company_support_phone)
+        config.company_email = request.form.get('company_email', config.company_email)
+        config.company_address = request.form.get('company_address', config.company_address)
+        config.company_about_fa = request.form.get('company_about_fa', config.company_about_fa)
+        config.updated_by = current_user.id
+        
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'تنظیمات با موفقیت به‌روزرسانی شد'
+        })
+    except Exception as e:
+        models.db.session.rollback()
+        current_app.logger.error(f"Error in api_admin_android_app_general_settings: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در به‌روزرسانی تنظیمات'
+        }), 500
+
+@app.route('/api/admin/android-app/suggestions', methods=['POST'])
+@login_required
+def api_admin_android_app_suggestions():
+    """API: Update daily suggestions"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        config = AndroidAppConfig.get_config()
+        
+        # Update settings
+        config.daily_suggestions_enabled = request.form.get('daily_suggestions_enabled') == 'on'
+        config.daily_suggestions_title = request.form.get('daily_suggestions_title', config.daily_suggestions_title)
+        config.daily_suggestions_title_fa = request.form.get('daily_suggestions_title_fa', config.daily_suggestions_title_fa)
+        
+        # Update product IDs
+        product_ids_json = request.form.get('product_ids', '[]')
+        try:
+            product_ids = json.loads(product_ids_json)
+            config.set_daily_suggestions_product_ids(product_ids)
+        except:
+            pass
+        
+        config.updated_by = current_user.id
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'پیشنهادات با موفقیت به‌روزرسانی شد'
+        })
+    except Exception as e:
+        models.db.session.rollback()
+        current_app.logger.error(f"Error in api_admin_android_app_suggestions: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در به‌روزرسانی پیشنهادات'
+        }), 500
+
+@app.route('/api/admin/android-app/config', methods=['POST'])
+@login_required
+def api_admin_android_app_config():
+    """API: Update app configuration"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        config = AndroidAppConfig.get_config()
+        
+        # Versioning
+        config.app_version = request.form.get('app_version', config.app_version)
+        config.min_app_version = request.form.get('min_app_version', config.min_app_version)
+        config.force_update = request.form.get('force_update') == 'on'
+        
+        # Maintenance
+        config.maintenance_mode = request.form.get('maintenance_mode') == 'on'
+        config.maintenance_message = request.form.get('maintenance_message', config.maintenance_message)
+        
+        # Features
+        config.daily_suggestions_enabled = request.form.get('daily_suggestions_enabled') == 'on'
+        config.wholesale_requests_enabled = request.form.get('wholesale_requests_enabled') == 'on'
+        config.wallet_enabled = request.form.get('wallet_enabled') == 'on'
+        config.notifications_enabled = request.form.get('notifications_enabled') == 'on'
+        
+        # Settings
+        config.default_price_type = request.form.get('default_price_type', config.default_price_type)
+        config.show_bulk_prices = request.form.get('show_bulk_prices') == 'on'
+        config.enable_offline_mode = request.form.get('enable_offline_mode') == 'on'
+        
+        # Partner brands
+        partner_brand_ids_json = request.form.get('partner_brand_ids', '[]')
+        try:
+            partner_brand_ids = json.loads(partner_brand_ids_json)
+            config.set_partner_brand_ids(partner_brand_ids)
+        except:
+            pass
+        
+        config.updated_by = current_user.id
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'تنظیمات با موفقیت به‌روزرسانی شد'
+        })
+    except Exception as e:
+        models.db.session.rollback()
+        current_app.logger.error(f"Error in api_admin_android_app_config: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در به‌روزرسانی تنظیمات'
+        }), 500
+
+@app.route('/api/admin/android-app/banners', methods=['POST'])
+@login_required
+def api_admin_android_app_banners_add():
+    """API: Add banner"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        banner = Banner(
+            title=request.form.get('title', ''),
+            title_fa=request.form.get('title_fa', ''),
+            image_url=request.form.get('image_url'),
+            link_url=request.form.get('link_url', ''),
+            position=request.form.get('position', 'homepage'),
+            display_order=int(request.form.get('display_order', 0)),
+            is_active=request.form.get('is_active') == 'on',
+            created_by=current_user.id
+        )
+        
+        models.db.session.add(banner)
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'بنر با موفقیت افزوده شد'
+        })
+    except Exception as e:
+        models.db.session.rollback()
+        current_app.logger.error(f"Error in api_admin_android_app_banners_add: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در افزودن بنر'
+        }), 500
+
+@app.route('/api/admin/android-app/banners/<int:banner_id>', methods=['DELETE'])
+@login_required
+def api_admin_android_app_banners_delete(banner_id):
+    """API: Delete banner"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        banner = Banner.query.get_or_404(banner_id)
+        models.db.session.delete(banner)
+        models.db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'بنر با موفقیت حذف شد'
+        })
+    except Exception as e:
+        models.db.session.rollback()
+        current_app.logger.error(f"Error in api_admin_android_app_banners_delete: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در حذف بنر'
+        }), 500
+
+@app.route('/api/admin/products/search', methods=['GET'])
+@login_required
+def api_admin_products_search():
+    """API: Search products for admin"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        query = request.args.get('q', '').strip()
+        limit = request.args.get('limit', 20, type=int)
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'message': 'عبارت جستجو الزامی است'
+            }), 400
+        
+        # Search products
+        products = Product.query.filter(
+            or_(
+                Product.name.contains(query),
+                Product.name_fa.contains(query),
+                Product.sku.contains(query),
+                Product.oem_code.contains(query)
+            ),
+            Product.is_active == True
+        ).limit(limit).all()
+        
+        products_data = [{
+            'id': p.id,
+            'name': p.name,
+            'name_fa': p.name_fa,
+            'sku': p.sku,
+            'oem_code': p.oem_code or ''
+        } for p in products]
+        
+        return jsonify({
+            'success': True,
+            'products': products_data
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error in api_admin_products_search: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'خطا در جستجو'
+        }), 500
+
 @app.route('/api/admin/users/<int:user_id>/password-hash')
 @login_required
 def api_user_password_hash(user_id):
@@ -6497,3 +9461,4 @@ def api_user_password_hash(user_id):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+

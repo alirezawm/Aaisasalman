@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+
+{% block title %}جزئیات تخفیف - {{ discount.name_fa }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('admin_discounts') }}">
+                            <i class="fas fa-tags me-2"></i>تخفیفات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-tags me-2 text-danger"></i>{{ discount.name_fa }}
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">داشبورد</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('admin_discounts') }}">تخفیفات</a></li>
+                            <li class="breadcrumb-item active">{{ discount.name_fa }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <a href="{{ url_for('admin_discounts') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-right me-2"></i>بازگشت به لیست
+                </a>
+            </div>
+            
+            <!-- Discount Info Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>اطلاعات تخفیف
+                    </h5>
+                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#editDiscountModal">
+                        <i class="fas fa-edit me-1"></i>ویرایش
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <strong>نام فارسی:</strong> {{ discount.name_fa }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>نام انگلیسی:</strong> {{ discount.name }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>نوع تخفیف:</strong>
+                            {% if discount.discount_type == 'daily' %}
+                                <span class="badge bg-info">روزانه</span>
+                            {% else %}
+                                <span class="badge bg-warning">ماهانه</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>درصد تخفیف:</strong>
+                            <span class="badge bg-danger">{{ discount.discount_percentage }}%</span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>اولویت:</strong> {{ discount.priority }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>وضعیت:</strong>
+                            {% if discount.is_active and discount.is_valid() %}
+                                <span class="badge bg-success">فعال</span>
+                            {% else %}
+                                <span class="badge bg-danger">غیرفعال</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>تاریخ شروع:</strong>
+                            {% if discount.start_date %}
+                                {{ discount.start_date | persian_date }}
+                            {% else %}
+                                <span class="text-muted">تعیین نشده</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>تاریخ پایان:</strong>
+                            {% if discount.end_date %}
+                                {{ discount.end_date | persian_date }}
+                            {% else %}
+                                <span class="text-muted">تعیین نشده</span>
+                            {% endif %}
+                        </div>
+                        {% if discount.description %}
+                        <div class="col-12">
+                            <strong>توضیحات:</strong>
+                            <p class="mb-0">{{ discount.description }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Products Management -->
+            <div class="card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-boxes me-2"></i>مدیریت محصولات ({{ products|length }} محصول)
+                    </h5>
+                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                        <i class="fas fa-plus me-1"></i>افزودن محصول
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Search Products -->
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="searchProductsInput" 
+                               placeholder="جستجو در محصولات موجود...">
+                    </div>
+                    
+                    <!-- Products List -->
+                    <div id="productsList" class="row g-3">
+                        {% for product in products %}
+                        <div class="col-md-4 col-lg-3 product-item" data-product-id="{{ product.id }}">
+                            <div class="card h-100">
+                                <div class="position-relative">
+                                    <img src="{{ product.primary_image or url_for('static', filename='images/default-product.png') }}" 
+                                         class="card-img-top" alt="{{ product.name_fa }}" 
+                                         style="height: 150px; object-fit: cover;">
+                                    <button class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 remove-product-btn" 
+                                            data-product-id="{{ product.id }}"
+                                            data-product-name="{{ product.name_fa }}"
+                                            title="حذف از تخفیف">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="card-title" title="{{ product.name_fa }}">
+                                        {{ product.name_fa[:30] }}{% if product.name_fa|length > 30 %}...{% endif %}
+                                    </h6>
+                                    <p class="card-text small text-muted mb-1">
+                                        <strong>SKU:</strong> {{ product.sku }}
+                                    </p>
+                                    {% if product.brand %}
+                                    <p class="card-text small text-muted mb-1">
+                                        <strong>برند:</strong> {{ product.brand.name_fa }}
+                                    </p>
+                                    {% endif %}
+                                    <p class="card-text">
+                                        <strong>قیمت:</strong> {{ (product.retail_price_cash * 1000) | format_price }}
+                                    </p>
+                                    <p class="card-text">
+                                        <strong>موجودی:</strong> 
+                                        {% if product.stock_quantity > 0 %}
+                                            <span class="badge bg-success">{{ product.stock_quantity }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">ناموجود</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if products|length == 0 %}
+                        <div class="col-12 text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">هیچ محصولی به این تخفیف اضافه نشده است</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Discount Modal -->
+<div class="modal fade" id="editDiscountModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>ویرایش تخفیف
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDiscountForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="edit_name_fa" class="form-label">نام تخفیف (فارسی) *</label>
+                            <input type="text" class="form-control" id="edit_name_fa" name="name_fa" 
+                                   value="{{ discount.name_fa }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_name" class="form-label">نام تخفیف (انگلیسی) *</label>
+                            <input type="text" class="form-control" id="edit_name" name="name" 
+                                   value="{{ discount.name }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="edit_description" class="form-label">توضیحات</label>
+                            <textarea class="form-control" id="edit_description" name="description" rows="3">{{ discount.description or '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_discount_type" class="form-label">نوع تخفیف *</label>
+                            <select class="form-select" id="edit_discount_type" name="discount_type" required>
+                                <option value="daily" {% if discount.discount_type == 'daily' %}selected{% endif %}>روزانه</option>
+                                <option value="monthly" {% if discount.discount_type == 'monthly' %}selected{% endif %}>ماهانه</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_discount_percentage" class="form-label">درصد تخفیف *</label>
+                            <input type="number" class="form-control" id="edit_discount_percentage" 
+                                   name="discount_percentage" value="{{ discount.discount_percentage }}" 
+                                   min="0" max="100" step="0.1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_priority" class="form-label">اولویت نمایش</label>
+                            <input type="number" class="form-control" id="edit_priority" name="priority" 
+                                   value="{{ discount.priority }}" min="0" max="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_is_active" class="form-label">وضعیت</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="edit_is_active" name="is_active" 
+                                       {% if discount.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="edit_is_active">فعال</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_start_date" class="form-label">تاریخ شروع</label>
+                            <input type="datetime-local" class="form-control" id="edit_start_date" name="start_date"
+                                   value="{% if discount.start_date %}{{ discount.start_date.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_end_date" class="form-label">تاریخ پایان</label>
+                            <input type="datetime-local" class="form-control" id="edit_end_date" name="end_date"
+                                   value="{% if discount.end_date %}{{ discount.end_date.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" id="submitEditDiscount">
+                    <i class="fas fa-save me-2"></i>ذخیره تغییرات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>افزودن محصول به تخفیف
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="productSearchInput" 
+                           placeholder="جستجوی محصول (نام، SKU، OEM، برند...) - حداقل 2 کاراکتر">
+                </div>
+                <div id="productSearchResults" class="row g-3">
+                    <div class="col-12 text-center py-4">
+                        <p class="text-muted">لطفاً برای جستجو، حداقل 2 کاراکتر وارد کنید</p>
+                    </div>
+                </div>
+                <div id="productSearchPagination" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let searchTimeout;
+let currentPage = 1;
+
+$(document).ready(function() {
+    // Edit discount
+    $('#submitEditDiscount').on('click', function() {
+        const form = $('#editDiscountForm');
+        if (!form[0].checkValidity()) {
+            form[0].reportValidity();
+            return;
+        }
+        
+        const formData = {
+            name_fa: $('#edit_name_fa').val(),
+            name: $('#edit_name').val(),
+            description: $('#edit_description').val(),
+            discount_type: $('#edit_discount_type').val(),
+            discount_percentage: parseFloat($('#edit_discount_percentage').val()),
+            priority: parseInt($('#edit_priority').val()) || 0,
+            is_active: $('#edit_is_active').is(':checked'),
+            start_date: $('#edit_start_date').val() ? new Date($('#edit_start_date').val()).toISOString() : null,
+            end_date: $('#edit_end_date').val() ? new Date($('#edit_end_date').val()).toISOString() : null
+        };
+        
+        $.ajax({
+            url: '/api/admin/discounts/{{ discount.id }}/update',
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('خطا: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                alert('خطا: ' + (response?.message || 'خطا در به‌روزرسانی تخفیف'));
+            }
+        });
+    });
+    
+    // Search products in modal
+    $('#productSearchInput').on('input', function() {
+        const query = $(this).val().trim();
+        
+        clearTimeout(searchTimeout);
+        
+        if (query.length < 2) {
+            $('#productSearchResults').html('<div class="col-12 text-center py-4"><p class="text-muted">لطفاً حداقل 2 کاراکتر وارد کنید</p></div>');
+            return;
+        }
+        
+        searchTimeout = setTimeout(function() {
+            searchProducts(query, 1);
+        }, 300);
+    });
+    
+    // Remove product
+    $(document).on('click', '.remove-product-btn', function() {
+        const productId = $(this).data('product-id');
+        const productName = $(this).data('product-name');
+        
+        if (!confirm(`آیا از حذف محصول "${productName}" از این تخفیف اطمینان دارید؟`)) {
+            return;
+        }
+        
+        $.ajax({
+            url: '/api/admin/discounts/{{ discount.id }}/remove-product?product_id=' + productId,
+            method: 'DELETE',
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('خطا: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                alert('خطا: ' + (response?.message || 'خطا در حذف محصول'));
+            }
+        });
+    });
+    
+    // Add product
+    $(document).on('click', '.add-product-to-discount-btn', function() {
+        const productId = $(this).data('product-id');
+        
+        $.ajax({
+            url: '/api/admin/discounts/{{ discount.id }}/add-product',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ product_id: productId }),
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('خطا: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                alert('خطا: ' + (response?.message || 'خطا در افزودن محصول'));
+            }
+        });
+    });
+    
+    // Search in existing products
+    $('#searchProductsInput').on('input', function() {
+        const query = $(this).val().toLowerCase();
+        $('.product-item').each(function() {
+            const productName = $(this).find('.card-title').text().toLowerCase();
+            if (productName.includes(query)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+});
+
+function searchProducts(query, page) {
+    $.ajax({
+        url: '/api/admin/discounts/search-products',
+        method: 'GET',
+        data: {
+            query: query,
+            discount_id: {{ discount.id }},
+            page: page,
+            per_page: 12
+        },
+        success: function(response) {
+            if (response.success) {
+                displaySearchResults(response.products, response.pagination);
+            } else {
+                $('#productSearchResults').html('<div class="col-12"><div class="alert alert-danger">خطا در جستجو</div></div>');
+            }
+        },
+        error: function() {
+            $('#productSearchResults').html('<div class="col-12"><div class="alert alert-danger">خطا در ارتباط با سرور</div></div>');
+        }
+    });
+}
+
+function displaySearchResults(products, pagination) {
+    if (products.length === 0) {
+        $('#productSearchResults').html('<div class="col-12 text-center py-4"><p class="text-muted">محصولی یافت نشد</p></div>');
+        return;
+    }
+    
+    let html = '';
+    products.forEach(function(product) {
+        html += `
+            <div class="col-md-4 col-lg-3">
+                <div class="card h-100">
+                    <img src="${product.primary_image || '/static/images/default-product.png'}" 
+                         class="card-img-top" alt="${product.name_fa}" 
+                         style="height: 150px; object-fit: cover;">
+                    <div class="card-body">
+                        <h6 class="card-title">${product.name_fa}</h6>
+                        <p class="card-text small text-muted mb-1"><strong>SKU:</strong> ${product.sku}</p>
+                        ${product.brand ? `<p class="card-text small text-muted mb-1"><strong>برند:</strong> ${product.brand.name_fa}</p>` : ''}
+                        <p class="card-text"><strong>قیمت:</strong> ${product.retail_price_cash.toLocaleString()} هزار ریال</p>
+                        <p class="card-text">
+                            <strong>موجودی:</strong> 
+                            ${product.stock_quantity > 0 ? `<span class="badge bg-success">${product.stock_quantity}</span>` : '<span class="badge bg-danger">ناموجود</span>'}
+                        </p>
+                        <button class="btn btn-primary btn-sm w-100 add-product-to-discount-btn" 
+                                data-product-id="${product.id}">
+                            <i class="fas fa-plus me-1"></i>افزودن به تخفیف
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    $('#productSearchResults').html(html);
+    
+    // Pagination
+    if (pagination.pages > 1) {
+        let paginationHtml = '<nav><ul class="pagination justify-content-center">';
+        for (let i = 1; i <= pagination.pages; i++) {
+            paginationHtml += `<li class="page-item ${i === pagination.page ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="searchProducts($('#productSearchInput').val(), ${i}); return false;">${i}</a>
+            </li>`;
+        }
+        paginationHtml += '</ul></nav>';
+        $('#productSearchPagination').html(paginationHtml).removeClass('d-none');
+    } else {
+        $('#productSearchPagination').addClass('d-none');
+    }
+}
+</script>
+{% endblock %}
+

@@ -244,7 +244,7 @@
                                                     <strong class="text-primary">{{ format_price(invoice.total_amount) }}</strong>
                                                 </td>
                                                 <td>
-                                                    <span class="badge {% if invoice.payment_type == 'cash' %}bg-success{% else %}bg-info{% endif %}">
+                                                    <span class="badge {% if invoice.payment_type == 'cash' %}bg-success{% else %}bg-primary{% endif %}">
                                                         {% if invoice.payment_type == 'cash' %}نقدی{% else %}چکی{% endif %}
                                                     </span>
                                                 </td>

@@ -167,6 +167,16 @@
                      data-sku="{{ product.sku }}">
                     <div class="card h-100 product-card-item">
                         <div class="card-body">
+                            <!-- Discount Badge -->
+                            {% set discount_percent = get_product_discount_percentage(product) %}
+                            {% if discount_percent > 0 %}
+                            <div class="position-absolute top-0 end-0 m-2">
+                                <span class="badge bg-danger" style="font-size: 14px; padding: 6px 10px;">
+                                    <i class="fas fa-tag me-1"></i>{{ discount_percent }}% تخفیف
+                                </span>
+                            </div>
+                            {% endif %}
+                            
                             <!-- Product Selection Checkbox -->
                             <div class="form-check mb-2">
                                 <input class="form-check-input product-checkbox" type="checkbox" 
@@ -179,8 +189,13 @@
                             <!-- Product Image -->
                             <div class="text-center mb-3">
                                 {% if product.primary_image %}
-                                    <img src="{{ product.primary_image }}" alt="{{ product.name }}" 
-                                         class="img-fluid product-image">
+                                    <img src="{{ url_for('uploaded_file', filename='products/' + product.primary_image) }}" 
+                                         alt="{{ product.name }}" 
+                                         class="img-fluid product-image"
+                                         onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <div class="product-image-placeholder" style="display: none;">
+                                        <i class="fas fa-box fa-3x text-muted"></i>
+                                    </div>
                                 {% else %}
                                     <div class="product-image-placeholder">
                                         <i class="fas fa-box fa-3x text-muted"></i>
@@ -241,7 +256,7 @@
                                                data-retail-cash-price="{{ product.retail_price_cash }}"
                                                data-retail-check-price="{{ product.retail_price_check }}"
                                                data-bulk-buyer="{{ current_user.is_bulk_buyer|lower }}">
-                                        <label class="btn btn-outline-warning btn-xs" for="check_{{ product.id }}">
+                                        <label class="btn btn-outline-primary btn-xs" for="check_{{ product.id }}">
                                             <i class="fas fa-file-invoice"></i>
                                             <div class="d-block">
                                                 <span>چکی</span>
@@ -263,7 +278,7 @@
                                                data-retail-check-price="{{ product.retail_price_check }}"
                                                data-bulk-buyer="false"
                                                checked>
-                                        <label class="btn btn-outline-warning btn-xs w-100" for="check_{{ product.id }}">
+                                        <label class="btn btn-outline-primary btn-xs w-100" for="check_{{ product.id }}">
                                             <i class="fas fa-file-invoice"></i>
                                             <div class="d-block">
                                                 <span>قیمت چکی</span>
@@ -307,7 +322,7 @@
                                         
                                         <input type="radio" class="btn-check" name="price_type_{{ product.id }}" 
                                                id="check_{{ product.id }}" value="check">
-                                        <label class="btn btn-outline-warning" for="check_{{ product.id }}">چکی</label>
+                                        <label class="btn btn-outline-primary" for="check_{{ product.id }}">چکی</label>
                                     </div>
                                 </div>
                                 <div class="mb-2">

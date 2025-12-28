@@ -12,6 +12,9 @@
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualSyncModal">
                         <i class="fas fa-sync"></i> همگام‌سازی دستی
                     </button>
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#fullRefreshModal">
+                        <i class="fas fa-cloud-download-alt"></i> دریافت کالاهای جدید + بروزرسانی قیمت/موجودی
+                    </button>
                     <button type="button" class="btn btn-outline-info" onclick="getTotalCounts()">
                         <i class="fas fa-chart-bar"></i> تعداد کل داده‌ها
                     </button>
@@ -389,6 +392,69 @@
     </div>
 </div>
 
+<!-- Full Refresh Modal -->
+<div class="modal fade" id="fullRefreshModal" tabindex="-1" aria-labelledby="fullRefreshModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fullRefreshModalLabel">دریافت کالاهای جدید و بروزرسانی</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="fullRefreshForm">
+                    <div class="mb-3">
+                        <label for="stock_code" class="form-label">کد انبار (برای موجودی)</label>
+                        <input type="text" class="form-control" id="stock_code" name="stock_code" value="10">
+                        <div class="form-text">پیش‌فرض 10. در صورت نیاز انبار دیگری را وارد کنید.</div>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="include_isaco_stock" checked>
+                        <label class="form-check-label" for="include_isaco_stock">به‌روزرسانی موجودی ایساکو (انبار 15)</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">بخش‌های همگام‌سازی</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sync_products" checked>
+                            <label class="form-check-label" for="sync_products">کالاهای جدید (تدبیر → کش + ایجاد در فروشگاه)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sync_inventory" checked>
+                            <label class="form-check-label" for="sync_inventory">موجودی</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sync_prices" checked>
+                            <label class="form-check-label" for="sync_prices">قیمت‌ها</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sync_shop" checked>
+                            <label class="form-check-label" for="sync_shop">اعمال در فروشگاه (ایجاد کالا، قیمت، موجودی)</label>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        این عملیات ممکن است چند دقیقه طول بکشد. در حال اجرا، دکمه‌ها قفل می‌شوند.
+                    </div>
+                </form>
+                <div id="fullRefreshStatus" class="d-none mt-3">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border me-2" role="status">
+                            <span class="visually-hidden">در حال پردازش...</span>
+                        </div>
+                        <div>
+                            <div id="fullRefreshStatusText">در حال شروع...</div>
+                            <small class="text-muted">لطفاً صبر کنید، صفحه بعد از اتمام رفرش می‌شود.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" id="fullRefreshSubmitBtn" onclick="syncNewProductsAndInventory()">شروع</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function getTotalCounts() {
     // Show modal
@@ -477,6 +543,62 @@ function getTotalCounts() {
                 <p>خطا در ارتباط با سرور: ${error.message}</p>
             </div>
         `;
+    });
+}
+
+let fullRefreshRunning = false;
+function syncNewProductsAndInventory() {
+    if (fullRefreshRunning) {
+        return;
+    }
+
+    const modalEl = document.getElementById('fullRefreshModal');
+    const statusBox = document.getElementById('fullRefreshStatus');
+    const statusText = document.getElementById('fullRefreshStatusText');
+    const submitBtn = document.getElementById('fullRefreshSubmitBtn');
+
+    const stockCode = document.getElementById('stock_code').value || '10';
+    const payload = {
+        stock_code: stockCode,
+        sync_products: document.getElementById('sync_products').checked,
+        sync_inventory: document.getElementById('sync_inventory').checked,
+        sync_prices: document.getElementById('sync_prices').checked,
+        sync_shop: document.getElementById('sync_shop').checked,
+        include_isaco_stock: document.getElementById('include_isaco_stock').checked
+    };
+
+    statusBox.classList.remove('d-none');
+    statusText.textContent = 'در حال شروع...';
+    submitBtn.disabled = true;
+    fullRefreshRunning = true;
+
+    fetch('/api/accounting/sync/full-refresh', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusText.textContent = 'انجام شد. در حال بروزرسانی صفحه...';
+            setTimeout(() => location.reload(), 800);
+        } else {
+            submitBtn.disabled = false;
+            fullRefreshRunning = false;
+            statusText.textContent = '';
+            statusBox.classList.add('d-none');
+            alert('خطا در همگام‌سازی: ' + (data.message || 'خطای نامشخص'));
+        }
+    })
+    .catch(error => {
+        submitBtn.disabled = false;
+        fullRefreshRunning = false;
+        statusText.textContent = '';
+        statusBox.classList.add('d-none');
+        alert('خطا در ارتباط با سرور: ' + error.message);
     });
 }
         function startScheduler() {

@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت تخفیفات - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('admin_discounts') }}">
+                            <i class="fas fa-tags me-2"></i>تخفیفات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-tags me-2 text-danger"></i>مدیریت تخفیفات
+                </h2>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createDiscountModal">
+                    <i class="fas fa-plus me-2"></i>ایجاد تخفیف جدید
+                </button>
+            </div>
+            
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin_discounts') }}" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="type" class="form-label">نوع تخفیف</label>
+                            <select class="form-select" id="type" name="type">
+                                <option value="all" {% if discount_type == 'all' %}selected{% endif %}>همه</option>
+                                <option value="daily" {% if discount_type == 'daily' %}selected{% endif %}>روزانه</option>
+                                <option value="monthly" {% if discount_type == 'monthly' %}selected{% endif %}>ماهانه</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">وضعیت</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="all" {% if status == 'all' %}selected{% endif %}>همه</option>
+                                <option value="active" {% if status == 'active' %}selected{% endif %}>فعال</option>
+                                <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>غیرفعال</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">جستجو</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search }}" placeholder="جستجو در نام تخفیف...">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-1"></i>جستجو
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Discounts List -->
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>لیست تخفیفات
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ردیف</th>
+                                    <th>نام تخفیف</th>
+                                    <th>نوع</th>
+                                    <th>درصد تخفیف</th>
+                                    <th>تعداد محصولات</th>
+                                    <th>وضعیت</th>
+                                    <th>اولویت</th>
+                                    <th>تاریخ شروع</th>
+                                    <th>تاریخ پایان</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if discounts %}
+                                    {% for discount in discounts %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <strong>{{ discount.name_fa }}</strong>
+                                            {% if discount.description %}
+                                            <br><small class="text-muted">{{ discount.description[:50] }}{% if discount.description|length > 50 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if discount.discount_type == 'daily' %}
+                                                <span class="badge bg-info">روزانه</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">ماهانه</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-danger">{{ discount.discount_percentage }}%</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ discount.product_count }}</span>
+                                        </td>
+                                        <td>
+                                            {% if discount.is_active and discount.is_valid() %}
+                                                <span class="badge bg-success">فعال</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">غیرفعال</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ discount.priority }}</td>
+                                        <td>
+                                            {% if discount.start_date %}
+                                                {{ discount.start_date | persian_date }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if discount.end_date %}
+                                                {{ discount.end_date | persian_date }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('admin_discount_detail', discount_id=discount.id) }}" 
+                                                   class="btn btn-outline-primary" title="مشاهده و ویرایش">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button class="btn btn-outline-success toggle-status-btn" 
+                                                        data-discount-id="{{ discount.id }}"
+                                                        data-current-status="{{ discount.is_active }}"
+                                                        title="تغییر وضعیت">
+                                                    <i class="fas fa-toggle-{% if discount.is_active %}on{% else %}off{% endif %}"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger delete-discount-btn" 
+                                                        data-discount-id="{{ discount.id }}"
+                                                        data-discount-name="{{ discount.name_fa }}"
+                                                        title="حذف">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="10" class="text-center py-4">
+                                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted">هیچ تخفیفی یافت نشد</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Discount Modal -->
+<div class="modal fade" id="createDiscountModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>ایجاد تخفیف جدید
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createDiscountForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="name_fa" class="form-label">نام تخفیف (فارسی) *</label>
+                            <input type="text" class="form-control" id="name_fa" name="name_fa" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">نام تخفیف (انگلیسی) *</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="description" class="form-label">توضیحات</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="discount_type" class="form-label">نوع تخفیف *</label>
+                            <select class="form-select" id="discount_type" name="discount_type" required>
+                                <option value="daily">روزانه</option>
+                                <option value="monthly">ماهانه</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="discount_percentage" class="form-label">درصد تخفیف *</label>
+                            <input type="number" class="form-control" id="discount_percentage" 
+                                   name="discount_percentage" min="0" max="100" step="0.1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="priority" class="form-label">اولویت نمایش</label>
+                            <input type="number" class="form-control" id="priority" name="priority" 
+                                   value="0" min="0" max="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="is_active" class="form-label">وضعیت</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                <label class="form-check-label" for="is_active">فعال</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="start_date" class="form-label">تاریخ شروع</label>
+                            <input type="datetime-local" class="form-control" id="start_date" name="start_date">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end_date" class="form-label">تاریخ پایان</label>
+                            <input type="datetime-local" class="form-control" id="end_date" name="end_date">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" id="submitCreateDiscount">
+                    <i class="fas fa-save me-2"></i>ذخیره
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Create discount
+    $('#submitCreateDiscount').on('click', function() {
+        const form = $('#createDiscountForm');
+        if (!form[0].checkValidity()) {
+            form[0].reportValidity();
+            return;
+        }
+        
+        const formData = {
+            name_fa: $('#name_fa').val(),
+            name: $('#name').val(),
+            description: $('#description').val(),
+            discount_type: $('#discount_type').val(),
+            discount_percentage: parseFloat($('#discount_percentage').val()),
+            priority: parseInt($('#priority').val()) || 0,
+            is_active: $('#is_active').is(':checked'),
+            start_date: $('#start_date').val() ? new Date($('#start_date').val()).toISOString() : null,
+            end_date: $('#end_date').val() ? new Date($('#end_date').val()).toISOString() : null
+        };
+        
+        $.ajax({
+            url: '/api/admin/discounts/create',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('خطا: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                alert('خطا: ' + (response?.message || 'خطا در ایجاد تخفیف'));
+            }
+        });
+    });
+    
+    // Toggle status
+    $('.toggle-status-btn').on('click', function() {
+        const discountId = $(this).data('discount-id');
+        const currentStatus = $(this).data('current-status');
+        
+        if (!confirm('آیا از تغییر وضعیت این تخفیف اطمینان دارید؟')) {
+            return;
+        }
+        
+        $.ajax({
+            url: `/api/admin/discounts/${discountId}/toggle-status`,
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('خطا: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                alert('خطا: ' + (response?.message || 'خطا در تغییر وضعیت'));
+            }
+        });
+    });
+    
+    // Delete discount
+    $('.delete-discount-btn').on('click', function() {
+        const discountId = $(this).data('discount-id');
+        const discountName = $(this).data('discount-name');
+        
+        if (!confirm(`آیا از حذف تخفیف "${discountName}" اطمینان دارید؟ این عمل غیرقابل بازگشت است.`)) {
+            return;
+        }
+        
+        $.ajax({
+            url: `/api/admin/discounts/${discountId}/delete`,
+            method: 'DELETE',
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('خطا: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                alert('خطا: ' + (response?.message || 'خطا در حذف تخفیف'));
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+

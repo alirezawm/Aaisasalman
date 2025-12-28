@@ -67,11 +67,13 @@ class SMSService:
                     # Common success indicators: None, empty, "success", "موفق", "ارسال موفق بود"
                     if not status or 'موفق' in status or 'success' in status_lower:
                         # Success - OTP sent
-                        current_app.logger.info(f"OTP sent successfully to {clean_phone}: {result['code']}")
+                        # Ensure code is returned as string
+                        otp_code = str(result['code']).strip()
+                        current_app.logger.info(f"OTP sent successfully to {clean_phone}: {otp_code} (type: {type(otp_code)})")
                         return {
                             'success': True,
                             'message': 'کد تأیید با موفقیت ارسال شد',
-                            'code': result['code'],
+                            'code': otp_code,
                             'phone': clean_phone
                         }
                     else:
@@ -141,14 +143,50 @@ class SMSService:
                     'valid': False
                 }
             
+            # Normalize both codes: convert to string, strip whitespace, remove any non-digit characters
+            user_code_normalized = ''.join(filter(str.isdigit, str(user_code).strip()))
+            stored_code_normalized = ''.join(filter(str.isdigit, str(stored_code).strip()))
+            
+            # Log for debugging
+            current_app.logger.info(f"OTP Verification - User code: '{user_code}' (type: {type(user_code)}, normalized: '{user_code_normalized}', len: {len(user_code_normalized)})")
+            current_app.logger.info(f"OTP Verification - Stored code: '{stored_code}' (type: {type(stored_code)}, normalized: '{stored_code_normalized}', len: {len(stored_code_normalized)})")
+            
+            # Check if codes are empty after normalization
+            if not user_code_normalized:
+                current_app.logger.warning("OTP Verification - User code is empty after normalization")
+                return {
+                    'success': False,
+                    'message': 'کد تأیید وارد شده معتبر نیست',
+                    'valid': False
+                }
+            
+            if not stored_code_normalized:
+                current_app.logger.error("OTP Verification - Stored code is empty after normalization!")
+                return {
+                    'success': False,
+                    'message': 'خطا در بررسی کد تأیید',
+                    'valid': False
+                }
+            
+            # Check if code lengths match (should be 6 digits)
+            if len(user_code_normalized) != len(stored_code_normalized):
+                current_app.logger.warning(f"OTP Verification - Code length mismatch. User: {len(user_code_normalized)}, Stored: {len(stored_code_normalized)}")
+                return {
+                    'success': False,
+                    'message': 'کد تأیید اشتباه است',
+                    'valid': False
+                }
+            
             # Check if codes match
-            if user_code.strip() == stored_code.strip():
+            if user_code_normalized == stored_code_normalized:
+                current_app.logger.info("OTP Verification - Codes match successfully")
                 return {
                     'success': True,
                     'message': 'کد تأیید صحیح است',
                     'valid': True
                 }
             else:
+                current_app.logger.warning(f"OTP Verification - Codes don't match. User normalized: '{user_code_normalized}', Stored normalized: '{stored_code_normalized}'")
                 return {
                     'success': False,
                     'message': 'کد تأیید اشتباه است',
@@ -156,7 +194,7 @@ class SMSService:
                 }
                 
         except Exception as e:
-            current_app.logger.error(f"OTP Verification Error: {str(e)}")
+            current_app.logger.error(f"OTP Verification Error: {str(e)}", exc_info=True)
             return {
                 'success': False,
                 'message': 'خطا در بررسی کد تأیید',

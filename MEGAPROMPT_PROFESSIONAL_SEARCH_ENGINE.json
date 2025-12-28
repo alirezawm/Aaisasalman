@@ -1,0 +1,459 @@
+{
+  "title": "مگاپرامپت: افزودن موتور جستجوی حرفه‌ای به فروشگاه آسیا سلمان",
+  "version": "1.0",
+  "date": "2024",
+  "summary": "راهنمای جامع برای پیاده‌سازی موتور جستجوی حرفه‌ای با جستجوی چندلایه، پیشنهادات هوشمند، فیلترهای پیشرفته و آنالیتیکس",
+  
+  "objectives": [
+    "تجربه کاربری برتر با جستجوی سریع و دقیق",
+    "دقت بالا در نتایج با سیستم امتیازدهی پیشرفته",
+    "پشتیبانی کامل از فارسی با نرمال‌سازی هوشمند",
+    "عملکرد بهینه حتی با حجم بالای داده",
+    "قابلیت‌های پیشرفته: فیلترها، مرتب‌سازی، پیشنهادات"
+  ],
+  
+  "architecture": {
+    "search_layers": [
+      {
+        "layer": 1,
+        "name": "جستجوی دقیق (Exact Match)",
+        "priority": "بالاترین",
+        "description": "جستجوی دقیق در SKU و OEM Code",
+        "score_range": [90, 100],
+        "use_cases": ["کد محصول", "SKU دقیق", "OEM Code"]
+      },
+      {
+        "layer": 2,
+        "name": "جستجوی برند-مدل (Brand-Model Context)",
+        "priority": "بالا",
+        "description": "استخراج خودکار برند و مدل از کوئری",
+        "score_range": [80, 90],
+        "use_cases": ["تویوتا کمری", "هیوندای النترا"]
+      },
+      {
+        "layer": 3,
+        "name": "جستجوی دسته‌بندی (Category Search)",
+        "priority": "متوسط",
+        "description": "جستجو در نام دسته‌بندی و زیردسته",
+        "score_range": [60, 70],
+        "use_cases": ["فیلتر هوا", "لاستیک", "روغن موتور"]
+      },
+      {
+        "layer": 4,
+        "name": "جستجوی فازی (Fuzzy Search)",
+        "priority": "پایین",
+        "description": "تحمل خطاهای تایپی و جستجوی بدون حروف صدادار",
+        "score_range": [40, 50],
+        "use_cases": ["تایپ اشتباه", "حروف صدادار حذف شده"]
+      },
+      {
+        "layer": 5,
+        "name": "جستجوی معنایی (Semantic Search)",
+        "priority": "پایین‌ترین",
+        "description": "جستجو در تگ‌ها و مشخصات فنی با مترادف‌ها",
+        "score_range": [20, 30],
+        "use_cases": ["جستجوی مفهومی", "مترادف‌ها"]
+      }
+    ],
+    
+    "scoring_system": {
+      "base_score": "امتیاز لایه جستجو",
+      "bonuses": {
+        "stock_available": 10,
+        "featured": 5,
+        "user_preferred_brand": 15,
+        "relevance_match": "محاسبه بر اساس تطابق"
+      },
+      "formula": "base_score + stock_bonus + featured_bonus + user_preference_bonus + relevance_bonus"
+    }
+  },
+  
+  "features": {
+    "multi_language": {
+      "persian": {
+        "normalization": [
+          "تبدیل ی/ي، ک/ك، ا/أ/إ/آ",
+          "حذف اعراب و ZWNJ",
+          "تبدیل اعداد عربی به فارسی",
+          "جستجوی بدون حساسیت به حروف صدادار"
+        ]
+      },
+      "english": {
+        "case_insensitive": true,
+        "synonyms_support": true
+      }
+    },
+    
+    "smart_suggestions": {
+      "types": [
+        "پیشنهادات برند",
+        "پیشنهادات مدل",
+        "پیشنهادات دسته‌بندی",
+        "پیشنهادات محصول"
+      ],
+      "features": [
+        "نمایش در زمان تایپ (Real-time)",
+        "مرتب‌سازی بر اساس مرتبط‌بودن",
+        "نمایش آیکون و متادیتا",
+        "پشتیبانی از کیبورد (Arrow keys, Enter, Escape)"
+      ],
+      "max_suggestions": 10,
+      "min_query_length": 2
+    },
+    
+    "advanced_filters": {
+      "available_filters": [
+        {
+          "name": "برند",
+          "type": "select",
+          "field": "brand_id"
+        },
+        {
+          "name": "نوع خودرو",
+          "type": "select",
+          "field": "vehicle_type_id"
+        },
+        {
+          "name": "دسته‌بندی",
+          "type": "select",
+          "field": "category_id"
+        },
+        {
+          "name": "قیمت",
+          "type": "range",
+          "field": "price",
+          "sub_types": ["نقدی", "چکی"]
+        },
+        {
+          "name": "موجودی",
+          "type": "radio",
+          "options": ["همه", "فقط موجود", "فقط ناموجود"]
+        },
+        {
+          "name": "ویژگی‌های خاص",
+          "type": "checkbox",
+          "options": ["Featured", "ISACO Warehouse 15"]
+        }
+      ],
+      "features": [
+        "فیلترهای ترکیبی (AND/OR)",
+        "حفظ فیلترها در URL",
+        "نمایش تعداد نتایج برای هر فیلتر",
+        "امکان پاک کردن همه فیلترها"
+      ]
+    },
+    
+    "sorting_options": [
+      {
+        "value": "relevance",
+        "label": "مرتبط‌ترین",
+        "default": true,
+        "field": "relevance_score"
+      },
+      {
+        "value": "newest",
+        "label": "جدیدترین",
+        "field": "created_at",
+        "order": "desc"
+      },
+      {
+        "value": "price_asc",
+        "label": "ارزان‌ترین",
+        "field": "retail_price_cash",
+        "order": "asc"
+      },
+      {
+        "value": "price_desc",
+        "label": "گران‌ترین",
+        "field": "retail_price_cash",
+        "order": "desc"
+      },
+      {
+        "value": "stock",
+        "label": "بیشترین موجودی",
+        "field": "stock_quantity",
+        "order": "desc"
+      },
+      {
+        "value": "popular",
+        "label": "محبوب‌ترین",
+        "field": "sales_count",
+        "order": "desc"
+      }
+    ]
+  },
+  
+  "ui_ux": {
+    "search_bar": {
+      "features": [
+        "Auto-focus در صفحه فروشگاه",
+        "Placeholder هوشمند با مثال‌ها",
+        "آیکون جستجو واضح",
+        "دکمه پاک کردن سریع",
+        "جستجوی صوتی (اختیاری برای موبایل)"
+      ],
+      "styling": {
+        "border_radius": "25px",
+        "border_color": "#dc3545",
+        "focus_shadow": "0 0 0 0.2rem rgba(220, 53, 69, 0.25)"
+      }
+    },
+    
+    "suggestions_dropdown": {
+      "max_suggestions": 10,
+      "grouping": true,
+      "highlight": true,
+      "animation": "smooth",
+      "keyboard_support": true
+    },
+    
+    "results_display": {
+      "views": ["grid", "list"],
+      "pagination": true,
+      "loading_state": true,
+      "empty_state": true,
+      "highlight_search_terms": true
+    }
+  },
+  
+  "performance": {
+    "caching": {
+      "query_cache": {
+        "duration": 300,
+        "unit": "seconds"
+      },
+      "suggestions_cache": {
+        "duration": 600,
+        "unit": "seconds"
+      },
+      "filter_cache": {
+        "duration": 1800,
+        "unit": "seconds"
+      }
+    },
+    "debouncing": {
+      "suggestions": {
+        "delay": 300,
+        "unit": "milliseconds"
+      }
+    },
+    "target_performance": {
+      "search_speed": "< 200ms",
+      "suggestions_speed": "< 100ms",
+      "max_products": "100K+",
+      "concurrent_requests": "100+"
+    }
+  },
+  
+  "analytics": {
+    "tracking": {
+      "searches": {
+        "fields": [
+          "query",
+          "filters",
+          "results_count",
+          "search_time",
+          "user_type"
+        ]
+      },
+      "clicks": {
+        "fields": [
+          "product_id",
+          "rank_in_results",
+          "related_query",
+          "click_time"
+        ]
+      }
+    },
+    "reports": [
+      "محبوب‌ترین جستجوها",
+      "جستجوهای بدون نتیجه",
+      "نرخ تبدیل (کلیک به خرید)",
+      "جستجوهای رایج"
+    ]
+  },
+  
+  "api_endpoints": {
+    "/api/search": {
+      "method": "GET",
+      "description": "جستجوی محصولات با پشتیبانی از Meilisearch و SQL fallback",
+      "parameters": {
+        "q": "string - Query string",
+        "brand_id": "integer - Filter by brand",
+        "category_id": "integer - Filter by category",
+        "vehicle_type_id": "integer - Filter by vehicle type",
+        "min_price": "float - Minimum price",
+        "max_price": "float - Maximum price",
+        "in_stock": "boolean - Filter by stock",
+        "sort": "string - Sort criteria",
+        "page": "integer - Page number",
+        "per_page": "integer - Results per page"
+      },
+      "response": {
+        "results": "array - Product results",
+        "total": "integer - Total results",
+        "page": "integer - Current page",
+        "per_page": "integer - Results per page",
+        "filters_applied": "object - Applied filters",
+        "suggestions": "array - Search suggestions"
+      }
+    },
+    "/api/search/suggestions": {
+      "method": "GET",
+      "description": "دریافت پیشنهادات جستجو",
+      "parameters": {
+        "q": "string - Query string (min 2 characters)",
+        "limit": "integer - Maximum suggestions (default: 10)",
+        "context": "object - Search context"
+      },
+      "response": {
+        "suggestions": "array - Suggestion objects"
+      }
+    },
+    "/api/search/analytics": {
+      "method": "GET",
+      "description": "دریافت آمار و گزارش‌های جستجو (فقط برای ادمین)",
+      "authentication": "required",
+      "role": "admin",
+      "response": {
+        "popular_searches": "array",
+        "no_result_searches": "array",
+        "conversion_rate": "float",
+        "total_searches": "integer",
+        "avg_results_per_search": "float"
+      }
+    }
+  },
+  
+  "implementation_phases": [
+    {
+      "phase": 1,
+      "name": "زیرساخت",
+      "duration": "1 هفته",
+      "tasks": [
+        "نصب و راه‌اندازی Meilisearch",
+        "پیاده‌سازی SearchService",
+        "همگام‌سازی اولیه محصولات",
+        "تست اتصال و عملکرد"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Backend API",
+      "duration": "1 هفته",
+      "tasks": [
+        "پیاده‌سازی /api/search",
+        "پیاده‌سازی /api/search/suggestions",
+        "پیاده‌سازی سیستم امتیازدهی",
+        "پیاده‌سازی فیلترها"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Frontend UI",
+      "duration": "1 هفته",
+      "tasks": [
+        "طراحی و پیاده‌سازی نوار جستجو",
+        "پیاده‌سازی پیشنهادات",
+        "پیاده‌سازی فیلترهای جانبی",
+        "پیاده‌سازی نمایش نتایج"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "بهینه‌سازی",
+      "duration": "1 هفته",
+      "tasks": [
+        "پیاده‌سازی Caching",
+        "بهینه‌سازی Query",
+        "بهبود UX",
+        "تست عملکرد"
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "آنالیتیکس",
+      "duration": "1 هفته",
+      "tasks": [
+        "پیاده‌سازی ردیابی جستجوها",
+        "پیاده‌سازی ردیابی کلیک‌ها",
+        "ایجاد داشبورد آنالیتیکس",
+        "گزارش‌های آماری"
+      ]
+    },
+    {
+      "phase": 6,
+      "name": "تست و انتشار",
+      "duration": "1 هفته",
+      "tasks": [
+        "تست کامل سیستم",
+        "رفع باگ‌ها",
+        "مستندسازی",
+        "انتشار نسخه نهایی"
+      ]
+    }
+  ],
+  
+  "checklist": {
+    "performance": [
+      "جستجو در کمتر از 200ms",
+      "پیشنهادات در کمتر از 100ms",
+      "پشتیبانی از 100K+ محصول",
+      "Cache برای بهبود عملکرد"
+    ],
+    "user_experience": [
+      "رابط کاربری زیبا و کاربرپسند",
+      "پیشنهادات هوشمند و دقیق",
+      "فیلترهای قدرتمند",
+      "نمایش نتایج واضح"
+    ],
+    "persian_support": [
+      "نرمال‌سازی کامل متن فارسی",
+      "جستجوی بدون حساسیت به حروف صدادار",
+      "پشتیبانی از اعداد فارسی/عربی",
+      "مترادف‌های رایج"
+    ],
+    "analytics": [
+      "ردیابی جستجوها",
+      "ردیابی کلیک‌ها",
+      "گزارش‌های آماری",
+      "داشبورد مدیریت"
+    ],
+    "security": [
+      "اعتبارسنجی ورودی‌ها",
+      "محافظت در برابر SQL Injection",
+      "Rate Limiting",
+      "CSRF Protection"
+    ]
+  },
+  
+  "dependencies": {
+    "backend": [
+      "meilisearch",
+      "flask-caching",
+      "sqlalchemy"
+    ],
+    "frontend": [
+      "jquery",
+      "bootstrap",
+      "font-awesome"
+    ],
+    "optional": [
+      "fuzzywuzzy"
+    ]
+  },
+  
+  "resources": {
+    "documentation": [
+      "https://www.meilisearch.com/docs",
+      "https://flask.palletsprojects.com/",
+      "https://docs.sqlalchemy.org/"
+    ],
+    "examples": [
+      "search_engine.py",
+      "search_service.py",
+      "search_config.py"
+    ]
+  }
+}
+

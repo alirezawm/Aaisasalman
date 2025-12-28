@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت اپلیکیشن اندروید - شرکت بازرگانی قطعات خودرو آسیا سلمان{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-lg-2">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="text-white mb-4">
+                        <i class="fas fa-cog me-2"></i>مدیریت سایت
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>داشبورد
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_products') }}">
+                            <i class="fas fa-boxes me-2"></i>محصولات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_brands') }}">
+                            <i class="fas fa-star me-2"></i>برندها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_vehicle_types') }}">
+                            <i class="fas fa-car me-2"></i>انواع خودرو
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_announcements') }}">
+                            <i class="fas fa-bullhorn me-2"></i>اطلاعیه‌ها
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_discounts') }}">
+                            <i class="fas fa-tags me-2"></i>تخفیفات
+                        </a>
+                        <a class="nav-link" href="{{ url_for('admin_company_info') }}">
+                            <i class="fas fa-building me-2"></i>اطلاعات شرکت
+                        </a>
+                        <hr class="text-white">
+                        <h6 class="text-white-50 mb-2">نرم‌افزار اندروید</h6>
+                        <a class="nav-link active" href="{{ url_for('admin_android_app') }}">
+                            <i class="fas fa-mobile-alt me-2"></i>مدیریت اپلیکیشن
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-mobile-alt me-2 text-danger"></i>مدیریت اپلیکیشن اندروید
+                </h2>
+            </div>
+            
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-4" id="appTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                        <i class="fas fa-cog me-2"></i>تنظیمات عمومی
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="banners-tab" data-bs-toggle="tab" data-bs-target="#banners" type="button" role="tab">
+                        <i class="fas fa-images me-2"></i>بنرها
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="suggestions-tab" data-bs-toggle="tab" data-bs-target="#suggestions" type="button" role="tab">
+                        <i class="fas fa-star me-2"></i>پیشنهادات روز
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="app-config-tab" data-bs-toggle="tab" data-bs-target="#app-config" type="button" role="tab">
+                        <i class="fas fa-sliders-h me-2"></i>تنظیمات اپلیکیشن
+                    </button>
+                </li>
+            </ul>
+            
+            <!-- Tab Content -->
+            <div class="tab-content" id="appTabsContent">
+                <!-- Settings Tab -->
+                <div class="tab-pane fade show active" id="settings" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">تنظیمات عمومی</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="generalSettingsForm">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">نام شرکت (فارسی)</label>
+                                        <input type="text" class="form-control" name="company_name_fa" 
+                                               value="{{ config.company_name_fa or '' }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">نام شرکت (انگلیسی)</label>
+                                        <input type="text" class="form-control" name="company_name" 
+                                               value="{{ config.company_name or '' }}">
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">شماره تماس</label>
+                                        <input type="text" class="form-control" name="company_phone" 
+                                               value="{{ config.company_phone or '' }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">شماره پشتیبانی</label>
+                                        <input type="text" class="form-control" name="company_support_phone" 
+                                               value="{{ config.company_support_phone or '' }}">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">ایمیل</label>
+                                    <input type="email" class="form-control" name="company_email" 
+                                           value="{{ config.company_email or '' }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">آدرس</label>
+                                    <textarea class="form-control" name="company_address" rows="3">{{ config.company_address or '' }}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">درباره شرکت (فارسی)</label>
+                                    <textarea class="form-control" name="company_about_fa" rows="5">{{ config.company_about_fa or '' }}</textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>ذخیره تنظیمات
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Banners Tab -->
+                <div class="tab-pane fade" id="banners" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">مدیریت بنرها</h5>
+                            <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addBannerModal">
+                                <i class="fas fa-plus me-2"></i>افزودن بنر
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>تصویر</th>
+                                            <th>عنوان</th>
+                                            <th>موقعیت</th>
+                                            <th>ترتیب</th>
+                                            <th>وضعیت</th>
+                                            <th>عملیات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bannersTableBody">
+                                        {% for banner in banners %}
+                                        <tr data-banner-id="{{ banner.id }}">
+                                            <td>
+                                                <img src="{{ banner.image_url }}" alt="{{ banner.title_fa }}" 
+                                                     style="max-width: 100px; max-height: 60px;" class="img-thumbnail">
+                                            </td>
+                                            <td>{{ banner.title_fa or banner.title }}</td>
+                                            <td>{{ banner.position }}</td>
+                                            <td>{{ banner.display_order }}</td>
+                                            <td>
+                                                <span class="badge {% if banner.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                                    {% if banner.is_active %}فعال{% else %}غیرفعال{% endif %}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary edit-banner" data-banner-id="{{ banner.id }}">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger delete-banner" data-banner-id="{{ banner.id }}">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Suggestions Tab -->
+                <div class="tab-pane fade" id="suggestions" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">پیشنهادات روز</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="suggestionsForm">
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="suggestionsEnabled" 
+                                               name="daily_suggestions_enabled" {% if config.daily_suggestions_enabled %}checked{% endif %}>
+                                        <label class="form-check-label" for="suggestionsEnabled">
+                                            فعال کردن پیشنهادات روز
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">عنوان (فارسی)</label>
+                                    <input type="text" class="form-control" name="daily_suggestions_title_fa" 
+                                           value="{{ config.daily_suggestions_title_fa or 'پیشنهادات ویژه امروز' }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">عنوان (انگلیسی)</label>
+                                    <input type="text" class="form-control" name="daily_suggestions_title" 
+                                           value="{{ config.daily_suggestions_title or 'Daily Suggestions' }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">جستجوی محصول برای افزودن</label>
+                                    <input type="text" class="form-control" id="productSearchInput" 
+                                           placeholder="جستجو بر اساس نام، SKU یا OEM...">
+                                    <div id="productSearchResults" class="mt-2"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">محصولات انتخاب شده</label>
+                                    <div id="selectedProducts" class="border p-3" style="min-height: 100px;">
+                                        {% for product in daily_suggestions_products %}
+                                        <span class="badge bg-primary me-2 mb-2" data-product-id="{{ product.id }}">
+                                            {{ product.name_fa }} ({{ product.sku }})
+                                            <button type="button" class="btn-close btn-close-white ms-2" 
+                                                    onclick="removeProduct({{ product.id }})"></button>
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>ذخیره پیشنهادات
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- App Config Tab -->
+                <div class="tab-pane fade" id="app-config" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">تنظیمات اپلیکیشن</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="appConfigForm">
+                                <h6 class="mb-3">نسخه‌گذاری</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">نسخه فعلی اپ</label>
+                                        <input type="text" class="form-control" name="app_version" 
+                                               value="{{ config.app_version or '1.0.0' }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">حداقل نسخه مورد نیاز</label>
+                                        <input type="text" class="form-control" name="min_app_version" 
+                                               value="{{ config.min_app_version or '1.0.0' }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch mt-4">
+                                            <input class="form-check-input" type="checkbox" id="forceUpdate" 
+                                                   name="force_update" {% if config.force_update %}checked{% endif %}>
+                                            <label class="form-check-label" for="forceUpdate">
+                                                اجبار به به‌روزرسانی
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                <h6 class="mb-3">حالت تعمیرات</h6>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="maintenanceMode" 
+                                               name="maintenance_mode" {% if config.maintenance_mode %}checked{% endif %}>
+                                        <label class="form-check-label" for="maintenanceMode">
+                                            فعال کردن حالت تعمیرات
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">پیام تعمیرات</label>
+                                    <textarea class="form-control" name="maintenance_message" rows="3">{{ config.maintenance_message or '' }}</textarea>
+                                </div>
+                                
+                                <hr>
+                                <h6 class="mb-3">قابلیت‌ها</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="dailySuggestionsEnabled" 
+                                                   name="daily_suggestions_enabled" {% if config.daily_suggestions_enabled %}checked{% endif %}>
+                                            <label class="form-check-label" for="dailySuggestionsEnabled">
+                                                پیشنهادات روز
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="wholesaleRequestsEnabled" 
+                                                   name="wholesale_requests_enabled" {% if config.wholesale_requests_enabled %}checked{% endif %}>
+                                            <label class="form-check-label" for="wholesaleRequestsEnabled">
+                                                درخواست خریدار عمده
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="walletEnabled" 
+                                                   name="wallet_enabled" {% if config.wallet_enabled %}checked{% endif %}>
+                                            <label class="form-check-label" for="walletEnabled">
+                                                کیف پول
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="notificationsEnabled" 
+                                                   name="notifications_enabled" {% if config.notifications_enabled %}checked{% endif %}>
+                                            <label class="form-check-label" for="notificationsEnabled">
+                                                اعلان‌ها
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                <h6 class="mb-3">تنظیمات پیش‌فرض</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">نوع قیمت پیش‌فرض</label>
+                                        <select class="form-select" name="default_price_type">
+                                            <option value="cash" {% if config.default_price_type == 'cash' %}selected{% endif %}>نقدی</option>
+                                            <option value="check" {% if config.default_price_type == 'check' %}selected{% endif %}>چکی</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch mt-4">
+                                            <input class="form-check-input" type="checkbox" id="showBulkPrices" 
+                                                   name="show_bulk_prices" {% if config.show_bulk_prices %}checked{% endif %}>
+                                            <label class="form-check-label" for="showBulkPrices">
+                                                نمایش قیمت‌های عمده
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch mt-4">
+                                            <input class="form-check-input" type="checkbox" id="enableOfflineMode" 
+                                                   name="enable_offline_mode" {% if config.enable_offline_mode %}checked{% endif %}>
+                                            <label class="form-check-label" for="enableOfflineMode">
+                                                فعال کردن حالت آفلاین
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                <h6 class="mb-3">برندهای همکار</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">انتخاب برندهای همکار</label>
+                                    <div class="border p-3" style="max-height: 300px; overflow-y: auto;">
+                                        {% for brand in all_brands %}
+                                        <div class="form-check">
+                                            <input class="form-check-input partner-brand-checkbox" type="checkbox" 
+                                                   value="{{ brand.id }}" id="brand_{{ brand.id }}"
+                                                   {% if brand.id in config.get_partner_brand_ids() %}checked{% endif %}>
+                                            <label class="form-check-label" for="brand_{{ brand.id }}">
+                                                {{ brand.name_fa }} ({{ brand.name }})
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>ذخیره تنظیمات
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Banner Modal -->
+<div class="modal fade" id="addBannerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">افزودن بنر جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBannerForm">
+                    <div class="mb-3">
+                        <label class="form-label">عنوان (فارسی)</label>
+                        <input type="text" class="form-control" name="title_fa">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">عنوان (انگلیسی)</label>
+                        <input type="text" class="form-control" name="title">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">آدرس تصویر</label>
+                        <input type="text" class="form-control" name="image_url" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">لینک (اختیاری)</label>
+                        <input type="text" class="form-control" name="link_url">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">موقعیت</label>
+                        <select class="form-select" name="position">
+                            <option value="homepage">صفحه اصلی</option>
+                            <option value="shop">فروشگاه</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">ترتیب نمایش</label>
+                        <input type="number" class="form-control" name="display_order" value="0">
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="bannerActive" name="is_active" checked>
+                        <label class="form-check-label" for="bannerActive">فعال</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="saveBanner()">ذخیره</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedProductIds = new Set({{ config.get_daily_suggestions_product_ids() | tojson }});
+
+// Product search
+let searchTimeout;
+document.getElementById('productSearchInput').addEventListener('input', function(e) {
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim();
+    
+    if (query.length < 2) {
+        document.getElementById('productSearchResults').innerHTML = '';
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        fetch(`/api/admin/products/search?q=${encodeURIComponent(query)}&limit=10`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.products) {
+                    let html = '<div class="list-group">';
+                    data.products.forEach(product => {
+                        if (!selectedProductIds.has(product.id)) {
+                            html += `<a href="#" class="list-group-item list-group-item-action" 
+                                     onclick="addProduct(${product.id}, '${product.name_fa}', '${product.sku}'); return false;">
+                                <strong>${product.name_fa}</strong> - SKU: ${product.sku}
+                            </a>`;
+                        }
+                    });
+                    html += '</div>';
+                    document.getElementById('productSearchResults').innerHTML = html;
+                }
+            });
+    }, 500);
+});
+
+function addProduct(id, name, sku) {
+    if (!selectedProductIds.has(id)) {
+        selectedProductIds.add(id);
+        const badge = `<span class="badge bg-primary me-2 mb-2" data-product-id="${id}">
+            ${name} (${sku})
+            <button type="button" class="btn-close btn-close-white ms-2" 
+                    onclick="removeProduct(${id})"></button>
+        </span>`;
+        document.getElementById('selectedProducts').insertAdjacentHTML('beforeend', badge);
+    }
+    document.getElementById('productSearchResults').innerHTML = '';
+    document.getElementById('productSearchInput').value = '';
+}
+
+function removeProduct(id) {
+    selectedProductIds.delete(id);
+    document.querySelector(`[data-product-id="${id}"]`).remove();
+}
+
+// Save forms
+document.getElementById('generalSettingsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch('/api/admin/android-app/general-settings', {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            alert('تنظیمات با موفقیت ذخیره شد');
+        } else {
+            alert('خطا: ' + data.message);
+        }
+    });
+});
+
+document.getElementById('suggestionsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append('product_ids', JSON.stringify(Array.from(selectedProductIds)));
+    
+    fetch('/api/admin/android-app/suggestions', {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            alert('پیشنهادات با موفقیت ذخیره شد');
+        } else {
+            alert('خطا: ' + data.message);
+        }
+    });
+});
+
+document.getElementById('appConfigForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const partnerBrandIds = Array.from(document.querySelectorAll('.partner-brand-checkbox:checked'))
+        .map(cb => parseInt(cb.value));
+    formData.append('partner_brand_ids', JSON.stringify(partnerBrandIds));
+    
+    fetch('/api/admin/android-app/config', {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            alert('تنظیمات با موفقیت ذخیره شد');
+        } else {
+            alert('خطا: ' + data.message);
+        }
+    });
+});
+
+function saveBanner() {
+    const formData = new FormData(document.getElementById('addBannerForm'));
+    fetch('/api/admin/android-app/banners', {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('خطا: ' + data.message);
+        }
+    });
+}
+
+// Delete banner
+document.querySelectorAll('.delete-banner').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (confirm('آیا از حذف این بنر اطمینان دارید؟')) {
+            const bannerId = this.dataset.bannerId;
+            fetch(`/api/admin/android-app/banners/${bannerId}`, {
+                method: 'DELETE'
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('خطا: ' + data.message);
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
+

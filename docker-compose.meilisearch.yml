@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: asiasalman-meilisearch
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    environment:
+      # Development mode (no master key required)
+      - MEILI_ENV=development
+      # For production, uncomment and set a master key:
+      # - MEILI_MASTER_KEY=your_secure_master_key_here
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  meilisearch_data:
+

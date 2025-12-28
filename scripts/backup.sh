@@ -9,7 +9,12 @@ set -e
 
 # Configuration
 BACKUP_DIR="/backups"
-INSTANCE_DIR="/data/instance"
+# Database locations (check new location first, then old locations)
+DB_PATHS=(
+    "/root/data/asia_salman.db"
+    "/data/instance/asia_salman.db"
+    "/root/application/instance/asia_salman.db"
+)
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/asia_salman_backup_$DATE.db"
 
@@ -30,14 +35,23 @@ error() {
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
 
+# Find database file
+DB_FILE=""
+for db_path in "${DB_PATHS[@]}"; do
+    if [ -f "$db_path" ]; then
+        DB_FILE="$db_path"
+        break
+    fi
+done
+
 # Check if database file exists
-if [ ! -f "$INSTANCE_DIR/asia_salman.db" ]; then
-    error "Database file not found: $INSTANCE_DIR/asia_salman.db"
+if [ -z "$DB_FILE" ]; then
+    error "Database file not found. Searched in: ${DB_PATHS[*]}"
 fi
 
 # Create backup
-log "Creating database backup..."
-cp "$INSTANCE_DIR/asia_salman.db" "$BACKUP_FILE"
+log "Creating database backup from: $DB_FILE"
+cp "$DB_FILE" "$BACKUP_FILE"
 
 # Compress backup
 log "Compressing backup..."

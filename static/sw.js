@@ -3,7 +3,7 @@
  * Basic service worker for PWA functionality
  */
 
-const CACHE_NAME = 'asiasalman-v1';
+const CACHE_NAME = 'asiasalman-v2'; // Updated to clear old cache
 const urlsToCache = [
     '/',
     '/static/css/style.css',
@@ -44,10 +44,12 @@ self.addEventListener('activate', function(event) {
                     }
                 })
             );
+        }).then(function() {
+            // Clear all caches and take control immediately
+            console.log('ServiceWorker: Cache cleared, taking control');
+            return self.clients.claim();
         })
     );
-    // Take control of all pages immediately
-    return self.clients.claim();
 });
 
 // Fetch event - serve from cache, fallback to network
@@ -58,21 +60,32 @@ self.addEventListener('fetch', function(event) {
     }
 
     // Skip cross-origin requests to avoid Tracking Prevention warnings
-    // Only cache resources from same origin
-    if (!event.request.url.startsWith(self.location.origin)) {
-        return;
-    }
-    
-    // Skip requests to external CDNs to prevent Tracking Prevention warnings
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) {
         return;
     }
 
+    // For static files, always try network first to avoid stale cache
+    const isStaticFile = url.pathname.startsWith('/static/');
+    
     event.respondWith(
-        caches.match(event.request)
-            .then(function(response) {
-                // Return cached version or fetch from network
+        (isStaticFile ? 
+            // For static files: Network first, then cache
+            fetch(event.request).then(function(fetchResponse) {
+                // If network succeeds, update cache
+                if (fetchResponse && fetchResponse.status === 200) {
+                    const responseToCache = fetchResponse.clone();
+                    caches.open(CACHE_NAME).then(function(cache) {
+                        cache.put(event.request, responseToCache);
+                    });
+                }
+                return fetchResponse;
+            }).catch(function() {
+                // If network fails, try cache
+                return caches.match(event.request);
+            }) :
+            // For other files: Cache first, then network
+            caches.match(event.request).then(function(response) {
                 return response || fetch(event.request).then(function(fetchResponse) {
                     // Don't cache if not a valid response
                     if (!fetchResponse || fetchResponse.status !== 200 || fetchResponse.type !== 'basic') {
@@ -94,6 +107,7 @@ self.addEventListener('fetch', function(event) {
                     return caches.match('/');
                 });
             })
+        )
     );
 });
 

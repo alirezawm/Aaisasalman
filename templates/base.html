@@ -14,6 +14,17 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="canonical" href="{{ request.url }}">
     
+    <!-- Additional SEO Meta Tags -->
+    <meta name="language" content="Persian">
+    <meta name="geo.region" content="IR-09">
+    <meta name="geo.placename" content="Mashhad">
+    <meta name="geo.position" content="36.2605;59.6168">
+    <meta name="ICBM" content="36.2605, 59.6168">
+    <meta name="theme-color" content="#dc3545">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="format-detection" content="telephone=yes">
+    
     <!-- Open Graph Meta Tags -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
@@ -77,26 +88,47 @@
     </script>
     
     <!-- Preconnect to external domains -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <!-- DNS Prefetch -->
     <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
     
+    <!-- Preload critical resources -->
+    <link rel="preload" href="{{ url_for('static', filename='css/style.css') }}" as="style">
+    <link rel="preload" href="{{ url_for('static', filename='js/main.js') }}" as="script">
+    
+    <!-- Resource hints for better performance -->
+    <link rel="prefetch" href="{{ url_for('shop') }}">
+    <link rel="prefetch" href="{{ url_for('brands') }}">
+    
     <!-- Bootstrap RTL CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <!-- Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Vazir Font -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet">
+    <!-- Poppins Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     <!-- Multi-Select Cart System CSS -->
     <link href="{{ url_for('static', filename='css/multi-select-cart.css') }}" rel="stylesheet">
     <!-- Points System CSS -->
     <link href="{{ url_for('static', filename='css/points.css') }}" rel="stylesheet">
+    <!-- Modern Header Footer CSS -->
+    <link href="{{ url_for('static', filename='css/modern-header-footer.css') }}" rel="stylesheet">
+    <!-- Trevieta Header CSS -->
+    <link href="{{ url_for('static', filename='css/trevieta-header.css') }}" rel="stylesheet">
+    <!-- Fixed Cart Icon CSS -->
+    <link href="{{ url_for('static', filename='css/fixed-cart-icon.css') }}" rel="stylesheet">
+    <!-- Mobile Optimization CSS -->
+    <link href="{{ url_for('static', filename='css/mobile-optimization.css') }}" rel="stylesheet">
     
     <!-- Favicon and Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/favicon-32x32.png') }}">
@@ -117,9 +149,6 @@
     <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='images/apple-touch-icon-152x152.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/apple-touch-icon-180x180.png') }}">
     
-    <!-- Android Chrome Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='images/android-chrome-192x192.png') }}">
-    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='images/android-chrome-512x512.png') }}">
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
@@ -142,228 +171,103 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Enhanced Top Bar -->
-    <div class="top-bar bg-dark text-white py-2 d-none d-md-block">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <small class="me-4">
-                            <i class="fas fa-phone me-2"></i>۰۵۱۳۳۳۳۸۸۸۱-۶ - ۰۵۱۳۵۰۹۳۱۷۴-۸
-                        </small>
-                        <small class="me-4">
-                            <i class="fas fa-envelope me-2"></i>info@asiasalman.com
-                        </small>
-                        <small>
-                            <i class="fas fa-clock me-2"></i>شنبه تا پنج‌شنبه: ۸-۱۸
-                        </small>
-                    </div>
+    <!-- New Header Design - Pill Shaped -->
+    <header class="trevieta-header" role="banner">
+        <div class="trevieta-header-container">
+            <div class="trevieta-header-card">
+                <!-- Logo Section (Left) -->
+                <div class="trevieta-logo">
+                    <a href="{{ url_for('index') }}" class="trevieta-logo-link">
+                        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="آسیا سلمان" class="trevieta-logo-img" onerror="if(!this.dataset.failed){this.dataset.failed='1';this.style.display='none';}">
+                        <span class="trevieta-logo-text">آسیا سلمان</span>
+                    </a>
                 </div>
-                <div class="col-md-6 text-end">
-                    <div class="social-links">
-                        <a href="#" class="text-white me-3" title="تلگرام">
-                            <i class="fab fa-telegram"></i>
-                        </a>
-                        <a href="#" class="text-white me-3" title="اینستاگرام">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a href="#" class="text-white me-3" title="واتساپ">
-                            <i class="fab fa-whatsapp"></i>
-                        </a>
-                        <a href="#" class="text-white" title="لینکدین">
-                            <i class="fab fa-linkedin"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Enhanced Main Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top modern-navbar">
-        <div class="container">
-            <!-- Brand Logo -->
-            <a class="navbar-brand fw-bold text-danger d-flex align-items-center" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="آسیا سلمان" height="40" class="me-2">
-                <span class="brand-text">آسیا سلمان</span>
-            </a>
-            
-            <!-- Mobile Toggle Button -->
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <!-- Navigation Menu -->
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link modern-nav-link" href="{{ url_for('index') }}">
-                            <i class="fas fa-home me-1"></i>خانه
-                        </a>
-                    </li>
+                <!-- Navigation Section (Center) -->
+                <nav class="trevieta-nav" role="navigation" aria-label="Main navigation">
+                    <ul class="trevieta-nav-list">
+                        <li class="trevieta-nav-item">
+                            <a href="{{ url_for('shop') }}" class="trevieta-nav-link">فروشگاه</a>
+                        </li>
+                        <li class="trevieta-nav-item">
+                            <a href="{{ url_for('brands') }}" class="trevieta-nav-link">برندها</a>
+                        </li>
+                        <li class="trevieta-nav-item">
+                            <a href="{{ url_for('bulk_conditions') }}" class="trevieta-nav-link">خرید عمده</a>
+                        </li>
+                        <li class="trevieta-nav-item">
+                            <a href="{{ url_for('guide') }}" class="trevieta-nav-link">راهنما</a>
+                        </li>
+                        <li class="trevieta-nav-item">
+                            <a href="{{ url_for('about') }}" class="trevieta-nav-link">درباره ما</a>
+                        </li>
+                    </ul>
+                </nav>
+
+                <!-- CTA Section (Right) -->
+                <div class="trevieta-cta">
                     {% if current_user.is_authenticated %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle modern-nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-car me-1"></i>محصولات
+                    <!-- Authenticated User Actions -->
+                    <div class="trevieta-user-actions">
+                        <a href="{{ url_for('cart') }}" class="trevieta-cart-link" aria-label="سبد خرید">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="trevieta-cart-count" style="display: none;">0</span>
                         </a>
-                        <ul class="dropdown-menu modern-dropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('brands') }}">
-                                <i class="fas fa-industry me-2"></i>انتخاب برند
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('shop') }}">
-                                <i class="fas fa-store me-2"></i>فروشگاه
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('bulk_conditions') }}">
-                                <i class="fas fa-handshake me-2"></i>خرید عمده
-                            </a></li>
-                        </ul>
-                    </li>
-                    {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
-                    <li class="nav-item">
-                        <a class="nav-link modern-nav-link" href="{{ url_for('admin_dashboard') }}">
-                            <i class="fas fa-tachometer-alt me-1"></i>داشبورد
-                        </a>
-                    </li>
-                    {% endif %}
-                    {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link modern-nav-link" href="{{ url_for('shop') }}">
-                            <i class="fas fa-store me-1"></i>فروشگاه
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link modern-nav-link" href="{{ url_for('bulk_conditions') }}">
-                            <i class="fas fa-handshake me-1"></i>خرید عمده
-                        </a>
-                    </li>
-                    {% endif %}
-                    {% if current_user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link modern-nav-link" href="{{ url_for('profile_invoices') }}">
-                            <i class="fas fa-file-invoice me-1"></i>فاکتورها
-                        </a>
-                    </li>
-                    {% endif %}
-                    <li class="nav-item">
-                        <a class="nav-link modern-nav-link" href="{{ url_for('about') }}">
-                            <i class="fas fa-info-circle me-1"></i>درباره ما
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link modern-nav-link" href="{{ url_for('guide') }}">
-                            <i class="fas fa-book me-1"></i>راهنما
-                        </a>
-                    </li>
-                </ul>
-                
-                <!-- Action Buttons -->
-                <div class="d-flex align-items-center justify-content-center flex-grow-1">
-                    {% if current_user.is_authenticated %}
-                    <!-- Enhanced Cart -->
-                     <div class="cart-container me-3">
-                         <a class="btn btn-danger position-relative cart-toggle modern-cart-btn" href="#" aria-label="سبد خرید">
-                             <i class="fas fa-shopping-cart me-2"></i>
-                             <span class="d-none d-sm-inline">
-                                 سبد خرید 
-                                 <span class="cart-count-text">(0)</span>
-                             </span>
-                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark cart-count" style="display: none;">
-                                 0
-                             </span>
-                         </a>
-                        <!-- Cart Points Display -->
-                        <div class="cart-points-display mt-1">
-                            <small class="text-muted">
-                                <i class="fas fa-star text-warning"></i>
-                                <span class="cart-points">0</span> امتیاز
-                            </small>
+                        <div class="trevieta-user-menu">
+                            <div class="dropdown">
+                                <a href="#" class="trevieta-user-link dropdown-toggle" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-user"></i>
+                                    <span class="trevieta-user-name">{{ current_user.full_name }}</span>
+                                    <i class="fas fa-chevron-down ms-2" style="font-size: 0.75rem;"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end modern-dropdown" aria-labelledby="userMenuDropdown">
+                                    <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-user me-2"></i>پروفایل</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('wallet') }}"><i class="fas fa-wallet me-2"></i>کیف پول</a></li>
+                                    {% if current_user.is_admin or current_user.has_role('مدیر_سفارشات', scope='site') %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}"><i class="fas fa-tachometer-alt me-2"></i>مدیریت داشبورد</a></li>
+                                    {% endif %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>خروج</a></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- Wallet Button -->
-                    <div class="wallet-container me-3">
-                        <a class="btn btn-success position-relative modern-wallet-btn" href="{{ url_for('wallet') }}" aria-label="کیف پول">
-                            <i class="fas fa-wallet me-2"></i>
-                            <span class="d-none d-sm-inline">کیف پول</span>
-                            {% if wallet_balance and wallet_balance > 0 %}
-                            <span class="wallet-balance-badge ms-2">
-                                {{ wallet_balance|format_number }} ریال
-                            </span>
-                            {% endif %}
-                        </a>
-                    </div>
-                    
-                    <!-- Enhanced User Menu -->
-                    <div class="dropdown">
-                        <a class="btn btn-outline-danger dropdown-toggle modern-user-btn" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user me-1"></i>
-                            <span class="d-none d-lg-inline">{{ current_user.full_name }}</span>
-                            {% if current_user.is_bulk_buyer %}
-                            <span class="badge bg-success ms-1">عمده</span>
-                            {% endif %}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end modern-dropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('profile') }}">
-                                <i class="fas fa-user-circle me-2"></i>پروفایل
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('wallet') }}">
-                                <i class="fas fa-wallet me-2"></i>کیف پول
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('profile_invoices') }}">
-                                <i class="fas fa-file-invoice me-2"></i>فاکتورهای من
-                            </a></li>
-                            {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
-                            <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
-                                <i class="fas fa-tachometer-alt me-2"></i>داشبورد
-                            </a></li>
-                            {% endif %}
-                            <li><a class="dropdown-item" href="{{ url_for('user_points') }}">
-                                <i class="fas fa-star me-2"></i>امتیازات من
-                            </a></li>
-                            <li><a class="dropdown-item position-relative" href="{{ url_for('notifications') }}">
-                                <i class="fas fa-bell me-2"></i>اعلانات
-                                {% if current_user.is_authenticated and unread_notifications_count > 0 %}
-                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                        {{ unread_notifications_count }}
-                                    </span>
-                                {% endif %}
-                            </a></li>
-                            {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
-                                <i class="fas fa-cog me-2"></i>مدیریت
-                            </a></li>
-                            {% if current_user.is_admin %}
-                            <li><a class="dropdown-item" href="{{ url_for('admin_accounting_dashboard') }}">
-                                <i class="fas fa-calculator me-2"></i>حسابداری تدبیر
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('admin_points_dashboard') }}">
-                                <i class="fas fa-star me-2"></i>مدیریت امتیازات
-                            </a></li>
-                            {% endif %}
-                            {% endif %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                                <i class="fas fa-sign-out-alt me-2"></i>خروج
-                            </a></li>
-                        </ul>
-                    </div>
                     {% else %}
-                    <!-- Login/Register Buttons -->
-                    <div class="auth-buttons">
-                        <a href="{{ url_for('login') }}" class="btn btn-outline-danger me-2 modern-auth-btn">
-                            <i class="fas fa-sign-in-alt me-1"></i>ورود
-                        </a>
-                        <a href="{{ url_for('register') }}" class="btn btn-danger modern-auth-btn">
-                            <i class="fas fa-user-plus me-1"></i>ثبت نام
-                        </a>
-                    </div>
+                    <!-- Guest User Actions -->
+                    <a href="{{ url_for('login') }}" class="trevieta-secondary-action">ورود</a>
+                    <a href="{{ url_for('register') }}" class="trevieta-cta-button">ثبت نام</a>
                     {% endif %}
                 </div>
+
+                <!-- Mobile Menu Toggle -->
+                <button class="trevieta-mobile-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </div>
-    </nav>
+
+        <!-- Mobile Navigation Menu -->
+        <div class="trevieta-mobile-nav">
+            <nav class="trevieta-mobile-nav-menu">
+                <ul class="trevieta-mobile-nav-list">
+                    <li><a href="{{ url_for('shop') }}" class="trevieta-mobile-nav-link">فروشگاه</a></li>
+                    <li><a href="{{ url_for('brands') }}" class="trevieta-mobile-nav-link">برندها</a></li>
+                    <li><a href="{{ url_for('bulk_conditions') }}" class="trevieta-mobile-nav-link">خرید عمده</a></li>
+                    <li><a href="{{ url_for('guide') }}" class="trevieta-mobile-nav-link">راهنما</a></li>
+                    <li><a href="{{ url_for('about') }}" class="trevieta-mobile-nav-link">درباره ما</a></li>
+                    {% if not current_user.is_authenticated %}
+                    <li class="trevieta-mobile-auth">
+                        <a href="{{ url_for('login') }}" class="trevieta-mobile-login">ورود</a>
+                        <a href="{{ url_for('register') }}" class="trevieta-mobile-register">ثبت نام</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </header>
 
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -380,7 +284,7 @@
     {% endwith %}
 
     <!-- Main Content -->
-    <main class="{% block main_class %}{% endblock %}">
+    <main id="main-content" class="{% block main_class %}{% endblock %}" role="main">
         {% block content %}{% endblock %}
     </main>
 
@@ -390,109 +294,134 @@
             <div class="row">
                 <div class="col-md-3 footer-section">
                     <h5 class="text-danger mb-3">
-                        <i class="fas fa-car me-2"></i>آسیا سلمان
+                        <i class="fas fa-car"></i>آسیا سلمان
                     </h5>
                     <p class="text-muted mb-3">
                         شرکت بازرگانی قطعات خودرو آسیا سلمان با بیش از ۱۰ سال تجربه در زمینه ارائه بهترین قطعات خودرو با کیفیت جهانی و قیمت‌های رقابتی
                     </p>
-                    <div class="d-flex gap-2">
-                        <a href="#" class="text-light"><i class="fab fa-telegram fa-lg"></i></a>
-                        <a href="#" class="text-light"><i class="fab fa-instagram fa-lg"></i></a>
-                        <a href="#" class="text-light"><i class="fab fa-whatsapp fa-lg"></i></a>
-                        <a href="#" class="text-light"><i class="fab fa-linkedin fa-lg"></i></a>
+                    <div class="social-links">
+                        <a href="https://t.me/asiasalman" target="_blank" rel="noopener noreferrer" title="تلگرام">
+                            <i class="fab fa-telegram"></i>
+                        </a>
+                        <a href="https://instagram.com/asiasalman" target="_blank" rel="noopener noreferrer" title="اینستاگرام">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="https://wa.me/989123456789" target="_blank" rel="noopener noreferrer" title="واتساپ">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                        <a href="#" target="_blank" rel="noopener noreferrer" title="لینکدین">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
                     </div>
                 </div>
                 <div class="col-md-3 footer-section">
-                    <h6 class="text-danger mb-3">خدمات ما</h6>
+                    <h6 class="text-danger mb-3">
+                        <i class="fas fa-concierge-bell"></i>خدمات ما
+                    </h6>
                     <ul class="list-unstyled">
-                        <li><a href="{{ url_for('shop') }}" class="text-light text-decoration-none"><i class="fas fa-store me-2"></i>فروشگاه آنلاین</a></li>
-                        <li><a href="{{ url_for('bulk_conditions') }}" class="text-light text-decoration-none"><i class="fas fa-industry me-2"></i>خرید عمده</a></li>
-                        <li><a href="#" class="text-light text-decoration-none"><i class="fas fa-headset me-2"></i>مشاوره فنی</a></li>
-                        <li><a href="#" class="text-light text-decoration-none"><i class="fas fa-shipping-fast me-2"></i>ارسال سریع</a></li>
-                        <li><a href="#" class="text-light text-decoration-none"><i class="fas fa-award me-2"></i>گارانتی کیفیت</a></li>
+                        <li><a href="{{ url_for('shop') }}" class="text-light text-decoration-none"><i class="fas fa-store"></i>فروشگاه آنلاین</a></li>
+                        <li><a href="{{ url_for('bulk_conditions') }}" class="text-light text-decoration-none"><i class="fas fa-industry"></i>خرید عمده</a></li>
+                        <li><a href="#" class="text-light text-decoration-none"><i class="fas fa-headset"></i>مشاوره فنی</a></li>
+                        <li><a href="#" class="text-light text-decoration-none"><i class="fas fa-shipping-fast"></i>ارسال سریع</a></li>
+                        <li><a href="#" class="text-light text-decoration-none"><i class="fas fa-award"></i>گارانتی کیفیت</a></li>
                     </ul>
                 </div>
                 <div class="col-md-3 footer-section">
-                    <h6 class="text-danger mb-3">دسترسی سریع</h6>
+                    <h6 class="text-danger mb-3">
+                        <i class="fas fa-link"></i>دسترسی سریع
+                    </h6>
                     <ul class="list-unstyled">
-                        <li><a href="{{ url_for('index') }}" class="text-light text-decoration-none"><i class="fas fa-home me-2"></i>خانه</a></li>
+                        <li><a href="{{ url_for('index') }}" class="text-light text-decoration-none"><i class="fas fa-home"></i>خانه</a></li>
                         {% if current_user.is_authenticated %}
-                        <li><a href="{{ url_for('shop') }}" class="text-light text-decoration-none"><i class="fas fa-store me-2"></i>فروشگاه</a></li>
+                        <li><a href="{{ url_for('shop') }}" class="text-light text-decoration-none"><i class="fas fa-store"></i>فروشگاه</a></li>
                         {% if current_user.is_admin or current_user.has_role('order_manager', scope='site') %}
-                        <li><a href="{{ url_for('admin_dashboard') }}" class="text-light text-decoration-none"><i class="fas fa-tachometer-alt me-2"></i>داشبورد</a></li>
+                        <li><a href="{{ url_for('admin_dashboard') }}" class="text-light text-decoration-none"><i class="fas fa-tachometer-alt"></i>داشبورد</a></li>
                         {% endif %}
                         {% endif %}
-                        <li><a href="{{ url_for('about') }}" class="text-light text-decoration-none"><i class="fas fa-info-circle me-2"></i>درباره ما</a></li>
-                        <li><a href="#" class="text-light text-decoration-none"><i class="fas fa-phone me-2"></i>تماس با ما</a></li>
+                        <li><a href="{{ url_for('about') }}" class="text-light text-decoration-none"><i class="fas fa-info-circle"></i>درباره ما</a></li>
+                        <li><a href="#contact" class="text-light text-decoration-none"><i class="fas fa-phone"></i>تماس با ما</a></li>
                     </ul>
                 </div>
-                <div class="col-md-3">
-                    <h6 class="text-danger mb-3">تماس با ما</h6>
-                    <div class="text-muted mb-3">
-                        <p class="mb-2">
-                            <i class="fas fa-phone me-2"></i>۰۵۱۳۳۳۳۸۸۸۱-۶ - ۰۵۱۳۵۰۹۳۱۷۴-۸
+                <div class="col-md-3 footer-section">
+                    <h6 class="text-danger mb-3">
+                        <i class="fas fa-envelope"></i>تماس و خبرنامه
+                    </h6>
+                    <div class="contact-info mb-3">
+                        <p>
+                            <i class="fas fa-phone"></i>
+                            <a href="tel:+985133338881" class="text-light text-decoration-none">۰۵۱۳۳۳۳۸۸۸۱-۶ - ۰۵۱۳۵۰۹۳۱۷۴-۸</a>
                         </p>
-                        <p class="mb-2">
-                            <i class="fas fa-envelope me-2"></i>info@asiasalman.com
+                        <p>
+                            <i class="fas fa-envelope"></i>
+                            <a href="mailto:info@asiasalman.com" class="text-light text-decoration-none">info@asiasalman.com</a>
                         </p>
-                        <p class="mb-2">
-                            <i class="fas fa-map-marker-alt me-2"></i>خراسان رضوی - مشهد - رباط طرق 2
+                        <p>
+                            <i class="fas fa-map-marker-alt"></i>خراسان رضوی - مشهد - رباط طرق 2
                         </p>
-                        <p class="mb-2">
-                            <i class="fas fa-clock me-2"></i>شنبه تا پنج‌شنبه: ۸-۱۸
+                        <p>
+                            <i class="fas fa-clock"></i>شنبه تا پنج‌شنبه: ۸-۱۸
                         </p>
                     </div>
                     
                     <!-- Newsletter Signup -->
                     <div class="newsletter-signup">
-                        <h6 class="text-dark mb-3"><i class="fas fa-envelope me-2"></i>عضویت در خبرنامه</h6>
-                        <p class="text-muted small mb-3">از آخرین تخفیفات و محصولات جدید باخبر شوید</p>
-                        <form class="d-flex">
-                            <input type="email" class="form-control newsletter-input me-2" placeholder="ایمیل شما">
-                            <button type="submit" class="btn btn-primary">
+                        <h6><i class="fas fa-paper-plane"></i>عضویت در خبرنامه</h6>
+                        <p>از آخرین تخفیفات و محصولات جدید باخبر شوید</p>
+                        <form>
+                            <input type="email" class="form-control newsletter-input" placeholder="ایمیل شما" required>
+                            <button type="submit">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </form>
                     </div>
                 </div>
             </div>
-            <hr class="my-4 border-secondary">
-            <div class="row align-items-center">
-                <div class="col-md-4">
-                    <p class="text-muted mb-0">&copy; شرکت بازرگانی قطعات خودرو آسیا سلمان. تمامی حقوق محفوظ است.</p>
-                </div>
-                <div class="col-md-4 text-center">
-                    <!-- Enamad Trust Seal -->
-                    <a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=516867&Code=cPlraxkgRpklMGAhZCoCSSaDtEGEfPQP'>
-                        <img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=516867&Code=cPlraxkgRpklMGAhZCoCSSaDtEGEfPQP' alt='نماد اعتماد الکترونیکی' style='cursor:pointer' code='cPlraxkgRpklMGAhZCoCSSaDtEGEfPQP' class="enamad-logo">
-                    </a>
-                </div>
-                <div class="col-md-4 text-end">
-                    <small class="text-muted">
-                        طراحی و توسعه: <a href="#" class="text-light text-decoration-none">تیم فنی آسیا سلمان</a>
-                    </small>
+            <div class="footer-bottom">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <p class="mb-0">&copy; شرکت بازرگانی قطعات خودرو آسیا سلمان. تمامی حقوق محفوظ است.</p>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <!-- Enamad Trust Seal -->
+                        <a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=516867&Code=cPlraxkgRpklMGAhZCoCSSaDtEGEfPQP'>
+                            <img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=516867&Code=cPlraxkgRpklMGAhZCoCSSaDtEGEfPQP' alt='نماد اعتماد الکترونیکی' style='cursor:pointer' code='cPlraxkgRpklMGAhZCoCSSaDtEGEfPQP' class="enamad-logo">
+                        </a>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <small>
+                            طراحی و توسعه: <a href="#" class="text-light text-decoration-none">تیم فنی آسیا سلمان</a>
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
     </footer>
 
-    <!-- Live Chat Widget -->
-    <div class="live-chat-widget" onclick="openChat()">
-        <i class="fas fa-comments me-2"></i>
-        <span>پشتیبانی آنلاین</span>
-    </div>
+    <!-- Fixed Shopping Cart Icon -->
+    {% if current_user.is_authenticated %}
+    <a href="{{ url_for('cart') }}" class="fixed-cart-icon" aria-label="سبد خرید">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="fixed-cart-count" style="display: none;">0</span>
+    </a>
+    {% endif %}
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
+    <!-- jQuery (load first, before other scripts) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+    <!-- Swiper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
     <!-- Custom JS -->
-    <script src="{{ url_for('static', filename='js/persian-date-utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/persian-date-utils.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
     <!-- Multi-Select Cart System JS -->
-    <script src="{{ url_for('static', filename='js/multi-select-cart.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/multi-select-cart.js') }}" defer></script>
     <!-- Points System JS -->
-    <script src="{{ url_for('static', filename='js/points.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/points.js') }}" defer></script>
+    <!-- Modern Header Footer JS -->
+    <script src="{{ url_for('static', filename='js/modern-header-footer.js') }}" defer></script>
+    <!-- Trevieta Header JS -->
+    <script src="{{ url_for('static', filename='js/trevieta-header.js') }}" defer></script>
     
     <!-- Service Worker Registration -->
     <script>
@@ -512,6 +441,7 @@
     
     <!-- Initialize Cart Count on Page Load -->
     <script>
+        // jQuery is now loaded synchronously, so we can use it directly
         $(document).ready(function() {
             // Force update cart count on every page load
             if (typeof updateCartCount === 'function') {
@@ -521,16 +451,28 @@
             // Also try direct API call as backup
             $.get('/api/cart-count', function(data) {
                 if (data.count > 0) {
+                    // Update old cart count elements
                     $('.cart-count').text(data.count).show();
                     $('.cart-count-text').text('(' + data.count + ')');
+                    // Update new Trevieta header cart count
+                    $('.trevieta-cart-count').text(data.count).show();
+                    $('.trevieta-cart-count-cash').text(data.count).show();
+                    // Update fixed cart icon count
+                    $('.fixed-cart-count').text(data.count).show();
                 } else {
                     $('.cart-count').hide();
                     $('.cart-count-text').text('(0)');
+                    $('.trevieta-cart-count').hide();
+                    $('.trevieta-cart-count-cash').hide();
+                    $('.fixed-cart-count').hide();
                 }
             }).fail(function() {
                 console.log('Cart count API failed, hiding count');
                 $('.cart-count').hide();
                 $('.cart-count-text').text('(0)');
+                $('.trevieta-cart-count').hide();
+                $('.trevieta-cart-count-cash').hide();
+                $('.fixed-cart-count').hide();
             });
         });
     </script>

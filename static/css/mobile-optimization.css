@@ -1,0 +1,279 @@
+/* Mobile Optimization CSS for Asia Salman */
+
+/* Mobile-first responsive improvements */
+@media (max-width: 768px) {
+    /* Improve touch targets */
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0.5rem 1rem;
+    }
+    
+    .btn-sm {
+        min-height: 38px;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    /* Improve table responsiveness */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table {
+        font-size: 0.85rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.5rem 0.3rem;
+        white-space: nowrap;
+    }
+    
+    /* Stack form elements on mobile */
+    .input-group {
+        flex-wrap: wrap;
+    }
+    
+    .input-group > .form-control {
+        flex: 1 1 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Improve navigation */
+    .navbar-nav {
+        padding: 1rem 0;
+    }
+    
+    .nav-link {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+    }
+    
+    /* Improve cart interface */
+    .cart-container {
+        margin-bottom: 0.5rem;
+    }
+    
+    .cart-container .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Improve product cards */
+    .product-card {
+        margin-bottom: 1rem;
+    }
+    
+    /* Improve filter section */
+    .filter-section .row > div {
+        margin-bottom: 1rem;
+    }
+    
+    /* Improve pagination */
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .page-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Improve modals */
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .modal-content {
+        border-radius: 0.5rem;
+    }
+    
+    /* Improve forms */
+    .form-control,
+    .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 0.75rem;
+    }
+    
+    /* Improve buttons spacing */
+    .btn-group {
+        flex-wrap: wrap;
+    }
+    
+    .btn-group > .btn {
+        flex: 1 1 auto;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Improve quantity controls */
+    .input-group-sm {
+        width: 100%;
+    }
+    
+    .quantity-btn {
+        min-width: 44px;
+    }
+    
+    /* Improve footer */
+    .footer-enhanced {
+        padding: 2rem 0;
+    }
+    
+    .footer-section {
+        margin-bottom: 2rem;
+    }
+    
+    /* Improve top bar */
+    .top-bar {
+        font-size: 0.75rem;
+        padding: 0.5rem 0;
+    }
+    
+    .top-bar .social-links {
+        margin-top: 0.5rem;
+    }
+    
+    /* Improve search */
+    .form-control[name="search"] {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    /* Improve sticky mobile bar */
+    .mobile-sticky-cta {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        padding: 1rem;
+    }
+    
+    /* Improve product table on mobile */
+    .table-responsive table {
+        display: block;
+        width: 100%;
+    }
+    
+    .table-responsive thead {
+        display: none;
+    }
+    
+    .table-responsive tbody,
+    .table-responsive tr,
+    .table-responsive td {
+        display: block;
+        width: 100%;
+    }
+    
+    .table-responsive tr {
+        border: 1px solid #dee2e6;
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        background: white;
+    }
+    
+    .table-responsive td {
+        border: none;
+        padding: 0.5rem 0;
+        text-align: right;
+    }
+    
+    .table-responsive td:before {
+        content: attr(data-label);
+        font-weight: bold;
+        display: inline-block;
+        width: 40%;
+        margin-left: 1rem;
+    }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+}
+
+/* Improve touch interactions */
+@media (hover: none) and (pointer: coarse) {
+    /* Larger touch targets */
+    a, button, input, select, textarea {
+        min-height: 44px;
+    }
+    
+    /* Remove hover effects on touch devices */
+    .btn:hover {
+        transform: none;
+    }
+    
+    /* Improve focus states */
+    .btn:focus,
+    .form-control:focus,
+    .form-select:focus {
+        outline: 3px solid #0d6efd;
+        outline-offset: 2px;
+    }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+    .navbar {
+        padding: 0.5rem 0;
+    }
+    
+    .top-bar {
+        display: none;
+    }
+    
+    .footer-enhanced {
+        padding: 1.5rem 0;
+    }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .product-image img {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Dark mode support (if needed in future) */
+@media (prefers-color-scheme: dark) {
+    /* Can be implemented later if dark mode is needed */
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Print styles */
+@media print {
+    .navbar,
+    .footer-enhanced,
+    .top-bar,
+    .mobile-sticky-cta,
+    .btn,
+    .pagination {
+        display: none !important;
+    }
+    
+    .table {
+        font-size: 0.8rem;
+    }
+}
+
